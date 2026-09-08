@@ -13,12 +13,16 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as DesktopRouteImport } from './routes/desktop'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
+import { Route as ApiPublicAgentUpgradeRouteImport } from './routes/api/public/agent/upgrade'
+import { Route as ApiPublicAgentUpgradeReportRouteImport } from './routes/api/public/agent/upgrade-report'
+import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/agent/version'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,6 +42,11 @@ const BoardRoute = BoardRouteImport.update({
 const DesktopRoute = DesktopRouteImport.update({
   id: '/desktop',
   path: '/desktop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -70,30 +79,54 @@ const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
   path: '/tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentUpgradeRoute = ApiPublicAgentUpgradeRouteImport.update({
+  id: '/api/public/agent/upgrade',
+  path: '/api/public/agent/upgrade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentUpgradeReportRoute =
+  ApiPublicAgentUpgradeReportRouteImport.update({
+    id: '/api/public/agent/upgrade-report',
+    path: '/api/public/agent/upgrade-report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAgentVersionRoute = ApiPublicAgentVersionRouteImport.update({
+  id: '/api/public/agent/version',
+  path: '/api/public/agent/version',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
+  '/download': typeof DownloadRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
+  '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
+  '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
+  '/download': typeof DownloadRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases': typeof CasesIndexRoute
   '/tasks': typeof TasksIndexRoute
+  '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
+  '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
+  '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -101,12 +134,16 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
+  '/download': typeof DownloadRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
+  '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
+  '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,36 +152,48 @@ export interface FileRouteTypes {
     | '/agents'
     | '/board'
     | '/desktop'
+    | '/download'
     | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/agent/upgrade'
+    | '/api/public/agent/upgrade-report'
+    | '/api/public/agent/version'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/agents'
     | '/board'
     | '/desktop'
+    | '/download'
     | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
     | '/cases'
     | '/tasks'
+    | '/api/public/agent/upgrade'
+    | '/api/public/agent/upgrade-report'
+    | '/api/public/agent/version'
   id:
     | '__root__'
     | '/'
     | '/agents'
     | '/board'
     | '/desktop'
+    | '/download'
     | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/agent/upgrade'
+    | '/api/public/agent/upgrade-report'
+    | '/api/public/agent/version'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -152,12 +201,16 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   BoardRoute: typeof BoardRoute
   DesktopRoute: typeof DesktopRoute
+  DownloadRoute: typeof DownloadRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
+  ApiPublicAgentUpgradeRoute: typeof ApiPublicAgentUpgradeRoute
+  ApiPublicAgentUpgradeReportRoute: typeof ApiPublicAgentUpgradeReportRoute
+  ApiPublicAgentVersionRoute: typeof ApiPublicAgentVersionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -188,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/desktop'
       fullPath: '/desktop'
       preLoaderRoute: typeof DesktopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -232,6 +292,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/upgrade': {
+      id: '/api/public/agent/upgrade'
+      path: '/api/public/agent/upgrade'
+      fullPath: '/api/public/agent/upgrade'
+      preLoaderRoute: typeof ApiPublicAgentUpgradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/upgrade-report': {
+      id: '/api/public/agent/upgrade-report'
+      path: '/api/public/agent/upgrade-report'
+      fullPath: '/api/public/agent/upgrade-report'
+      preLoaderRoute: typeof ApiPublicAgentUpgradeReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/version': {
+      id: '/api/public/agent/version'
+      path: '/api/public/agent/version'
+      fullPath: '/api/public/agent/version'
+      preLoaderRoute: typeof ApiPublicAgentVersionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -240,12 +321,16 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   BoardRoute: BoardRoute,
   DesktopRoute: DesktopRoute,
+  DownloadRoute: DownloadRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   CasesCaseIdRoute: CasesCaseIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
+  ApiPublicAgentUpgradeRoute: ApiPublicAgentUpgradeRoute,
+  ApiPublicAgentUpgradeReportRoute: ApiPublicAgentUpgradeReportRoute,
+  ApiPublicAgentVersionRoute: ApiPublicAgentVersionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

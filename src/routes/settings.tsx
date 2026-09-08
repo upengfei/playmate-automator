@@ -90,6 +90,31 @@ function SettingsPage() {
                 onCheckedChange={(v) => updateSettings({ autoDispatch: v })}
               />
             </Row>
+            <Row label="版本拦截自动推送升级包" hint="版本校验未通过时自动推送升级，升级成功后自动续跑任务">
+              <Switch
+                checked={settings.autoUpgrade}
+                onCheckedChange={(v) => updateSettings({ autoUpgrade: v })}
+              />
+            </Row>
+            <Row label="更新通道" hint="灰度版会提前收到新功能">
+              <div className="flex gap-1.5">
+                {(["稳定版", "灰度版"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => updateSettings({ updateChannel: c })}
+                    className={
+                      settings.updateChannel === c
+                        ? "bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs"
+                        : "bg-secondary text-muted-foreground rounded-md px-2.5 py-1 text-xs"
+                    }
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </Row>
+
           </div>
         </Panel>
 
