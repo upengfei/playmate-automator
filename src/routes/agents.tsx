@@ -72,15 +72,28 @@ function AgentsPage() {
       </div>
 
       {outdated.length > 0 && (
-        <div className="border-warning/40 bg-warning/10 mt-4 flex items-start gap-3 rounded-xl border p-4 text-sm">
+        <div className="border-warning/40 bg-warning/10 mt-4 flex flex-wrap items-start gap-3 rounded-xl border p-4 text-sm">
           <AlertTriangle className="text-warning mt-0.5 size-4 shrink-0" />
-          <div>
+          <div className="min-w-64 flex-1">
             <p className="font-medium">存在版本不合规的执行节点</p>
             <p className="text-muted-foreground mt-1 text-xs">
               {outdated.map((a) => `${a.name}（v${a.version}）`).join("、")}
-              低于最低要求 v{settings.minAgentVersion}，任务下发时会被拦截。可推送升级包后重试。
+              低于最低要求 v{settings.minAgentVersion}，任务下发时会被拦截。
+              {settings.autoUpgrade
+                ? "已开启「版本拦截自动推送升级包」，拦截后会自动推送并在升级成功后续跑任务。"
+                : "自动推送已关闭，请手动推送升级包。"}
             </p>
           </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              outdated.forEach((a) => pushUpgrade(a.id));
+              toast.info(`已向 ${outdated.length} 个节点推送 v${release.version} 升级包`);
+            }}
+          >
+            <Download className="mr-1 size-3.5" />
+            批量推送升级包
+          </Button>
         </div>
       )}
 
@@ -94,6 +107,29 @@ function AgentsPage() {
           />
         ))}
       </div>
+
+      <Panel
+        title="升级包推送与结果回传"
+        className="mt-4"
+        action={
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/download">客户端下载与安装</Link>
+          </Button>
+        }
+      >
+        {upgrades.length === 0 ? (
+          <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-8 text-center text-xs">
+            暂无升级任务。版本校验被拦截时会自动推送，也可在节点卡片上手动推送。
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {upgrades.map((j) => (
+              <UpgradeCard key={j.id} job={j} />
+            ))}
+          </div>
+        )}
+      </Panel>
+
 
       <Panel title="心跳监控日志" className="mt-4" bodyClassName="p-0">
         <ul className="divide-y text-xs">
