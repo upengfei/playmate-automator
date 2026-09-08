@@ -101,6 +101,21 @@ function DesktopAgent() {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  // 运行在真实 Electron 客户端时，通过预加载桥接读取本机信息并响应托盘动作
+  useEffect(() => {
+    const bridge = (
+      window as unknown as {
+        playflowAgent?: {
+          getInfo: () => Promise<{ version: string; host: string }>;
+          onTrayAction: (cb: (d: { tab: Tab }) => void) => void;
+        };
+      }
+    ).playflowAgent;
+    if (!bridge) return;
+    void bridge.getInfo().then(setNativeInfo);
+    bridge.onTrayAction((d) => setTab(d.tab));
+  }, []);
+
   const addLog = (text: string, tone = "info") =>
     setLogs((l) => [...l, { id: ++logSeq.current, text, tone }]);
 
