@@ -39,8 +39,8 @@ export const RELEASE = {
     {
       platform: "linux",
       file: "PlayFlowAgent-1.8.2-linux-x64.tar.gz",
-      sizeMB: 112.1,
-      sha256: "c48a90e17df3625b0ac81e94f7d2560ba39fe8c17240d6b9385fa0e2c716b34d",
+      sizeMB: 110.0,
+      sha256: "947d136eb25fa7c2a0ae110e421092980f97e465c3c07e4ee79782a3c3bde0ab",
       url: "/downloads/PlayFlowAgent-1.8.2-linux-x64.tar.gz",
     },
   ] satisfies ReleaseArtifact[],
