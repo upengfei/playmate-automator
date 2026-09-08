@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as BoardRouteImport } from './routes/board'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
@@ -31,6 +32,11 @@ const AgentsRoute = AgentsRouteImport.update({
 const BoardRoute = BoardRouteImport.update({
   id: '/board',
   path: '/board',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
   '/board': typeof BoardRoute
+  '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/board'
+    | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/board'
+    | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/agents'
     | '/board'
+    | '/reports'
     | '/settings'
     | '/cases/$caseId'
     | '/tasks/$taskId'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
   BoardRoute: typeof BoardRoute
+  ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/board'
       fullPath: '/board'
       preLoaderRoute: typeof BoardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
   BoardRoute: BoardRoute,
+  ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   CasesCaseIdRoute: CasesCaseIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
