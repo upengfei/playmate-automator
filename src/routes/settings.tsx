@@ -31,8 +31,6 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-export default function noop() {}
-
 function SettingsPage() {
   const { settings } = useAppStore();
 
