@@ -533,6 +533,92 @@ function DesktopAgent() {
                   )}
                 </div>
               )}
+
+              {tab === "update" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+                    <div className="min-w-48 flex-1">
+                      <p className="text-sm font-medium">
+                        本机版本 v{nativeInfo?.version ?? agent.version}
+                      </p>
+                      <p className="text-muted-foreground mt-0.5 text-xs">
+                        {nativeInfo
+                          ? `Electron 客户端 · ${nativeInfo.host}`
+                          : "浏览器预览模式（安装客户端后此处显示本机真实版本）"}{" "}
+                        · 平台最新 v{release.version}（{settings.updateChannel}）
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const bridge = (
+                          window as unknown as { playflowAgent?: { checkForUpdates: () => void } }
+                        ).playflowAgent;
+                        if (bridge) bridge.checkForUpdates();
+                        pushUpgrade(agent.id);
+                        addLog("向平台拉取版本清单，开始下载升级包…", "info");
+                        toast.info("正在检查更新");
+                      }}
+                    >
+                      <RefreshCcw className="mr-1 size-3.5" />
+                      检查更新
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to="/download">
+                        <Download className="mr-1 size-3.5" />
+                        安装包下载页
+                      </Link>
+                    </Button>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium">更新说明 v{release.version}</p>
+                    <ul className="text-muted-foreground list-disc space-y-1 pl-4 text-xs">
+                      {release.notes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium">升级记录（含回传结果）</p>
+                    <div className="space-y-2">
+                      {upgrades
+                        .filter((j) => j.agentId === agent.id)
+                        .map((j) => (
+                          <div key={j.id} className="rounded-lg border p-2.5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono">
+                                v{j.fromVersion} → v{j.toVersion}
+                              </span>
+                              <span className="text-muted-foreground">{j.stage}</span>
+                              <span
+                                className={cn(
+                                  "ml-auto font-medium",
+                                  j.status === "成功" && "text-success",
+                                  j.status === "失败" && "text-destructive",
+                                  j.status === "进行中" && "text-primary",
+                                )}
+                              >
+                                {j.status} {j.progress}%
+                              </span>
+                            </div>
+                            {j.report && (
+                              <p className="text-muted-foreground mt-1">
+                                已回传平台：{j.report.message}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      {upgrades.filter((j) => j.agentId === agent.id).length === 0 && (
+                        <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center">
+                          暂无升级记录
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 本地日志 */}
