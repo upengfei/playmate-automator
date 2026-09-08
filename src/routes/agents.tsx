@@ -1,16 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Cpu, HardDrive, Power, RefreshCw, ShieldCheck } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  AlertTriangle,
+  Cpu,
+  Download,
+  HardDrive,
+  Power,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, ProgressBar, StatCard, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import {
+  pushUpgrade,
   toggleAgentOnline,
-  upgradeAgent,
   useAppStore,
   versionOutdated,
   type Agent,
+  type UpgradeJob,
 } from "@/lib/store";
+import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/agents")({
   head: () => ({
