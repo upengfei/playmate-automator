@@ -101,19 +101,45 @@ function DesktopAgent() {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  // 运行在真实 Electron 客户端时，通过预加载桥接读取本机信息并响应托盘动作
-  useEffect(() => {
-    const bridge = (
+  // 运行在真实 Electron 客户端时，通过预加载桥接调用真实浏览器与平台接口
+  const nativeBridge = () =>
+    (
       window as unknown as {
         playflowAgent?: {
           getInfo: () => Promise<{ version: string; host: string }>;
           onTrayAction: (cb: (d: { tab: Tab }) => void) => void;
+          onLog?: (cb: (d: { level: string; text: string }) => void) => void;
+          onRunEvent?: (cb: (d: Record<string, unknown>) => void) => void;
+          startRecording?: (url: string) => Promise<unknown>;
+          stopRecording?: () => Promise<{ script: string; steps: CaseStep[] }>;
+          runCase?: (c: {
+            name: string;
+            steps: CaseStep[];
+            headed?: boolean;
+          }) => Promise<{ status: string; error?: string; steps: unknown[] }>;
+          uploadCase?: (c: Record<string, unknown>) => Promise<{ id: string }>;
         };
       }
     ).playflowAgent;
+
+  useEffect(() => {
+    const bridge = nativeBridge();
     if (!bridge) return;
     void bridge.getInfo().then(setNativeInfo);
     bridge.onTrayAction((d) => setTab(d.tab));
+    bridge.onLog?.((d) =>
+      setLogs((l) => [
+        ...l,
+        { id: ++logSeq.current, text: d.text, tone: d.level === "error" ? "error" : d.level },
+      ]),
+    );
+    bridge.onRunEvent?.((e) => {
+      const idx = typeof e["index"] === "number" ? (e["index"] as number) : -1;
+      if (e["type"] === "step-start") setRunIndex(idx);
+      if (e["type"] === "step-end" && idx >= 0) {
+        setRunStatus((m) => ({ ...m, [idx]: e["status"] === "passed" ? "passed" : "failed" }));
+      }
+    });
   }, []);
 
   const addLog = (text: string, tone = "info") =>
@@ -124,7 +150,22 @@ function DesktopAgent() {
   };
 
   /* ------------------------------ 录制 ------------------------------ */
-  const startRecording = () => {
+  const startRecording = async () => {
+    const bridge = nativeBridge();
+    if (bridge?.startRecording) {
+      setRecording(true);
+      setSteps([]);
+      setRunStatus({});
+      setTab("record");
+      try {
+        await bridge.startRecording(url);
+        addLog("已打开真实浏览器录制窗口，操作完成后点击「结束录制」生成步骤", "info");
+      } catch (err) {
+        setRecording(false);
+        addLog(`录制启动失败：${String(err)}`, "error");
+      }
+      return;
+    }
     setRecording(true);
     setSteps([]);
     setRunStatus({});
@@ -143,8 +184,19 @@ function DesktopAgent() {
     });
   };
 
+  /** 结束真实录制：解析 codegen 脚本为积木步骤 */
+  const finishRecording = async () => {
+    const bridge = nativeBridge();
+    if (!bridge?.stopRecording) return false;
+    const res = await bridge.stopRecording();
+    setRecording(false);
+    setSteps(res.steps ?? []);
+    addLog(`录制结束，已解析 ${(res.steps ?? []).length} 个真实操作`, "success");
+    return true;
+  };
+
   /* --------------------------- 执行 / 调试 --------------------------- */
-  const runLocal = (debug = false) => {
+  const runLocal = async (debug = false) => {
     if (steps.length === 0) {
       toast.error("请先录制或编写用例步骤");
       return;
@@ -154,6 +206,28 @@ function DesktopAgent() {
     setPaused(false);
     setRunStatus({});
     setRunIndex(-1);
+
+    const bridge = nativeBridge();
+    if (bridge?.runCase) {
+      addLog(
+        debug ? "以真实浏览器（可见窗口）执行用例" : "以真实浏览器（无头模式）执行用例",
+        "info",
+      );
+      try {
+        const res = await bridge.runCase({ name: caseName, steps, headed: debug });
+        addLog(
+          res.status === "passed" ? "真实执行完成：全部步骤通过" : `真实执行失败：${res.error}`,
+          res.status === "passed" ? "success" : "error",
+        );
+      } catch (err) {
+        addLog(`执行失败：${String(err)}`, "error");
+      } finally {
+        setRunning(false);
+        setRunIndex(-1);
+      }
+      return;
+    }
+
     addLog(debug ? "以调试模式启动（headed + inspector）" : "以无头模式启动本地执行", "info");
     let delay = 500;
     steps.forEach((s, i) => {
@@ -200,7 +274,8 @@ function DesktopAgent() {
     });
   };
 
-  const stopRun = () => {
+  const stopRun = async () => {
+    if (recording && (await finishRecording())) return;
     timers.current.forEach(clearTimeout);
     timers.current = [];
     setRunning(false);
@@ -211,10 +286,32 @@ function DesktopAgent() {
   };
 
   /* ------------------------------ 上传 ------------------------------ */
-  const upload = () => {
+  const upload = async () => {
     if (steps.length === 0) {
       toast.error("没有可上传的步骤");
       return;
+    }
+    const bridge = nativeBridge();
+    if (bridge?.uploadCase) {
+      try {
+        const res = await bridge.uploadCase({
+          name: caseName,
+          module,
+          startUrl: url,
+          priority: "P1",
+          steps,
+          script: generatePlaywrightCode(caseName, steps),
+          source: "Agent 录制",
+        });
+        addLog(`上传成功：平台已生成用例 ${res.id}`, "success");
+        toast.success("已上传到平台，可在「真实节点与用例」中查看并下发执行");
+        setTab("upload");
+        return;
+      } catch (err) {
+        addLog(`上传失败：${String(err)}`, "error");
+        toast.error("上传平台失败，请检查平台地址与节点注册状态");
+        return;
+      }
     }
     const created = uploadCaseFromAgent({ name: caseName, module, steps, agentName: agent.name });
     addLog(`上传成功：平台已生成用例 ${created.id}`, "success");

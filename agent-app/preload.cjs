@@ -1,0 +1,21 @@
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("playflowAgent", {
+  isElectron: true,
+  getInfo: () => ipcRenderer.invoke("agent:info"),
+  configure: (patch) => ipcRenderer.invoke("agent:configure", patch),
+  register: () => ipcRenderer.invoke("agent:register"),
+  checkForUpdates: () => ipcRenderer.invoke("agent:check-updates"),
+  pullCases: () => ipcRenderer.invoke("agent:pull-cases"),
+  uploadCase: (testCase) => ipcRenderer.invoke("agent:upload-case", testCase),
+  runCase: (testCase) => ipcRenderer.invoke("agent:run-case", testCase),
+  startRecording: (url) => ipcRenderer.invoke("agent:record-start", url),
+  stopRecording: () => ipcRenderer.invoke("agent:record-stop"),
+  isRecording: () => ipcRenderer.invoke("agent:recording"),
+  onTrayAction: (cb) => ipcRenderer.on("agent:tray-action", (_e, d) => cb(d)),
+  onUpdateStage: (cb) => ipcRenderer.on("agent:update-stage", (_e, d) => cb(d)),
+  onLog: (cb) => ipcRenderer.on("agent:log", (_e, d) => cb(d)),
+  onRunEvent: (cb) => ipcRenderer.on("agent:run-event", (_e, d) => cb(d)),
+  onRunDone: (cb) => ipcRenderer.on("agent:run-done", (_e, d) => cb(d)),
+  onRegistered: (cb) => ipcRenderer.on("agent:registered", (_e, d) => cb(d)),
+});
