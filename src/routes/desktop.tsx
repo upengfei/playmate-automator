@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bug,
+  Download,
   Circle,
   CloudUpload,
   Cog,
@@ -11,6 +12,7 @@ import {
   MonitorPlay,
   Play,
   Radio,
+  RefreshCcw,
   Server,
   Square,
   StepForward,
@@ -32,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generatePlaywrightCode, describeStep, type CaseStep } from "@/lib/keywords";
-import { dispatchTask, uploadCaseFromAgent, useAppStore } from "@/lib/store";
+import { dispatchTask, pushUpgrade, uploadCaseFromAgent, useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/desktop")({
@@ -54,7 +56,7 @@ export const Route = createFileRoute("/desktop")({
   component: DesktopAgent,
 });
 
-type Tab = "record" | "compose" | "run" | "debug" | "upload" | "queue";
+type Tab = "record" | "compose" | "run" | "debug" | "upload" | "queue" | "update";
 
 const TABS: { id: Tab; label: string; icon: typeof Video }[] = [
   { id: "record", label: "用例录制", icon: Video },
@@ -63,6 +65,7 @@ const TABS: { id: Tab; label: string; icon: typeof Video }[] = [
   { id: "debug", label: "断点调试", icon: Bug },
   { id: "upload", label: "上传平台", icon: CloudUpload },
   { id: "queue", label: "平台任务", icon: Server },
+  { id: "update", label: "版本与更新", icon: RefreshCcw },
 ];
 
 const RECORD_SCRIPT: CaseStep[] = [
@@ -75,7 +78,8 @@ const RECORD_SCRIPT: CaseStep[] = [
 ];
 
 function DesktopAgent() {
-  const { agents, tasks } = useAppStore();
+  const { agents, tasks, upgrades, release, settings } = useAppStore();
+  const [nativeInfo, setNativeInfo] = useState<{ version: string; host: string } | null>(null);
   const [tab, setTab] = useState<Tab>("record");
   const [tray, setTray] = useState(false);
   const [agentId, setAgentId] = useState("AG-01");
