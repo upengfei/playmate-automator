@@ -1,6 +1,9 @@
 {
   "name": "tanstack_start_ts",
   "private": true,
+  "version": "1.8.2",
+  "productName": "PlayFlowAgent",
+  "main": "electron/main.cjs",
   "sideEffects": false,
   "type": "module",
   "scripts": {
@@ -9,7 +12,11 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "agent:dev": "electron electron/main.cjs",
+    "agent:pack:linux": "electron-packager . PlayFlowAgent --platform=linux --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
+    "agent:pack:win": "electron-packager . PlayFlowAgent --platform=win32 --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
+    "agent:pack:mac": "electron-packager . PlayFlowAgent --platform=darwin --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -69,12 +76,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@electron/packager": "^18.4.0",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "^2.20.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^40.0.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

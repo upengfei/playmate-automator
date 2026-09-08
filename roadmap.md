@@ -24,3 +24,12 @@
 ## 待后续
 - [ ] 接入云端数据库做真实持久化（用例/任务/报告）
 - [ ] 真实打包 Electron 客户端与本地 Playwright 执行内核
+
+## 本轮新增（已完成）
+- [x] 真正打包的 Electron 客户端（electron/main.cjs + preload.cjs，托盘、单实例、启动/定时检查更新、下载 + SHA256 校验、安装、结果回传）
+- [x] 打包脚本：`npm run agent:pack:linux|win|mac`（@electron/packager），已产出 Linux x64 安装包
+- [x] 平台端「客户端下载更新」页（安装步骤、环境变量、SHA256、静默部署）
+- [x] 版本拦截后自动推送升级包，升级成功自动续跑任务，失败标记「自动升级失败」
+- [x] 升级结果回传：平台节点页「升级包推送与结果回传」面板、客户端「版本与更新」面板
+- [x] 系统配置新增自动推送升级开关与更新通道
+- [x] 公共接口：/api/public/agent/version、/upgrade、/upgrade-report

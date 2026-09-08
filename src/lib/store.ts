@@ -105,6 +105,53 @@ export interface Settings {
   autoDispatch: boolean;
   videoOnFailure: boolean;
   traceMode: "关闭" | "仅失败" | "始终";
+  /** 版本校验拦截后是否自动推送升级包 */
+  autoUpgrade: boolean;
+  updateChannel: "稳定版" | "灰度版";
+}
+
+export type UpgradeStage =
+  | "排队中"
+  | "下发升级包"
+  | "下载中"
+  | "校验签名"
+  | "安装中"
+  | "重启 Agent"
+  | "回传结果";
+export type UpgradeStatus = "进行中" | "成功" | "失败";
+
+export interface UpgradeJob {
+  id: string;
+  agentId: string;
+  agentName: string;
+  fromVersion: string;
+  toVersion: string;
+  channel: "稳定版" | "灰度版";
+  trigger: "手动推送" | "版本拦截自动推送";
+  stage: UpgradeStage;
+  progress: number;
+  status: UpgradeStatus;
+  startedAt: string;
+  finishedAt?: string | undefined;
+  /** Agent 回传的结果详情 */
+  report?:
+    | {
+        ok: boolean;
+        message: string;
+        installedVersion: string;
+        durationMs: number;
+        reportedAt: string;
+      }
+    | undefined;
+  logs: LogEntry[];
+}
+
+export interface AgentRelease {
+  version: string;
+  channel: "稳定版" | "灰度版";
+  publishedAt: string;
+  notes: string[];
+  artifacts: { platform: string; file: string; sizeMB: number; sha256: string }[];
 }
 
 export interface State {
@@ -113,6 +160,8 @@ export interface State {
   tasks: Task[];
   reports: Report[];
   settings: Settings;
+  upgrades: UpgradeJob[];
+  release: AgentRelease;
   trend: { date: string; passed: number; failed: number }[];
 }
 
@@ -355,6 +404,8 @@ const seedSettings: Settings = {
   autoDispatch: true,
   videoOnFailure: true,
   traceMode: "仅失败",
+  autoUpgrade: true,
+  updateChannel: "稳定版",
 };
 
 function seedReport(): Report {
@@ -533,6 +584,37 @@ let state: State = {
   tasks: seedTasks(),
   reports: [seedReport(), seedReport2()],
   settings: seedSettings,
+  upgrades: [],
+  release: {
+    version: "1.8.2",
+    channel: "稳定版",
+    publishedAt: "2026-09-05",
+    notes: [
+      "内置 Playwright 1.47 执行内核，录制器支持 Shadow DOM 选择器",
+      "任务下发通道改为长连接，断线后自动补传执行日志",
+      "新增静默安装与后台自动更新（支持回滚到上一个版本）",
+    ],
+    artifacts: [
+      {
+        platform: "Windows 10/11 x64",
+        file: "PlayFlowAgent-1.8.2-win-x64.zip",
+        sizeMB: 118.4,
+        sha256: "9f2c1d84ab7e5630c41f7a90d5be2c88f0a3e71b9c4d6f25a81b0e7c3d59a412",
+      },
+      {
+        platform: "macOS 12+ (Apple Silicon / Intel)",
+        file: "PlayFlowAgent-1.8.2-darwin-x64.zip",
+        sizeMB: 126.7,
+        sha256: "3b71e5c0d9482a16fb35c7e08d1a4926b7f0c53d81ae64920fbd7c15e3a08d6f",
+      },
+      {
+        platform: "Linux x64 (Ubuntu / CentOS)",
+        file: "PlayFlowAgent-1.8.2-linux-x64.tar.gz",
+        sizeMB: 110.0,
+        sha256: "947d136eb25fa7c2a0ae110e421092980f97e465c3c07e4ee79782a3c3bde0ab",
+      },
+    ],
+  },
   trend: [
     { date: "09-01", passed: 42, failed: 6 },
     { date: "09-02", passed: 45, failed: 4 },
@@ -762,7 +844,10 @@ const FAIL_LIBRARY = [
 ];
 
 /** 下发任务到 Agent 并模拟实时执行（步骤级进度 + 日志流） */
-export function dispatchTask(taskId: string, opts?: { forceCaseIds?: string[] }) {
+export function dispatchTask(
+  taskId: string,
+  opts?: { forceCaseIds?: string[] | undefined; skipAutoUpgrade?: boolean | undefined },
+) {
   const task = state.tasks.find((t) => t.id === taskId);
   if (!task) return;
   const agent = state.agents.find((a) => a.id === task.agentId);
@@ -779,9 +864,27 @@ export function dispatchTask(taskId: string, opts?: { forceCaseIds?: string[] })
       "error",
       `版本校验未通过：节点 ${agent.name} 版本 v${agent.version} 低于最低要求 v${state.settings.minAgentVersion}`,
     );
+    if (state.settings.autoUpgrade && !opts?.skipAutoUpgrade) {
+      patchTask(taskId, (t) => ({ ...t, status: "下发中", stage: "自动推送升级包中" }));
+      pushLog(taskId, "warn", `已自动向 ${agent.name} 推送 v${state.release.version} 升级包，升级完成后自动续跑`);
+      pushUpgrade(agent.id, {
+        trigger: "版本拦截自动推送",
+        onFinish: (ok) => {
+          if (ok) {
+            pushLog(taskId, "success", `节点升级完成并回传成功，重新下发任务`);
+            dispatchTask(taskId, { ...opts, skipAutoUpgrade: true });
+          } else {
+            pushLog(taskId, "error", "升级包回传失败，任务终止，请人工介入");
+            patchTask(taskId, (t) => ({ ...t, status: "失败", stage: "自动升级失败" }));
+          }
+        },
+      });
+      return;
+    }
     patchTask(taskId, (t) => ({ ...t, status: "失败", stage: "Agent 版本校验未通过" }));
     return;
   }
+
 
   const targets = opts?.forceCaseIds;
   patchTask(taskId, (t) => ({
@@ -998,4 +1101,121 @@ export function msToText(ms: number): string {
   const s = ms / 1000;
   if (s < 60) return `${s.toFixed(1)}s`;
   return `${Math.floor(s / 60)}m${Math.round(s % 60)}s`;
+}
+
+/* ------------------------------ 升级包推送与回传 ------------------------------ */
+
+function patchUpgrade(id: string, fn: (j: UpgradeJob) => UpgradeJob) {
+  setState((s) => ({ ...s, upgrades: s.upgrades.map((j) => (j.id === id ? fn(j) : j)) }));
+}
+
+function upLog(id: string, level: LogLevel, text: string) {
+  patchUpgrade(id, (j) => ({ ...j, logs: [...j.logs, log(level, text)] }));
+}
+
+/**
+ * 向指定执行节点推送升级包：下发 → 下载 → 校验 → 安装 → 重启 → 结果回传。
+ * 返回创建的升级任务；完成后通过 onFinish 回调告知调用方（用于拦截后自动重试下发）。
+ */
+export function pushUpgrade(
+  agentId: string,
+  opts?: { trigger?: UpgradeJob["trigger"]; onFinish?: (ok: boolean) => void },
+): UpgradeJob | undefined {
+  const agent = state.agents.find((a) => a.id === agentId);
+  if (!agent) return undefined;
+  if (state.upgrades.some((j) => j.agentId === agentId && j.status === "进行中")) {
+    return state.upgrades.find((j) => j.agentId === agentId && j.status === "进行中");
+  }
+
+  const target = state.release.version;
+  const job: UpgradeJob = {
+    id: nextId("UP"),
+    agentId,
+    agentName: agent.name,
+    fromVersion: agent.version,
+    toVersion: target,
+    channel: state.settings.updateChannel,
+    trigger: opts?.trigger ?? "手动推送",
+    stage: "排队中",
+    progress: 0,
+    status: "进行中",
+    startedAt: now(),
+    logs: [log("info", `创建升级任务：v${agent.version} → v${target}（${state.settings.updateChannel}）`)],
+  };
+  setState((s) => ({ ...s, upgrades: [job, ...s.upgrades] }));
+
+  const startedMs = Date.now();
+  const finish = (ok: boolean, message: string) => {
+    const installed = ok ? target : agent.version;
+    patchUpgrade(job.id, (j) => ({
+      ...j,
+      stage: "回传结果",
+      progress: 100,
+      status: ok ? "成功" : "失败",
+      finishedAt: now(),
+      report: {
+        ok,
+        message,
+        installedVersion: installed,
+        durationMs: Date.now() - startedMs,
+        reportedAt: now(),
+      },
+      logs: [
+        ...j.logs,
+        log(ok ? "success" : "error", `Agent 回传升级结果：${ok ? "成功" : "失败"} · ${message}`),
+      ],
+    }));
+    if (ok) {
+      setState((s) => ({
+        ...s,
+        agents: s.agents.map((a) =>
+          a.id === agentId
+            ? { ...a, version: installed, lastHeartbeat: "刚刚", heartbeatAgoSec: 1 }
+            : a,
+        ),
+      }));
+    }
+    opts?.onFinish?.(ok);
+  };
+
+  if (agent.status === "离线") {
+    setTimeout(() => {
+      upLog(job.id, "warn", "尝试建立升级通道…");
+      finish(false, "节点离线，升级包无法下发，请等待节点上线后重试");
+    }, 600);
+    return job;
+  }
+
+  const steps: { stage: UpgradeStage; progress: number; text: string; level?: LogLevel }[] = [
+    { stage: "下发升级包", progress: 12, text: `平台已向 ${agent.name}（${agent.ip}）下发升级指令` },
+    { stage: "下载中", progress: 32, text: `Agent 开始下载安装包 PlayFlowAgent-${target}` },
+    { stage: "下载中", progress: 58, text: "安装包下载进度 60%，速度 8.4 MB/s" },
+    { stage: "校验签名", progress: 72, text: "SHA256 与数字签名校验通过", level: "success" },
+    { stage: "安装中", progress: 86, text: "静默安装中，旧版本已备份用于回滚" },
+    { stage: "重启 Agent", progress: 94, text: "Agent 进程重启，重新注册心跳与能力信息" },
+  ];
+
+  steps.forEach((s, i) => {
+    setTimeout(
+      () => {
+        patchUpgrade(job.id, (j) =>
+          j.status === "进行中"
+            ? { ...j, stage: s.stage, progress: s.progress, logs: [...j.logs, log(s.level ?? "info", s.text)] }
+            : j,
+        );
+      },
+      700 * (i + 1),
+    );
+  });
+
+  setTimeout(
+    () => finish(true, `已安装 v${target} 并重新完成版本校验`),
+    700 * (steps.length + 1),
+  );
+
+  return job;
+}
+
+export function upgradesOfAgent(agentId: string): UpgradeJob[] {
+  return state.upgrades.filter((j) => j.agentId === agentId);
 }

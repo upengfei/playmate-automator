@@ -1,16 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Cpu, HardDrive, Power, RefreshCw, ShieldCheck } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  AlertTriangle,
+  Cpu,
+  Download,
+  HardDrive,
+  Power,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, ProgressBar, StatCard, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import {
+  pushUpgrade,
   toggleAgentOnline,
-  upgradeAgent,
   useAppStore,
   versionOutdated,
   type Agent,
+  type UpgradeJob,
 } from "@/lib/store";
+import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/agents")({
   head: () => ({
@@ -31,7 +42,7 @@ export const Route = createFileRoute("/agents")({
 });
 
 function AgentsPage() {
-  const { agents, settings, tasks } = useAppStore();
+  const { agents, settings, tasks, upgrades, release } = useAppStore();
   const online = agents.filter((a) => a.status !== "离线");
   const outdated = agents.filter((a) => versionOutdated(a, settings.minAgentVersion));
 
@@ -61,15 +72,28 @@ function AgentsPage() {
       </div>
 
       {outdated.length > 0 && (
-        <div className="border-warning/40 bg-warning/10 mt-4 flex items-start gap-3 rounded-xl border p-4 text-sm">
+        <div className="border-warning/40 bg-warning/10 mt-4 flex flex-wrap items-start gap-3 rounded-xl border p-4 text-sm">
           <AlertTriangle className="text-warning mt-0.5 size-4 shrink-0" />
-          <div>
+          <div className="min-w-64 flex-1">
             <p className="font-medium">存在版本不合规的执行节点</p>
             <p className="text-muted-foreground mt-1 text-xs">
               {outdated.map((a) => `${a.name}（v${a.version}）`).join("、")}
-              低于最低要求 v{settings.minAgentVersion}，任务下发时会被拦截。可推送升级包后重试。
+              低于最低要求 v{settings.minAgentVersion}，任务下发时会被拦截。
+              {settings.autoUpgrade
+                ? "已开启「版本拦截自动推送升级包」，拦截后会自动推送并在升级成功后续跑任务。"
+                : "自动推送已关闭，请手动推送升级包。"}
             </p>
           </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              outdated.forEach((a) => pushUpgrade(a.id));
+              toast.info(`已向 ${outdated.length} 个节点推送 v${release.version} 升级包`);
+            }}
+          >
+            <Download className="mr-1 size-3.5" />
+            批量推送升级包
+          </Button>
         </div>
       )}
 
@@ -83,6 +107,29 @@ function AgentsPage() {
           />
         ))}
       </div>
+
+      <Panel
+        title="升级包推送与结果回传"
+        className="mt-4"
+        action={
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/download">客户端下载与安装</Link>
+          </Button>
+        }
+      >
+        {upgrades.length === 0 ? (
+          <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-8 text-center text-xs">
+            暂无升级任务。版本校验被拦截时会自动推送，也可在节点卡片上手动推送。
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {upgrades.map((j) => (
+              <UpgradeCard key={j.id} job={j} />
+            ))}
+          </div>
+        )}
+      </Panel>
+
 
       <Panel title="心跳监控日志" className="mt-4" bodyClassName="p-0">
         <ul className="divide-y text-xs">
@@ -127,14 +174,15 @@ function AgentCard({
               size="sm"
               variant="outline"
               onClick={() => {
-                upgradeAgent(agent.id);
-                toast.success(`${agent.name} 已升级到 v${minVersion}`);
+                pushUpgrade(agent.id);
+                toast.info(`已向 ${agent.name} 推送升级包，等待回传结果`);
               }}
             >
               <RefreshCw className="mr-1 size-3.5" />
-              推送升级
+              推送升级包
             </Button>
           )}
+
           <Button
             size="sm"
             variant="ghost"
@@ -216,6 +264,80 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     <div>
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-medium">{value}</dd>
+    </div>
+  );
+}
+
+function UpgradeCard({ job }: { job: UpgradeJob }) {
+  const tone = job.status === "成功" ? "success" : job.status === "失败" ? "danger" : "primary";
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">{job.agentName}</span>
+        <span className="text-muted-foreground font-mono text-xs">
+          v{job.fromVersion} → v{job.toVersion}
+        </span>
+        <span className="bg-secondary rounded-md px-2 py-0.5 text-[11px]">{job.trigger}</span>
+        <span className="bg-secondary rounded-md px-2 py-0.5 text-[11px]">{job.channel}</span>
+        <span
+          className={cn(
+            "ml-auto rounded-md px-2 py-0.5 text-[11px] font-medium",
+            job.status === "成功" && "bg-success/15 text-success",
+            job.status === "失败" && "bg-destructive/15 text-destructive",
+            job.status === "进行中" && "bg-primary-soft text-primary",
+          )}
+        >
+          {job.status} · {job.stage}
+        </span>
+      </div>
+
+      <div className="mt-2.5">
+        <ProgressBar value={job.progress} tone={tone} />
+      </div>
+
+      {job.report && (
+        <div
+          className={cn(
+            "mt-2.5 rounded-md px-3 py-2 text-xs",
+            job.report.ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
+          )}
+        >
+          <span className="font-medium">Agent 回传：</span>
+          {job.report.message} · 安装后版本 v{job.report.installedVersion} · 耗时{" "}
+          {(job.report.durationMs / 1000).toFixed(1)}s · {job.report.reportedAt}
+        </div>
+      )}
+
+      <div className="bg-muted/40 mt-2.5 max-h-32 overflow-y-auto rounded-md p-2 font-mono text-[11px]">
+        {job.logs.map((l) => (
+          <div
+            key={l.id}
+            className={cn(
+              l.level === "success" && "text-success",
+              l.level === "warn" && "text-warning",
+              l.level === "error" && "text-destructive",
+              l.level === "info" && "text-muted-foreground",
+            )}
+          >
+            [{l.time}] {l.text}
+          </div>
+        ))}
+      </div>
+
+      {job.status === "失败" && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2.5"
+          onClick={() => {
+            pushUpgrade(job.agentId);
+            toast.info(`已重新向 ${job.agentName} 推送升级包`);
+          }}
+        >
+          <RefreshCw className="mr-1 size-3.5" />
+          重试推送
+        </Button>
+      )}
     </div>
   );
 }

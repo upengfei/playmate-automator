@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Bug,
+  Download,
   Circle,
   CloudUpload,
   Cog,
@@ -11,6 +12,7 @@ import {
   MonitorPlay,
   Play,
   Radio,
+  RefreshCcw,
   Server,
   Square,
   StepForward,
@@ -32,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generatePlaywrightCode, describeStep, type CaseStep } from "@/lib/keywords";
-import { dispatchTask, uploadCaseFromAgent, useAppStore } from "@/lib/store";
+import { dispatchTask, pushUpgrade, uploadCaseFromAgent, useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/desktop")({
@@ -54,7 +56,7 @@ export const Route = createFileRoute("/desktop")({
   component: DesktopAgent,
 });
 
-type Tab = "record" | "compose" | "run" | "debug" | "upload" | "queue";
+type Tab = "record" | "compose" | "run" | "debug" | "upload" | "queue" | "update";
 
 const TABS: { id: Tab; label: string; icon: typeof Video }[] = [
   { id: "record", label: "用例录制", icon: Video },
@@ -63,6 +65,7 @@ const TABS: { id: Tab; label: string; icon: typeof Video }[] = [
   { id: "debug", label: "断点调试", icon: Bug },
   { id: "upload", label: "上传平台", icon: CloudUpload },
   { id: "queue", label: "平台任务", icon: Server },
+  { id: "update", label: "版本与更新", icon: RefreshCcw },
 ];
 
 const RECORD_SCRIPT: CaseStep[] = [
@@ -75,7 +78,8 @@ const RECORD_SCRIPT: CaseStep[] = [
 ];
 
 function DesktopAgent() {
-  const { agents, tasks } = useAppStore();
+  const { agents, tasks, upgrades, release, settings } = useAppStore();
+  const [nativeInfo, setNativeInfo] = useState<{ version: string; host: string } | null>(null);
   const [tab, setTab] = useState<Tab>("record");
   const [tray, setTray] = useState(false);
   const [agentId, setAgentId] = useState("AG-01");
@@ -96,6 +100,21 @@ function DesktopAgent() {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // 运行在真实 Electron 客户端时，通过预加载桥接读取本机信息并响应托盘动作
+  useEffect(() => {
+    const bridge = (
+      window as unknown as {
+        playflowAgent?: {
+          getInfo: () => Promise<{ version: string; host: string }>;
+          onTrayAction: (cb: (d: { tab: Tab }) => void) => void;
+        };
+      }
+    ).playflowAgent;
+    if (!bridge) return;
+    void bridge.getInfo().then(setNativeInfo);
+    bridge.onTrayAction((d) => setTab(d.tab));
+  }, []);
 
   const addLog = (text: string, tone = "info") =>
     setLogs((l) => [...l, { id: ++logSeq.current, text, tone }]);
@@ -512,6 +531,92 @@ function DesktopAgent() {
                       暂无下发任务
                     </p>
                   )}
+                </div>
+              )}
+
+              {tab === "update" && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+                    <div className="min-w-48 flex-1">
+                      <p className="text-sm font-medium">
+                        本机版本 v{nativeInfo?.version ?? agent.version}
+                      </p>
+                      <p className="text-muted-foreground mt-0.5 text-xs">
+                        {nativeInfo
+                          ? `Electron 客户端 · ${nativeInfo.host}`
+                          : "浏览器预览模式（安装客户端后此处显示本机真实版本）"}{" "}
+                        · 平台最新 v{release.version}（{settings.updateChannel}）
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const bridge = (
+                          window as unknown as { playflowAgent?: { checkForUpdates: () => void } }
+                        ).playflowAgent;
+                        if (bridge) bridge.checkForUpdates();
+                        pushUpgrade(agent.id);
+                        addLog("向平台拉取版本清单，开始下载升级包…", "info");
+                        toast.info("正在检查更新");
+                      }}
+                    >
+                      <RefreshCcw className="mr-1 size-3.5" />
+                      检查更新
+                    </Button>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to="/download">
+                        <Download className="mr-1 size-3.5" />
+                        安装包下载页
+                      </Link>
+                    </Button>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium">更新说明 v{release.version}</p>
+                    <ul className="text-muted-foreground list-disc space-y-1 pl-4 text-xs">
+                      {release.notes.map((n) => (
+                        <li key={n}>{n}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium">升级记录（含回传结果）</p>
+                    <div className="space-y-2">
+                      {upgrades
+                        .filter((j) => j.agentId === agent.id)
+                        .map((j) => (
+                          <div key={j.id} className="rounded-lg border p-2.5 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono">
+                                v{j.fromVersion} → v{j.toVersion}
+                              </span>
+                              <span className="text-muted-foreground">{j.stage}</span>
+                              <span
+                                className={cn(
+                                  "ml-auto font-medium",
+                                  j.status === "成功" && "text-success",
+                                  j.status === "失败" && "text-destructive",
+                                  j.status === "进行中" && "text-primary",
+                                )}
+                              >
+                                {j.status} {j.progress}%
+                              </span>
+                            </div>
+                            {j.report && (
+                              <p className="text-muted-foreground mt-1">
+                                已回传平台：{j.report.message}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      {upgrades.filter((j) => j.agentId === agent.id).length === 0 && (
+                        <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-6 text-center">
+                          暂无升级记录
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
