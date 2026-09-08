@@ -74,8 +74,6 @@ const RECORD_SCRIPT: CaseStep[] = [
   { id: "r6", keyword: "expectText", target: ".user-name", value: "qa_user" },
 ];
 
-export default function _unused() {}
-
 function DesktopAgent() {
   const { agents, tasks } = useAppStore();
   const [tab, setTab] = useState<Tab>("record");
