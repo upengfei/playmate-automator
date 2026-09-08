@@ -154,7 +154,7 @@ function BoardPage() {
   );
 }
 
-function TaskCard({ task, agentName }: { task: Task; agentName?: string }) {
+function TaskCard({ task, agentName }: { task: Task; agentName?: string | undefined }) {
   const done = task.caseRuns.filter((r) => r.status !== "等待中" && r.status !== "运行中").length;
   const failed = task.caseRuns.filter((r) => r.status === "失败").length;
   const current = task.caseRuns.find((r) => r.status === "运行中");

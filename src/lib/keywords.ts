@@ -170,7 +170,7 @@ export interface CaseStep {
   keyword: KeywordId;
   target: string;
   value: string;
-  remark?: string;
+  remark?: string | undefined;
 }
 
 export function describeStep(step: CaseStep): string {
