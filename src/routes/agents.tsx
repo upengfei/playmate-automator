@@ -42,7 +42,7 @@ export const Route = createFileRoute("/agents")({
 });
 
 function AgentsPage() {
-  const { agents, settings, tasks } = useAppStore();
+  const { agents, settings, tasks, upgrades, release } = useAppStore();
   const online = agents.filter((a) => a.status !== "离线");
   const outdated = agents.filter((a) => versionOutdated(a, settings.minAgentVersion));
 
