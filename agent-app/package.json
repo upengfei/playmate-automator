@@ -1,0 +1,10 @@
+{
+  "name": "playflow-agent",
+  "productName": "PlayFlowAgent",
+  "version": "1.8.2",
+  "private": true,
+  "main": "main.cjs",
+  "dependencies": {
+    "playwright-core": "1.56.0"
+  }
+}

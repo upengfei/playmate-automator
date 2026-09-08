@@ -598,14 +598,14 @@ let state: State = {
       {
         platform: "Windows 10/11 x64",
         file: "PlayFlowAgent-1.8.2-win-x64.zip",
-        sizeMB: 118.4,
-        sha256: "9f2c1d84ab7e5630c41f7a90d5be2c88f0a3e71b9c4d6f25a81b0e7c3d59a412",
+        sizeMB: 135.0,
+        sha256: "3aae7899c54411b6b6a61b10efbed815e333128645abcfdadfe8cef28ab608c0",
       },
       {
         platform: "macOS 12+ (Apple Silicon / Intel)",
-        file: "PlayFlowAgent-1.8.2-darwin-x64.zip",
-        sizeMB: 126.7,
-        sha256: "3b71e5c0d9482a16fb35c7e08d1a4926b7f0c53d81ae64920fbd7c15e3a08d6f",
+        file: "PlayFlowAgent-1.8.2-darwin-arm64.zip",
+        sizeMB: 325.0,
+        sha256: "9aa9933e4d8422787ff5563e1fd5e2aec92422b56e96bf80449d69fdd3bd95e8",
       },
       {
         platform: "Linux x64 (Ubuntu / CentOS)",
