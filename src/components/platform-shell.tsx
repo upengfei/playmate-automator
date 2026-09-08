@@ -5,9 +5,9 @@ import {
   FileCode2,
   Gauge,
   ListChecks,
-  MonitorSmartphone,
   MonitorDown,
   MonitorSmartphone,
+  Server,
   Settings,
   SquareStack,
 } from "lucide-react";
