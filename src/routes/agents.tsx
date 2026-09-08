@@ -127,14 +127,15 @@ function AgentCard({
               size="sm"
               variant="outline"
               onClick={() => {
-                upgradeAgent(agent.id);
-                toast.success(`${agent.name} 已升级到 v${minVersion}`);
+                pushUpgrade(agent.id);
+                toast.info(`已向 ${agent.name} 推送升级包，等待回传结果`);
               }}
             >
               <RefreshCw className="mr-1 size-3.5" />
-              推送升级
+              推送升级包
             </Button>
           )}
+
           <Button
             size="sm"
             variant="ghost"
