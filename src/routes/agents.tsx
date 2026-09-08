@@ -109,7 +109,7 @@ function AgentCard({
 }: {
   agent: Agent;
   minVersion: string;
-  taskName?: string;
+  taskName?: string | undefined;
 }) {
   const bad = versionOutdated(agent, minVersion);
   return (

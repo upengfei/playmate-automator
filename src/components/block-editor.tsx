@@ -58,10 +58,10 @@ export function StepBlocks({
   readOnly,
 }: {
   steps: CaseStep[];
-  onChange?: (steps: CaseStep[]) => void;
-  activeIndex?: number;
-  stepStatus?: (i: number) => "pending" | "running" | "passed" | "failed";
-  readOnly?: boolean;
+  onChange?: ((steps: CaseStep[]) => void) | undefined;
+  activeIndex?: number | undefined;
+  stepStatus?: ((i: number) => "pending" | "running" | "passed" | "failed") | undefined;
+  readOnly?: boolean | undefined;
 }) {
   const update = (i: number, patch: Partial<CaseStep>) =>
     onChange?.(steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));

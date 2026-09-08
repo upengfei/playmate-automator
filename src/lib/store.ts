@@ -37,7 +37,7 @@ export interface Agent {
   lastHeartbeat: string;
   heartbeatAgoSec: number;
   concurrency: number;
-  runningTaskId?: string;
+  runningTaskId?: string | undefined;
   totalRuns: number;
 }
 
@@ -55,8 +55,8 @@ export interface CaseRun {
   stepIndex: number;
   stepTotal: number;
   durationMs: number;
-  failReason?: string;
-  failedStep?: string;
+  failReason?: string | undefined;
+  failedStep?: string | undefined;
   attempt: number;
 }
 
@@ -74,7 +74,7 @@ export interface Task {
   trigger: "手动" | "定时" | "CI 触发";
   caseRuns: CaseRun[];
   logs: LogEntry[];
-  reportId?: string;
+  reportId?: string | undefined;
 }
 
 export interface Report {
