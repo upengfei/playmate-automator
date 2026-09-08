@@ -267,3 +267,77 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
+
+function UpgradeCard({ job }: { job: UpgradeJob }) {
+  const tone = job.status === "成功" ? "success" : job.status === "失败" ? "danger" : "primary";
+  return (
+    <div className="rounded-lg border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium">{job.agentName}</span>
+        <span className="text-muted-foreground font-mono text-xs">
+          v{job.fromVersion} → v{job.toVersion}
+        </span>
+        <span className="bg-secondary rounded-md px-2 py-0.5 text-[11px]">{job.trigger}</span>
+        <span className="bg-secondary rounded-md px-2 py-0.5 text-[11px]">{job.channel}</span>
+        <span
+          className={cn(
+            "ml-auto rounded-md px-2 py-0.5 text-[11px] font-medium",
+            job.status === "成功" && "bg-success/15 text-success",
+            job.status === "失败" && "bg-destructive/15 text-destructive",
+            job.status === "进行中" && "bg-primary-soft text-primary",
+          )}
+        >
+          {job.status} · {job.stage}
+        </span>
+      </div>
+
+      <div className="mt-2.5">
+        <ProgressBar value={job.progress} tone={tone} />
+      </div>
+
+      {job.report && (
+        <div
+          className={cn(
+            "mt-2.5 rounded-md px-3 py-2 text-xs",
+            job.report.ok ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive",
+          )}
+        >
+          <span className="font-medium">Agent 回传：</span>
+          {job.report.message} · 安装后版本 v{job.report.installedVersion} · 耗时{" "}
+          {(job.report.durationMs / 1000).toFixed(1)}s · {job.report.reportedAt}
+        </div>
+      )}
+
+      <div className="bg-muted/40 mt-2.5 max-h-32 overflow-y-auto rounded-md p-2 font-mono text-[11px]">
+        {job.logs.map((l) => (
+          <div
+            key={l.id}
+            className={cn(
+              l.level === "success" && "text-success",
+              l.level === "warn" && "text-warning",
+              l.level === "error" && "text-destructive",
+              l.level === "info" && "text-muted-foreground",
+            )}
+          >
+            [{l.time}] {l.text}
+          </div>
+        ))}
+      </div>
+
+      {job.status === "失败" && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2.5"
+          onClick={() => {
+            pushUpgrade(job.agentId);
+            toast.info(`已重新向 ${job.agentName} 推送升级包`);
+          }}
+        >
+          <RefreshCw className="mr-1 size-3.5" />
+          重试推送
+        </Button>
+      )}
+    </div>
+  );
+}
