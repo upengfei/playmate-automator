@@ -305,6 +305,14 @@ async function openDb(): Promise<Db> {
   const db = new Ctor(file);
   db.exec(DDL);
   db.exec(SETTINGS_SEED);
+  for (const sql of MIGRATIONS) {
+    try {
+      db.exec(sql);
+    } catch {
+      /* 列或索引已存在 */
+    }
+  }
+
   return db;
 }
 
