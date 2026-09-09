@@ -88,15 +88,16 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-            return (
+          {NAV.map((item) =>
+            "children" in item ? (
+              <NavGroupBlock key={item.key} group={item} pathname={pathname} />
+            ) : (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  active
+                  isLeafActive(item.to, pathname)
                     ? "bg-primary-soft text-primary font-medium"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
@@ -104,9 +105,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 <item.icon className="size-4" />
                 {item.label}
               </Link>
-            );
-          })}
+            ),
+          )}
         </nav>
+
         <div className="text-muted-foreground border-t p-3 text-xs">
           <div className="flex items-center justify-between">
             <span>可用执行节点</span>
