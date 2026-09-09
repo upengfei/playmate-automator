@@ -290,9 +290,25 @@ export function describeStep(step: CaseStep): string {
   return parts.join(" · ");
 }
 
+/** 依据条件/循环积木计算每个步骤的缩进层级，供编辑器与代码生成共用 */
+export function stepDepths(steps: CaseStep[]): number[] {
+  let depth = 0;
+  return steps.map((s) => {
+    const kw = getKeyword(s.keyword);
+    if (kw.closesBlock || kw.id === "elseBranch") depth = Math.max(0, depth - 1);
+    const own = depth;
+    if (kw.opensBlock || kw.id === "elseBranch") depth += 1;
+    return own;
+  });
+}
+
 export function generatePlaywrightCode(caseName: string, steps: CaseStep[]): string {
+  const depths = stepDepths(steps);
   const body = steps
-    .map((s) => `  // ${describeStep(s)}\n  ${getKeyword(s.keyword).template(s.target, s.value)}`)
+    .map((s, i) => {
+      const pad = "  ".repeat((depths[i] ?? 0) + 1);
+      return `${pad}// ${describeStep(s)}\n${pad}${getKeyword(s.keyword).template(s.target, s.value)}`;
+    })
     .join("\n");
   return `import { test, expect } from '@playwright/test';
 
