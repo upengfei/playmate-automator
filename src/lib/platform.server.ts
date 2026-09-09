@@ -145,6 +145,8 @@ async function reconcileTasks(client: SupabaseClient, tasks: Row[], runs: Row[])
 export async function loadSnapshot() {
   const client = db();
   const settings = await readSettings(client);
+  const release = await readRelease(client);
+
 
   const [agentsRes, casesRes, tasksRes, upgradesRes] = await Promise.all([
     client.from("agents").select("*").order("last_heartbeat", { ascending: false }),
