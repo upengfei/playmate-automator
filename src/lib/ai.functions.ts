@@ -170,24 +170,27 @@ export const testAiConnection = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
       .object({
+        providerId: z.string().max(64).default(""),
         mode: z.enum(["lovable", "openai", "anthropic", "custom"]),
         baseUrl: z.string().max(300).default(""),
         apiKey: z.string().max(300).default(""),
-        model: z.string().max(80).default(""),
+        model: z.string().max(120).default(""),
       })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { readAiSettings, resolveModel } = await import("@/lib/ai-settings.server");
+    const { readAiSettings, resolveModel, listAiProviders } = await import("@/lib/ai-settings.server");
     const { streamText } = await import("ai");
     const stored = await readAiSettings();
+    const saved = data.providerId ? (await listAiProviders()).find((p) => p.id === data.providerId) : undefined;
     const settings = {
       ...stored,
       mode: data.mode,
-      baseUrl: data.baseUrl || stored.baseUrl,
-      apiKey: data.apiKey || stored.apiKey,
-      defaultModel: data.model || stored.defaultModel,
+      baseUrl: data.baseUrl || saved?.baseUrl || stored.baseUrl,
+      apiKey: data.apiKey || saved?.apiKey || stored.apiKey,
+      defaultModel: data.model || saved?.defaultModel || stored.defaultModel,
     };
+
     const started = Date.now();
     try {
       const resolved = await resolveModel(settings, undefined, data.model);
