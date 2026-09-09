@@ -636,7 +636,11 @@ if (!single) {
     // 统一置退出标记：Cmd+Q、应用菜单、托盘退出、升级重启都能真正结束进程
     app.isQuiting = true;
     platform.register("离线").catch(() => {});
+    try {
+      require("./inspect.cjs").closeInspectBrowser();
+    } catch {}
   });
+
   app.on("window-all-closed", () => {
     /* 常驻托盘 */
   });
