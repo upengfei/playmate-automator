@@ -14,7 +14,9 @@ export interface AgentTokenStore {
   readonly driver: string;
   getToken(agentId: string): Promise<string>;
   setToken(agentId: string, token: string): Promise<void>;
+  findByToken(token: string): Promise<string>;
 }
+
 
 async function openDb(): Promise<Db> {
   let Ctor: (new (path: string) => Db) | undefined;
@@ -56,8 +58,15 @@ function sqliteStore(db: Db): AgentTokenStore {
          ON CONFLICT(agent_id) DO UPDATE SET token = excluded.token`,
       ).run(agentId, token, new Date().toISOString());
     },
+    async findByToken(token) {
+      const row = db.prepare(`SELECT agent_id FROM agent_tokens WHERE token = ?`).get(token) as
+        | { agent_id?: string }
+        | undefined;
+      return row?.agent_id ?? "";
+    },
   };
 }
+
 
 function supabaseStore(): AgentTokenStore {
   const client = async () => {
@@ -79,7 +88,13 @@ function supabaseStore(): AgentTokenStore {
         : await db.from("agent_tokens").insert({ agent_id: agentId, token });
       if (error) throw new Error(error.message);
     },
+    async findByToken(token) {
+      const db = await client();
+      const { data } = await db.from("agent_tokens").select("agent_id").eq("token", token).maybeSingle();
+      return ((data as { agent_id?: string } | null)?.agent_id as string | undefined) ?? "";
+    },
   };
+
 }
 
 let cached: AgentTokenStore | undefined;
@@ -115,4 +130,23 @@ export async function readAgentToken(agentId: string): Promise<string> {
 export async function writeAgentToken(agentId: string, token: string): Promise<void> {
   const store = await agentTokenStore();
   await store.setToken(agentId, token);
+}
+
+/** 按节点令牌反查设备标识；本地没有时回退平台数据库（兼容早期注册的设备） */
+export async function findAgentByToken(token: string): Promise<string> {
+  if (!token) return "";
+  const store = await agentTokenStore();
+  const local = await store.findByToken(token);
+  if (local || store.driver !== "sqlite") return local;
+  try {
+    const legacy = await supabaseStore().findByToken(token);
+    if (legacy) {
+      await store.setToken(legacy, token);
+      return legacy;
+    }
+  } catch {
+    /* 平台数据库不可用时忽略，按未注册处理 */
+  }
+  return "";
+
 }

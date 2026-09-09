@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <title>PlayFlow Agent 首次配置</title>
+    <title>PlayFlow Agent 首次使用配置</title>
     <style>
       :root { color-scheme: light; }
       body {
@@ -25,7 +25,7 @@
         border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer;
       }
       button:disabled { opacity: .6; cursor: default; }
-      .msg { margin-top: 14px; font-size: 12px; min-height: 18px; }
+      .msg { margin-top: 14px; font-size: 12px; min-height: 18px; line-height: 1.6; }
       .err { color: #c5221f; }
       .ok { color: #137333; }
       .hint { margin-top: 18px; font-size: 12px; color: #6b6f7d; line-height: 1.6; }
@@ -33,21 +33,22 @@
     </style>
   </head>
   <body>
-    <h1>首次启动配置</h1>
-    <p class="sub">填写设备标识后自动向平台注册并生成节点令牌，无需手动复制粘贴。</p>
+    <h1>首次使用配置</h1>
+    <p class="sub">填写平台地址与平台下发的节点令牌，验证通过后自动进入工作台。</p>
 
     <label for="url">平台地址</label>
     <input id="url" placeholder="https://your-platform.lovable.app" />
 
-    <label for="agent">设备标识（节点 ID）</label>
-    <input id="agent" placeholder="例如 AG-QA-WIN-01" />
+    <label for="token">节点令牌</label>
+    <input id="token" placeholder="在平台复制的节点令牌" autocomplete="off" spellcheck="false" />
 
-    <button id="go">注册并启动</button>
+    <button id="go">验证并进入</button>
     <div class="msg" id="msg"></div>
 
     <p class="hint">
-      令牌保存在本机配置文件中，之后注册/心跳、领取任务、回传日志与升级结果都会自动携带。
-      如需重置，可在平台「客户端下载更新」页点<code>重置令牌</code>后重新启动客户端。
+      令牌在平台「客户端下载更新」页注册设备后复制，设备名称沿用平台上登记的名称。
+      令牌保存在本机配置文件中，之后心跳、领取任务、回传日志与升级都会自动携带；
+      需要更换时可在平台点<code>重置令牌</code>后重新配置。
     </p>
 
     <script>
@@ -56,28 +57,28 @@
 
       window.agentSetup.defaults().then((d) => {
         $("url").value = d.platformUrl || "";
-        $("agent").value = d.agentId || "";
+        $("token").value = d.token || "";
       });
 
       $("go").addEventListener("click", async () => {
         const platformUrl = $("url").value.trim();
-        const agentId = $("agent").value.trim();
-        if (!platformUrl || agentId.length < 2) {
+        const token = $("token").value.trim();
+        if (!platformUrl || token.length < 16) {
           msg.className = "msg err";
-          msg.textContent = "请填写平台地址与设备标识（至少 2 个字符）";
+          msg.textContent = "请填写平台地址与完整的节点令牌";
           return;
         }
         $("go").disabled = true;
         msg.className = "msg";
-        msg.textContent = "正在向平台注册…";
-        const res = await window.agentSetup.register({ platformUrl, agentId });
+        msg.textContent = "正在向平台验证令牌…";
+        const res = await window.agentSetup.verify({ platformUrl, token });
         if (res && res.ok) {
           msg.className = "msg ok";
-          msg.textContent = "注册成功，已生成节点令牌，正在启动工作台…";
+          msg.textContent = `验证成功：${res.name}（${res.agentId}），正在启动工作台…`;
         } else {
           $("go").disabled = false;
           msg.className = "msg err";
-          msg.textContent = "注册失败：" + ((res && res.error) || "请检查平台地址与网络");
+          msg.textContent = "验证失败：" + ((res && res.error) || "请检查平台地址与网络");
         }
       });
     </script>

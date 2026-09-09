@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-/** 首次启动配置窗口的桥接：读取默认值 + 提交注册 */
+/** 首次使用配置窗口的桥接：读取默认值 + 用节点令牌校验身份 */
 contextBridge.exposeInMainWorld("agentSetup", {
   defaults: () => ipcRenderer.invoke("agent-setup:defaults"),
-  register: (payload) => ipcRenderer.invoke("agent-setup:register", payload),
+  verify: (payload) => ipcRenderer.invoke("agent-setup:verify", payload),
 });

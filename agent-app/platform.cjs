@@ -15,11 +15,15 @@ const LOG_DIR = path.join(app.getPath("userData"), "logs");
 function defaultConfig() {
   return {
     platformUrl: (process.env.PLAYFLOW_PLATFORM_URL || "https://playflow.lovable.app").replace(/\/$/, ""),
+    // 设备标识由首次使用配置时用节点令牌向平台换出，这里仅作为兜底占位
     agentId: process.env.PLAYFLOW_AGENT_ID || `AG-${os.hostname()}`.slice(0, 40),
-    // 可由平台「下载与安装」页注册设备后获得，支持环境变量预置
+    // 平台上登记的设备名称，配置成功后写入
+    agentName: "",
+    // 在平台「客户端下载更新」页注册设备后复制，支持环境变量预置
     token: process.env.PLAYFLOW_AGENT_TOKEN || "",
   };
 }
+
 
 let config = defaultConfig();
 try {
@@ -154,7 +158,7 @@ async function register(status = "在线") {
     body: {
       agentId: config.agentId,
       token: config.token || undefined,
-      name: config.agentId,
+      name: config.agentName || config.agentId,
       host: os.hostname(),
       os: `${os.type()} ${os.release()} ${os.arch()}`,
       version: app.getVersion(),

@@ -174,21 +174,22 @@ function createTray() {
   tray.on("click", () => focusWindow());
 }
 
-/* ----------------------------- 首次启动自动注册 ---------------------------- */
+/* ----------------------------- 首次使用配置向导 ---------------------------- */
 
 let setupWin = null;
 
 /**
- * 首次启动（本机还没有节点令牌）时弹出配置窗口：
- * 用户只需填写平台地址与设备标识，客户端自动向平台注册并保存下发的节点令牌。
+ * 首次启动（本机还没有节点令牌）时先弹出配置窗口：
+ * 用户填写平台地址与平台下发的节点令牌，客户端换出设备标识与登记名称后才进入工作台。
  */
 function openSetup() {
   return new Promise((resolve) => {
+    let done = false;
     setupWin = new BrowserWindow({
       width: 520,
-      height: 560,
+      height: 580,
       resizable: false,
-      title: "PlayFlow Agent 首次配置",
+      title: "PlayFlow Agent 首次使用配置",
       backgroundColor: "#f7f8fb",
       webPreferences: {
         preload: path.join(__dirname, "setup-preload.cjs"),
@@ -201,34 +202,50 @@ function openSetup() {
 
     ipcMain.handle("agent-setup:defaults", () => ({
       platformUrl: cfg().platformUrl,
-      agentId: cfg().agentId,
+      token: cfg().token || "",
     }));
 
-    ipcMain.handle("agent-setup:register", async (_e, payload) => {
-      const platformUrl = String((payload && payload.platformUrl) || "").replace(/\/$/, "");
-      const agentId = String((payload && payload.agentId) || "").trim();
-      if (!platformUrl || agentId.length < 2) return { ok: false, error: "参数不完整" };
-      platform.saveConfig({ platformUrl, agentId, token: "" });
+    ipcMain.handle("agent-setup:verify", async (_e, payload) => {
+      const platformUrl = String((payload && payload.platformUrl) || "")
+        .trim()
+        .replace(/\/$/, "");
+      const token = String((payload && payload.token) || "").trim();
+      if (!platformUrl || token.length < 16) return { ok: false, error: "参数不完整" };
+      const previous = { ...cfg() };
+      platform.saveConfig({ platformUrl, token });
       try {
-        const res = await platform.register("在线");
-        if (!res || !res.token) return { ok: false, error: "平台未下发节点令牌" };
+        const res = await fetch(`${platformUrl}/api/public/agent/resolve`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || !data.agentId) {
+          platform.saveConfig(previous);
+          return { ok: false, error: (data && data.error) || `平台返回 HTTP ${res.status}` };
+        }
+        platform.saveConfig({ agentId: data.agentId, agentName: data.name || data.agentId });
+        await platform.register("在线");
+        done = true;
         setTimeout(() => {
           if (setupWin && !setupWin.isDestroyed()) setupWin.destroy();
           setupWin = null;
           resolve(true);
-        }, 600);
-        return { ok: true, agentId };
+        }, 700);
+        return { ok: true, agentId: data.agentId, name: data.name || data.agentId };
       } catch (err) {
+        platform.saveConfig(previous);
         return { ok: false, error: String((err && err.message) || err) };
       }
     });
 
     setupWin.on("closed", () => {
       setupWin = null;
-      resolve(Boolean(cfg().token));
+      if (!done) resolve(Boolean(cfg().token));
     });
   });
 }
+
 
 /* ------------------------------ 注册与任务领取 ----------------------------- */
 
@@ -591,9 +608,17 @@ if (!single) {
 } else {
   app.on("second-instance", () => focusWindow());
   app.whenReady().then(async () => {
-    // 首次启动：本机还没有节点令牌时，先走自动注册配置窗口
-    if (!cfg().token) await openSetup();
+    // 首次使用：本机还没有节点令牌时，先完成配置向导；未完成则直接退出，不进入工作台
+    if (!cfg().token) {
+      const ok = await openSetup();
+      if (!ok) {
+        app.isQuiting = true;
+        app.quit();
+        return;
+      }
+    }
     createWindow();
+
     createTray();
     createAppMenu();
     registerAgent().catch(() => {});

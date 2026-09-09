@@ -37,6 +37,7 @@ import { Route as ApiPublicAgentInspectRouteImport } from './routes/api/public/a
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentRegisterRouteImport } from './routes/api/public/agent/register'
 import { Route as ApiPublicAgentReleaseRouteImport } from './routes/api/public/agent/release'
+import { Route as ApiPublicAgentResolveRouteImport } from './routes/api/public/agent/resolve'
 import { Route as ApiPublicAgentRunReportRouteImport } from './routes/api/public/agent/run-report'
 import { Route as ApiPublicAgentUpgradeRouteImport } from './routes/api/public/agent/upgrade'
 import { Route as ApiPublicAgentUpgradeReportRouteImport } from './routes/api/public/agent/upgrade-report'
@@ -183,6 +184,11 @@ const ApiPublicAgentReleaseRoute = ApiPublicAgentReleaseRouteImport.update({
   path: '/api/public/agent/release',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentResolveRoute = ApiPublicAgentResolveRouteImport.update({
+  id: '/api/public/agent/resolve',
+  path: '/api/public/agent/resolve',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentRunReportRoute = ApiPublicAgentRunReportRouteImport.update({
   id: '/api/public/agent/run-report',
   path: '/api/public/agent/run-report',
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
+  '/api/public/agent/resolve': typeof ApiPublicAgentResolveRoute
   '/api/public/agent/run-report': typeof ApiPublicAgentRunReportRoute
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
@@ -274,6 +281,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
+  '/api/public/agent/resolve': typeof ApiPublicAgentResolveRoute
   '/api/public/agent/run-report': typeof ApiPublicAgentRunReportRoute
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
+  '/api/public/agent/resolve': typeof ApiPublicAgentResolveRoute
   '/api/public/agent/run-report': typeof ApiPublicAgentRunReportRoute
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
@@ -347,6 +356,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
+    | '/api/public/agent/resolve'
     | '/api/public/agent/run-report'
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
+    | '/api/public/agent/resolve'
     | '/api/public/agent/run-report'
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
+    | '/api/public/agent/resolve'
     | '/api/public/agent/run-report'
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentRegisterRoute: typeof ApiPublicAgentRegisterRoute
   ApiPublicAgentReleaseRoute: typeof ApiPublicAgentReleaseRoute
+  ApiPublicAgentResolveRoute: typeof ApiPublicAgentResolveRoute
   ApiPublicAgentRunReportRoute: typeof ApiPublicAgentRunReportRoute
   ApiPublicAgentUpgradeRoute: typeof ApiPublicAgentUpgradeRoute
   ApiPublicAgentUpgradeReportRoute: typeof ApiPublicAgentUpgradeReportRoute
@@ -651,6 +664,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentReleaseRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/resolve': {
+      id: '/api/public/agent/resolve'
+      path: '/api/public/agent/resolve'
+      fullPath: '/api/public/agent/resolve'
+      preLoaderRoute: typeof ApiPublicAgentResolveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/run-report': {
       id: '/api/public/agent/run-report'
       path: '/api/public/agent/run-report'
@@ -734,6 +754,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentRegisterRoute: ApiPublicAgentRegisterRoute,
   ApiPublicAgentReleaseRoute: ApiPublicAgentReleaseRoute,
+  ApiPublicAgentResolveRoute: ApiPublicAgentResolveRoute,
   ApiPublicAgentRunReportRoute: ApiPublicAgentRunReportRoute,
   ApiPublicAgentUpgradeRoute: ApiPublicAgentUpgradeRoute,
   ApiPublicAgentUpgradeReportRoute: ApiPublicAgentUpgradeReportRoute,
