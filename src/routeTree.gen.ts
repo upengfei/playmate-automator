@@ -12,16 +12,19 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentDashboardRouteImport } from './routes/agent-dashboard'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as AiRouteImport } from './routes/ai'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAgentsRouteImport } from './routes/settings.agents'
+import { Route as SettingsAiRouteImport } from './routes/settings.ai'
 import { Route as SettingsExecutionRouteImport } from './routes/settings.execution'
 import { Route as SettingsNotifyRouteImport } from './routes/settings.notify'
 import { Route as SettingsParamsRouteImport } from './routes/settings.params'
@@ -29,6 +32,7 @@ import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
+import { Route as ApiPublicAgentInspectRouteImport } from './routes/api/public/agent/inspect'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentRegisterRouteImport } from './routes/api/public/agent/register'
 import { Route as ApiPublicAgentReleaseRouteImport } from './routes/api/public/agent/release'
@@ -51,6 +55,11 @@ const AgentDashboardRoute = AgentDashboardRouteImport.update({
 const AgentsRoute = AgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -83,6 +92,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CasesIndexRoute = CasesIndexRouteImport.update({
   id: '/cases/',
   path: '/cases/',
@@ -101,6 +115,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsAgentsRoute = SettingsAgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAiRoute = SettingsAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsExecutionRoute = SettingsExecutionRouteImport.update({
@@ -136,6 +155,11 @@ const ApiPublicAgentBrowsersRoute = ApiPublicAgentBrowsersRouteImport.update({
 const ApiPublicAgentCasesRoute = ApiPublicAgentCasesRouteImport.update({
   id: '/api/public/agent/cases',
   path: '/api/public/agent/cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAgentInspectRoute = ApiPublicAgentInspectRouteImport.update({
+  id: '/api/public/agent/inspect',
+  path: '/api/public/agent/inspect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAgentJobsRoute = ApiPublicAgentJobsRouteImport.update({
@@ -185,14 +209,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -202,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -215,13 +243,16 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -231,6 +262,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -245,14 +277,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -262,6 +297,7 @@ export interface FileRoutesById {
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -277,14 +313,17 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
     | '/settings'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -294,6 +333,7 @@ export interface FileRouteTypes {
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -307,13 +347,16 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -323,6 +366,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -336,14 +380,17 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
     | '/settings'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -353,6 +400,7 @@ export interface FileRouteTypes {
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -367,18 +415,21 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentDashboardRoute: typeof AgentDashboardRoute
   AgentsRoute: typeof AgentsRoute
+  AiRoute: typeof AiRoute
   AuthRoute: typeof AuthRoute
   BoardRoute: typeof BoardRoute
   DownloadRoute: typeof DownloadRoute
   LiveRoute: typeof LiveRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  ApiChatRoute: typeof ApiChatRoute
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
   ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
+  ApiPublicAgentInspectRoute: typeof ApiPublicAgentInspectRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentRegisterRoute: typeof ApiPublicAgentRegisterRoute
   ApiPublicAgentReleaseRoute: typeof ApiPublicAgentReleaseRoute
@@ -410,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai': {
+      id: '/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -454,6 +512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cases/': {
       id: '/cases/'
       path: '/cases'
@@ -480,6 +545,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/settings/agents'
       preLoaderRoute: typeof SettingsAgentsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/ai': {
+      id: '/settings/ai'
+      path: '/ai'
+      fullPath: '/settings/ai'
+      preLoaderRoute: typeof SettingsAiRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/execution': {
@@ -529,6 +601,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/agent/cases'
       fullPath: '/api/public/agent/cases'
       preLoaderRoute: typeof ApiPublicAgentCasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/inspect': {
+      id: '/api/public/agent/inspect'
+      path: '/api/public/agent/inspect'
+      fullPath: '/api/public/agent/inspect'
+      preLoaderRoute: typeof ApiPublicAgentInspectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/agent/jobs': {
@@ -592,6 +671,7 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsAgentsRoute: typeof SettingsAgentsRoute
+  SettingsAiRoute: typeof SettingsAiRoute
   SettingsExecutionRoute: typeof SettingsExecutionRoute
   SettingsNotifyRoute: typeof SettingsNotifyRoute
   SettingsParamsRoute: typeof SettingsParamsRoute
@@ -600,6 +680,7 @@ interface SettingsRouteChildren {
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAgentsRoute: SettingsAgentsRoute,
+  SettingsAiRoute: SettingsAiRoute,
   SettingsExecutionRoute: SettingsExecutionRoute,
   SettingsNotifyRoute: SettingsNotifyRoute,
   SettingsParamsRoute: SettingsParamsRoute,
@@ -614,18 +695,21 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentDashboardRoute: AgentDashboardRoute,
   AgentsRoute: AgentsRoute,
+  AiRoute: AiRoute,
   AuthRoute: AuthRoute,
   BoardRoute: BoardRoute,
   DownloadRoute: DownloadRoute,
   LiveRoute: LiveRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  ApiChatRoute: ApiChatRoute,
   CasesCaseIdRoute: CasesCaseIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
   ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,
+  ApiPublicAgentInspectRoute: ApiPublicAgentInspectRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentRegisterRoute: ApiPublicAgentRegisterRoute,
   ApiPublicAgentReleaseRoute: ApiPublicAgentReleaseRoute,

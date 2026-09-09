@@ -316,6 +316,33 @@ async function pollJobs() {
   }
 }
 
+/** AI 页面元素定位：领取平台下发的抓取指令，用本机浏览器抓取元素后回传 */
+async function pollInspects() {
+  if (running) return;
+  try {
+    const jobs = await platform.claimInspects();
+    for (const job of jobs) {
+      running = true;
+      log("info", `领取 AI 元素抓取指令：${job.url}`);
+      try {
+        const { inspectPage } = require("./inspect.cjs");
+        const { elements } = await inspectPage(job, (t) => log("info", t));
+        await platform.reportInspect({ jobId: job.id, elements });
+        log("success", `已回传 ${elements.length} 个元素`);
+      } catch (err) {
+        await platform
+          .reportInspect({ jobId: job.id, elements: [], error: String(err && err.message ? err.message : err) })
+          .catch(() => {});
+        log("error", `元素抓取失败：${err && err.message ? err.message : err}`);
+      } finally {
+        running = false;
+      }
+    }
+  } catch {
+    /* 平台不可达时静默重试 */
+  }
+}
+
 /* --------------------------- 浏览器内核与离线补传 --------------------------- */
 
 let preparing = false;
@@ -551,6 +578,8 @@ if (!single) {
     setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
     setInterval(() => pollJobs(), 10 * 1000);
+    setInterval(() => pollInspects(), 3 * 1000);
+
     setInterval(() => flushPending(), 15 * 1000);
     setTimeout(() => checkForUpdates(), 8000);
     setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
