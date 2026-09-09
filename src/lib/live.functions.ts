@@ -8,18 +8,16 @@ export const dispatchToAgent = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { admin } = await import("@/lib/agent-db.server");
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    const c = await (await caseRepo()).getCase(data.caseId);
+    if (!c) throw new Error("用例不存在");
     const db = admin();
-    const { data: c, error: cErr } = await db
-      .from("test_cases")
-      .select("id, name")
-      .eq("id", data.caseId)
-      .single();
-    if (cErr) throw new Error(cErr.message);
     const { data: run, error } = await db
       .from("case_runs")
       .insert({
         case_id: c.id,
         case_name: c.name,
+        case_version: c.version ?? 1,
         agent_id: data.agentId,
         status: "排队中",
       })
@@ -28,3 +26,4 @@ export const dispatchToAgent = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { runId: run.id as string };
   });
+
