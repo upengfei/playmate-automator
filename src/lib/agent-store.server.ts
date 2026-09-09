@@ -14,7 +14,9 @@ export interface AgentTokenStore {
   readonly driver: string;
   getToken(agentId: string): Promise<string>;
   setToken(agentId: string, token: string): Promise<void>;
+  findByToken(token: string): Promise<string>;
 }
+
 
 async function openDb(): Promise<Db> {
   let Ctor: (new (path: string) => Db) | undefined;
