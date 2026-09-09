@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  ChevronDown,
   FileCode2,
   Gauge,
   ListChecks,
@@ -18,19 +19,42 @@ import { tickHeartbeats, useAppStore } from "@/lib/store";
 import { signOut, useAuth } from "@/lib/use-auth";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+type NavLeaf = { to: string; label: string; icon: typeof Gauge };
+type NavGroup = { key: string; label: string; icon: typeof Gauge; children: NavLeaf[] };
+type NavItem = NavLeaf | NavGroup;
+
+const NAV: NavItem[] = [
   { to: "/", label: "概览看板", icon: Gauge },
   { to: "/cases", label: "用例管理", icon: FileCode2 },
-  { to: "/tasks", label: "任务编排与下发", icon: SquareStack },
-  { to: "/board", label: "任务进度看板", icon: ListChecks },
+  {
+    key: "tasks",
+    label: "任务管理",
+    icon: SquareStack,
+    children: [
+      { to: "/tasks", label: "任务编排与下发", icon: SquareStack },
+      { to: "/board", label: "任务进度看板", icon: ListChecks },
+    ],
+  },
   { to: "/reports", label: "测试报告分析", icon: Activity },
-  { to: "/agents", label: "执行节点管理", icon: Server },
-  { to: "/agent-dashboard", label: "Agent 仪表盘", icon: Gauge },
-
-  { to: "/live", label: "真实节点与用例", icon: MonitorSmartphone },
-  { to: "/download", label: "客户端下载更新", icon: MonitorDown },
+  {
+    key: "agents",
+    label: "Agent 管理",
+    icon: Server,
+    children: [
+      { to: "/agents", label: "执行节点管理", icon: Server },
+      { to: "/agent-dashboard", label: "Agent 仪表盘", icon: Gauge },
+      { to: "/live", label: "真实节点与用例", icon: MonitorSmartphone },
+      { to: "/download", label: "客户端下载更新", icon: MonitorDown },
+    ],
+  },
   { to: "/settings", label: "系统配置", icon: Settings },
-] as const;
+];
+
+const FLAT_NAV: NavLeaf[] = NAV.flatMap((item) => ("children" in item ? item.children : [item]));
+
+const isLeafActive = (to: string, pathname: string) =>
+  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   const state = useAppStore();
