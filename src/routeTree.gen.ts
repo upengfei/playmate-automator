@@ -24,6 +24,7 @@ import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
 import { Route as SettingsAgentsRouteImport } from './routes/settings.agents'
+import { Route as SettingsAiRouteImport } from './routes/settings.ai'
 import { Route as SettingsExecutionRouteImport } from './routes/settings.execution'
 import { Route as SettingsNotifyRouteImport } from './routes/settings.notify'
 import { Route as SettingsParamsRouteImport } from './routes/settings.params'
@@ -113,6 +114,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
 const SettingsAgentsRoute = SettingsAgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAiRoute = SettingsAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
   getParentRoute: () => SettingsRoute,
 } as any)
 const SettingsExecutionRoute = SettingsExecutionRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -271,6 +279,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/ai': typeof SettingsAiRoute
   '/settings/execution': typeof SettingsExecutionRoute
   '/settings/notify': typeof SettingsNotifyRoute
   '/settings/params': typeof SettingsParamsRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
+    | '/settings/ai'
     | '/settings/execution'
     | '/settings/notify'
     | '/settings/params'
@@ -522,6 +534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsAgentsRouteImport
       parentRoute: typeof SettingsRoute
     }
+    '/settings/ai': {
+      id: '/settings/ai'
+      path: '/ai'
+      fullPath: '/settings/ai'
+      preLoaderRoute: typeof SettingsAiRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/execution': {
       id: '/settings/execution'
       path: '/execution'
@@ -632,6 +651,7 @@ declare module '@tanstack/react-router' {
 
 interface SettingsRouteChildren {
   SettingsAgentsRoute: typeof SettingsAgentsRoute
+  SettingsAiRoute: typeof SettingsAiRoute
   SettingsExecutionRoute: typeof SettingsExecutionRoute
   SettingsNotifyRoute: typeof SettingsNotifyRoute
   SettingsParamsRoute: typeof SettingsParamsRoute
@@ -640,6 +660,7 @@ interface SettingsRouteChildren {
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsAgentsRoute: SettingsAgentsRoute,
+  SettingsAiRoute: SettingsAiRoute,
   SettingsExecutionRoute: SettingsExecutionRoute,
   SettingsNotifyRoute: SettingsNotifyRoute,
   SettingsParamsRoute: SettingsParamsRoute,
