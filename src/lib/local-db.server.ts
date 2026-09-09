@@ -251,18 +251,30 @@ CREATE TABLE IF NOT EXISTS agent_tokens (
   agent_id TEXT PRIMARY KEY, token TEXT NOT NULL, created_at TEXT
 );
 CREATE TABLE IF NOT EXISTS agent_inspects (
-  id TEXT PRIMARY KEY, agent_id TEXT, url TEXT, description TEXT, status TEXT,
-  elements TEXT DEFAULT '[]', error TEXT, created_at TEXT, finished_at TEXT
+  id TEXT PRIMARY KEY, agent_id TEXT, url TEXT, url_key TEXT, description TEXT, status TEXT,
+  elements TEXT DEFAULT '[]', screenshot TEXT, viewport TEXT, error TEXT, created_at TEXT, finished_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_inspects_agent ON agent_inspects(agent_id, status);
 CREATE TABLE IF NOT EXISTS ai_settings (
   id INTEGER PRIMARY KEY, mode TEXT DEFAULT 'lovable', base_url TEXT, api_key TEXT,
-  models TEXT DEFAULT '[]', default_model TEXT, updated_at TEXT
+  models TEXT DEFAULT '[]', default_model TEXT,
+  inspect_cache_minutes INTEGER DEFAULT 10, inspect_screenshot INTEGER DEFAULT 1, updated_at TEXT
 );
 INSERT INTO ai_settings (id, mode, base_url, api_key, models, default_model, updated_at)
 SELECT 1, 'lovable', '', '', '[]', '', datetime('now')
 WHERE NOT EXISTS (SELECT 1 FROM ai_settings WHERE id = 1);
 `;
+
+/** 老库补列：每条单独执行，已存在时忽略错误 */
+const MIGRATIONS = [
+  `ALTER TABLE agent_inspects ADD COLUMN url_key TEXT`,
+  `ALTER TABLE agent_inspects ADD COLUMN screenshot TEXT`,
+  `ALTER TABLE agent_inspects ADD COLUMN viewport TEXT`,
+  `ALTER TABLE ai_settings ADD COLUMN inspect_cache_minutes INTEGER DEFAULT 10`,
+  `ALTER TABLE ai_settings ADD COLUMN inspect_screenshot INTEGER DEFAULT 1`,
+  `CREATE INDEX IF NOT EXISTS idx_inspects_url ON agent_inspects(url_key, status, finished_at)`,
+];
+
 
 
 
