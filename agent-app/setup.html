@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>PlayFlow Agent 首次配置</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: #f7f8fb;
+        color: #1b1c22;
+        padding: 28px 30px;
+      }
+      h1 { font-size: 18px; margin: 0 0 6px; }
+      p.sub { margin: 0 0 20px; color: #6b6f7d; font-size: 13px; }
+      label { display: block; font-size: 12px; color: #4a4e5c; margin: 14px 0 6px; }
+      input {
+        width: 100%; box-sizing: border-box; padding: 9px 11px; font-size: 13px;
+        border: 1px solid #d6d9e2; border-radius: 8px; background: #fff;
+      }
+      input:focus { outline: 2px solid #1a73e8; outline-offset: 1px; border-color: #1a73e8; }
+      button {
+        margin-top: 22px; width: 100%; padding: 10px; font-size: 14px; border: 0;
+        border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer;
+      }
+      button:disabled { opacity: .6; cursor: default; }
+      .msg { margin-top: 14px; font-size: 12px; min-height: 18px; }
+      .err { color: #c5221f; }
+      .ok { color: #137333; }
+      .hint { margin-top: 18px; font-size: 12px; color: #6b6f7d; line-height: 1.6; }
+      code { background: #eceef4; padding: 1px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>首次启动配置</h1>
+    <p class="sub">填写设备标识后自动向平台注册并生成节点令牌，无需手动复制粘贴。</p>
+
+    <label for="url">平台地址</label>
+    <input id="url" placeholder="https://your-platform.lovable.app" />
+
+    <label for="agent">设备标识（节点 ID）</label>
+    <input id="agent" placeholder="例如 AG-QA-WIN-01" />
+
+    <button id="go">注册并启动</button>
+    <div class="msg" id="msg"></div>
+
+    <p class="hint">
+      令牌保存在本机配置文件中，之后注册/心跳、领取任务、回传日志与升级结果都会自动携带。
+      如需重置，可在平台「客户端下载更新」页点<code>重置令牌</code>后重新启动客户端。
+    </p>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const msg = $("msg");
+
+      window.agentSetup.defaults().then((d) => {
+        $("url").value = d.platformUrl || "";
+        $("agent").value = d.agentId || "";
+      });
+
+      $("go").addEventListener("click", async () => {
+        const platformUrl = $("url").value.trim();
+        const agentId = $("agent").value.trim();
+        if (!platformUrl || agentId.length < 2) {
+          msg.className = "msg err";
+          msg.textContent = "请填写平台地址与设备标识（至少 2 个字符）";
+          return;
+        }
+        $("go").disabled = true;
+        msg.className = "msg";
+        msg.textContent = "正在向平台注册…";
+        const res = await window.agentSetup.register({ platformUrl, agentId });
+        if (res && res.ok) {
+          msg.className = "msg ok";
+          msg.textContent = "注册成功，已生成节点令牌，正在启动工作台…";
+        } else {
+          $("go").disabled = false;
+          msg.className = "msg err";
+          msg.textContent = "注册失败：" + ((res && res.error) || "请检查平台地址与网络");
+        }
+      });
+    </script>
+  </body>
+</html>

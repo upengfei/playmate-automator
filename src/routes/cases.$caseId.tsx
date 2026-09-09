@@ -7,6 +7,8 @@ import { KeywordPalette, StepBlocks, newStep } from "@/components/block-editor";
 import { StepFlow } from "@/components/step-flow";
 import { CaseVersions } from "@/components/case-versions";
 import { CaseParamsEditor, extractParamNames } from "@/components/case-params";
+import { ParamPreview } from "@/components/param-preview";
+
 import { PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,6 +204,17 @@ function CaseEditor() {
               onTemplateChange={(isTemplate) => setDraft({ ...draft, isTemplate })}
             />
           </Panel>
+
+          <Panel title="参数绑定实时预览">
+            <ParamPreview
+              caseName={draft.name}
+              startUrl={draft.startUrl ?? ""}
+              steps={draft.steps}
+              params={draft.params ?? []}
+              usedNames={usedParams}
+            />
+          </Panel>
+
 
           <Panel title={`步骤编排（${draft.steps.length} 步）`}>
             <StepBlocks steps={draft.steps} onChange={setSteps} />

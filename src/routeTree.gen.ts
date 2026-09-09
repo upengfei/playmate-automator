@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentDashboardRouteImport } from './routes/agent-dashboard'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoardRouteImport } from './routes/board'
@@ -36,6 +37,11 @@ import { Route as ApiPublicBrowserMirrorSplatRouteImport } from './routes/api/pu
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentDashboardRoute = AgentDashboardRouteImport.update({
+  id: '/agent-dashboard',
+  path: '/agent-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgentsRoute = AgentsRouteImport.update({
@@ -153,6 +159,7 @@ const ApiPublicBrowserMirrorSplatRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
@@ -204,6 +212,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agent-dashboard'
     | '/agents'
     | '/auth'
     | '/board'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agent-dashboard'
     | '/agents'
     | '/auth'
     | '/board'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agent-dashboard'
     | '/agents'
     | '/auth'
     | '/board'
@@ -307,6 +319,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentDashboardRoute: typeof AgentDashboardRoute
   AgentsRoute: typeof AgentsRoute
   AuthRoute: typeof AuthRoute
   BoardRoute: typeof BoardRoute
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent-dashboard': {
+      id: '/agent-dashboard'
+      path: '/agent-dashboard'
+      fullPath: '/agent-dashboard'
+      preLoaderRoute: typeof AgentDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agents': {
@@ -499,6 +519,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentDashboardRoute: AgentDashboardRoute,
   AgentsRoute: AgentsRoute,
   AuthRoute: AuthRoute,
   BoardRoute: BoardRoute,
