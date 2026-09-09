@@ -158,7 +158,7 @@ async function register(status = "在线") {
     body: {
       agentId: config.agentId,
       token: config.token || undefined,
-      name: config.agentId,
+      name: config.agentName || config.agentId,
       host: os.hostname(),
       os: `${os.type()} ${os.release()} ${os.arch()}`,
       version: app.getVersion(),
