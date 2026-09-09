@@ -5,8 +5,8 @@ import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { dispatchToAgent } from "@/lib/live.functions";
+import { dispatchToAgent, fetchLiveData, fetchRunLogs } from "@/lib/live.functions";
+
 
 export const Route = createFileRoute("/live")({
   head: () => ({
@@ -59,12 +59,13 @@ interface RunRow {
   started_at: string;
 }
 interface LogRow {
-  id: number;
+  id: string;
   run_id: string | null;
   level: string;
   message: string;
   at: string;
 }
+
 
 function LivePage() {
   const [agents, setAgents] = useState<AgentRow[]>([]);
@@ -75,14 +76,10 @@ function LivePage() {
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
-    const [a, c, r] = await Promise.all([
-      supabase.from("agents").select("*").order("last_heartbeat", { ascending: false }),
-      supabase.from("test_cases").select("*").order("updated_at", { ascending: false }).limit(50),
-      supabase.from("case_runs").select("*").order("started_at", { ascending: false }).limit(30),
-    ]);
-    setAgents((a.data as AgentRow[] | null) ?? []);
-    setCases((c.data as CaseRow[] | null) ?? []);
-    setRuns((r.data as RunRow[] | null) ?? []);
+    const res = await fetchLiveData();
+    setAgents(res.agents as AgentRow[]);
+    setCases(res.cases as CaseRow[]);
+    setRuns(res.runs as RunRow[]);
     setLoading(false);
   };
 
@@ -94,19 +91,15 @@ function LivePage() {
 
   useEffect(() => {
     if (!activeRun) return;
-    const fetchLogs = async () => {
-      const { data } = await supabase
-        .from("run_logs")
-        .select("*")
-        .eq("run_id", activeRun)
-        .order("id", { ascending: true })
-        .limit(300);
-      setLogs((data as LogRow[] | null) ?? []);
+    const loadLogs = async () => {
+      const res = await fetchRunLogs({ data: { runId: activeRun } });
+      setLogs(res.logs as LogRow[]);
     };
-    void fetchLogs();
-    const id = setInterval(() => void fetchLogs(), 3000);
+    void loadLogs();
+    const id = setInterval(() => void loadLogs(), 3000);
     return () => clearInterval(id);
   }, [activeRun]);
+
 
   const online = agents.filter(
     (a) => a.status === "在线" && Date.now() - new Date(a.last_heartbeat).getTime() < 90_000,
