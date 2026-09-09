@@ -92,10 +92,14 @@ function TasksPage() {
       />
 
       <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
-        <Panel title={`选择用例（已选 ${picked.length} 个）`} bodyClassName="p-0">
+        <Panel
+          title={`选择用例（已选 ${picked.length} 个${serialDependency ? "，按勾选顺序串行" : ""}）`}
+          bodyClassName="p-0"
+        >
           <div className="max-h-[28rem] divide-y overflow-y-auto">
             {cases.map((c) => {
               const on = picked.includes(c.id);
+              const order = picked.indexOf(c.id) + 1;
               return (
                 <label
                   key={c.id}
@@ -110,6 +114,11 @@ function TasksPage() {
                   <span className="text-muted-foreground w-20 shrink-0 font-mono text-xs">
                     {c.id}
                   </span>
+                  {serialDependency && on && (
+                    <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs font-medium">
+                      第 {order} 步
+                    </span>
+                  )}
                   <span className="min-w-0 flex-1 truncate">{c.name}</span>
                   <span className="text-muted-foreground hidden text-xs sm:block">{c.module}</span>
                   <span className="text-muted-foreground text-xs">{c.steps.length} 步</span>
