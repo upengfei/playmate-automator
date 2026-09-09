@@ -1,7 +1,8 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  ChevronDown,
   FileCode2,
   Gauge,
   ListChecks,
@@ -18,19 +19,42 @@ import { tickHeartbeats, useAppStore } from "@/lib/store";
 import { signOut, useAuth } from "@/lib/use-auth";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+type NavLeaf = { to: string; label: string; icon: typeof Gauge };
+type NavGroup = { key: string; label: string; icon: typeof Gauge; children: NavLeaf[] };
+type NavItem = NavLeaf | NavGroup;
+
+const NAV: NavItem[] = [
   { to: "/", label: "概览看板", icon: Gauge },
   { to: "/cases", label: "用例管理", icon: FileCode2 },
-  { to: "/tasks", label: "任务编排与下发", icon: SquareStack },
-  { to: "/board", label: "任务进度看板", icon: ListChecks },
+  {
+    key: "tasks",
+    label: "任务管理",
+    icon: SquareStack,
+    children: [
+      { to: "/tasks", label: "任务编排与下发", icon: SquareStack },
+      { to: "/board", label: "任务进度看板", icon: ListChecks },
+    ],
+  },
   { to: "/reports", label: "测试报告分析", icon: Activity },
-  { to: "/agents", label: "执行节点管理", icon: Server },
-  { to: "/agent-dashboard", label: "Agent 仪表盘", icon: Gauge },
-
-  { to: "/live", label: "真实节点与用例", icon: MonitorSmartphone },
-  { to: "/download", label: "客户端下载更新", icon: MonitorDown },
+  {
+    key: "agents",
+    label: "Agent 管理",
+    icon: Server,
+    children: [
+      { to: "/agents", label: "执行节点管理", icon: Server },
+      { to: "/agent-dashboard", label: "Agent 仪表盘", icon: Gauge },
+      { to: "/live", label: "真实节点与用例", icon: MonitorSmartphone },
+      { to: "/download", label: "客户端下载更新", icon: MonitorDown },
+    ],
+  },
   { to: "/settings", label: "系统配置", icon: Settings },
-] as const;
+];
+
+const FLAT_NAV: NavLeaf[] = NAV.flatMap((item) => ("children" in item ? item.children : [item]));
+
+const isLeafActive = (to: string, pathname: string) =>
+  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   const state = useAppStore();
@@ -64,15 +88,16 @@ export function PlatformShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {NAV.map((item) => {
-            const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-            return (
+          {NAV.map((item) =>
+            "children" in item ? (
+              <NavGroupBlock key={item.key} group={item} pathname={pathname} />
+            ) : (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  active
+                  isLeafActive(item.to, pathname)
                     ? "bg-primary-soft text-primary font-medium"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
@@ -80,9 +105,10 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 <item.icon className="size-4" />
                 {item.label}
               </Link>
-            );
-          })}
+            ),
+          )}
         </nav>
+
         <div className="text-muted-foreground border-t p-3 text-xs">
           <div className="flex items-center justify-between">
             <span>可用执行节点</span>
@@ -98,7 +124,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-card/85 sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b px-4 backdrop-blur lg:px-6">
           <div className="flex items-center gap-3 overflow-x-auto lg:hidden">
-            {NAV.map((item) => (
+            {FLAT_NAV.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -108,6 +134,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+
           </div>
           <div className="hidden text-sm font-medium lg:block">{state.settings.platformName}</div>
           <div className="flex items-center gap-2">
@@ -137,3 +164,52 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string }) {
+  const groupActive = group.children.some((c) => isLeafActive(c.to, pathname));
+  const [open, setOpen] = useState(groupActive);
+
+  useEffect(() => {
+    if (groupActive) setOpen(true);
+  }, [groupActive]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+          groupActive
+            ? "bg-primary-soft text-primary font-medium"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        )}
+      >
+        <group.icon className="size-4" />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="border-border/60 mt-1 ml-5 space-y-1 border-l pl-2">
+          {group.children.map((child) => (
+            <Link
+              key={child.to}
+              to={child.to}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                isLeafActive(child.to, pathname)
+                  ? "bg-primary-soft text-primary font-medium"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <child.icon className="size-4" />
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
