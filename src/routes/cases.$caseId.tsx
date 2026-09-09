@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generatePlaywrightCode, type CaseStep } from "@/lib/keywords";
-import { refresh, upsertCase, useAppStore, type TestCase } from "@/lib/store";
+import { getState, refresh, upsertCase, useAppStore, type TestCase } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/$caseId")({
   head: () => ({
