@@ -235,20 +235,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "case_runs_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "case_runs_depends_on_case_id_fkey"
-            columns: ["depends_on_case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "case_runs_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
@@ -303,15 +289,7 @@ export type Database = {
           steps?: Json
           version?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "case_versions_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       platform_settings: {
         Row: {
