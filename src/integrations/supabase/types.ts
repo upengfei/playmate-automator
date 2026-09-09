@@ -252,6 +252,7 @@ export type Database = {
           module: string
           name: string
           note: string
+          params: Json
           priority: string
           script: string
           source: string
@@ -267,6 +268,7 @@ export type Database = {
           module?: string
           name?: string
           note?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
@@ -282,12 +284,43 @@ export type Database = {
           module?: string
           name?: string
           note?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
           start_url?: string
           steps?: Json
           version?: number
+        }
+        Relationships: []
+      }
+      param_bindings: {
+        Row: {
+          id: string
+          name: string
+          note: string
+          scope: string
+          scope_key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          note?: string
+          scope?: string
+          scope_key?: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          note?: string
+          scope?: string
+          scope_key?: string
+          updated_at?: string
+          value?: string
         }
         Relationships: []
       }
@@ -463,8 +496,10 @@ export type Database = {
           author: string
           created_at: string
           id: string
+          is_template: boolean
           module: string
           name: string
+          params: Json
           priority: string
           script: string
           source: string
@@ -480,8 +515,10 @@ export type Database = {
           author?: string
           created_at?: string
           id?: string
+          is_template?: boolean
           module?: string
           name: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
@@ -497,8 +534,10 @@ export type Database = {
           author?: string
           created_at?: string
           id?: string
+          is_template?: boolean
           module?: string
           name?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
