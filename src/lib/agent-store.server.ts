@@ -88,7 +88,13 @@ function supabaseStore(): AgentTokenStore {
         : await db.from("agent_tokens").insert({ agent_id: agentId, token });
       if (error) throw new Error(error.message);
     },
+    async findByToken(token) {
+      const db = await client();
+      const { data } = await db.from("agent_tokens").select("agent_id").eq("token", token).maybeSingle();
+      return ((data as { agent_id?: string } | null)?.agent_id as string | undefined) ?? "";
+    },
   };
+
 }
 
 let cached: AgentTokenStore | undefined;
