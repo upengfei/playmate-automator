@@ -38,14 +38,15 @@ function TasksPage() {
   const onlineAgents = agents.filter((a) => a.status !== "离线");
 
   const [name, setName] = useState("回归任务（新建）");
-  const [picked, setPicked] = useState<string[]>(["TC-1001", "TC-1003", "TC-1004"]);
-  const [agentId, setAgentId] = useState(onlineAgents[0]?.id ?? agents[0]!.id);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [agentId, setAgentId] = useState("");
+  const effectiveAgentId = agentId || onlineAgents[0]?.id || agents[0]?.id || "";
   const [env, setEnv] = useState<Task["env"]>("测试环境");
   const [browser, setBrowser] = useState<Task["browser"]>("Chromium");
   const [concurrency, setConcurrency] = useState(String(settings.defaultConcurrency));
   const [retry, setRetry] = useState(String(settings.defaultRetry));
 
-  const selectedAgent = agents.find((a) => a.id === agentId);
+  const selectedAgent = agents.find((a) => a.id === effectiveAgentId);
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
 
   const submit = async (dispatch: boolean) => {
@@ -56,7 +57,7 @@ function TasksPage() {
     const task = await createTask({
       name,
       caseIds: picked,
-      agentId,
+      agentId: effectiveAgentId,
       env,
       browser,
       concurrency: Number(concurrency),
