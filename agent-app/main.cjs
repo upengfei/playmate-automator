@@ -77,7 +77,72 @@ function focusWindow(tab) {
   if (tab) send("agent:tray-action", { tab });
 }
 
+/* ------------------------------- 应用菜单 -------------------------------- */
+
+/** macOS 需要标准应用菜单，否则 Cmd+Q / 菜单退出不可用 */
+function createAppMenu() {
+  const quit = {
+    label: "退出 Agent",
+    accelerator: process.platform === "darwin" ? "Command+Q" : "Ctrl+Q",
+    click: () => {
+      app.isQuiting = true;
+      app.quit();
+    },
+  };
+  const template = [
+    ...(process.platform === "darwin"
+      ? [
+          {
+            label: "PlayFlow Agent",
+            submenu: [
+              { label: `关于 PlayFlow Agent v${app.getVersion()}`, enabled: false },
+              { type: "separator" },
+              { label: "隐藏窗口", accelerator: "Command+H", click: () => win && win.hide() },
+              { type: "separator" },
+              quit,
+            ],
+          },
+        ]
+      : []),
+    {
+      label: "文件",
+      submenu: [
+        { label: "检查更新…", click: () => checkForUpdates({ manual: true }) },
+        { label: "打开平台端", click: () => shell.openExternal(cfg().platformUrl) },
+        { type: "separator" },
+        ...(process.platform === "darwin" ? [{ label: "关闭窗口", accelerator: "Command+W", role: "close" }] : [quit]),
+      ],
+    },
+    {
+      label: "编辑",
+      submenu: [
+        { role: "undo", label: "撤销" },
+        { role: "redo", label: "重做" },
+        { type: "separator" },
+        { role: "cut", label: "剪切" },
+        { role: "copy", label: "复制" },
+        { role: "paste", label: "粘贴" },
+        { role: "selectAll", label: "全选" },
+      ],
+    },
+    {
+      label: "视图",
+      submenu: [
+        { role: "reload", label: "重新加载" },
+        { role: "toggleDevTools", label: "开发者工具" },
+        { type: "separator" },
+        { role: "resetZoom", label: "实际大小" },
+        { role: "zoomIn", label: "放大" },
+        { role: "zoomOut", label: "缩小" },
+        { role: "togglefullscreen", label: "全屏" },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 /* --------------------------------- 系统托盘 -------------------------------- */
+
 
 function createTray() {
   const iconPath = path.join(__dirname, "assets", "tray.png");
