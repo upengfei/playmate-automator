@@ -56,7 +56,7 @@ export const fetchLiveData = createServerFn({ method: "GET" }).handler(async () 
       start_url: String(c["start_url"] ?? ""),
       source: String(c["source"] ?? ""),
       priority: String(c["priority"] ?? "P1"),
-      steps: ((c["steps"] as Record<string, unknown>[]) ?? []),
+      steps: ((c["steps"] as { keyword?: string; target?: string; value?: string }[]) ?? []),
       updated_at: String(c["updated_at"] ?? ""),
     })),
     runs: ((runsRes.data ?? []) as Record<string, any>[]).map((r) => ({

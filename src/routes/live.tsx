@@ -46,7 +46,7 @@ interface CaseRow {
   start_url: string;
   source: string;
   priority: string;
-  steps: unknown[];
+  steps: { keyword?: string; target?: string; value?: string }[];
   updated_at: string;
 }
 interface RunRow {
