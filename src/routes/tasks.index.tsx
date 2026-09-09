@@ -191,6 +191,7 @@ function TasksPage() {
                 <Input
                   type="number"
                   value={concurrency}
+                  disabled={serialDependency}
                   onChange={(e) => setConcurrency(e.target.value)}
                 />
               </div>
@@ -199,6 +200,19 @@ function TasksPage() {
                 <Input type="number" value={retry} onChange={(e) => setRetry(e.target.value)} />
               </div>
             </div>
+            <label className="bg-muted/40 flex cursor-pointer items-start gap-3 rounded-md border p-3">
+              <Checkbox
+                checked={serialDependency}
+                onCheckedChange={(v) => setSerialDependency(Boolean(v))}
+              />
+              <span className="space-y-1">
+                <span className="block text-sm font-medium">用例依赖（串行执行）</span>
+                <span className="text-muted-foreground block text-xs">
+                  按勾选顺序执行：前置用例通过后才执行下一个，前置失败时后续用例自动跳过。开启后并发固定为
+                  1。
+                </span>
+              </span>
+            </label>
             <div className="flex gap-2 pt-1">
               <Button className="flex-1" onClick={() => submit(true)}>
                 <Rocket className="mr-1 size-4" />
