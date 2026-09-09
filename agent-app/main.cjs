@@ -608,9 +608,17 @@ if (!single) {
 } else {
   app.on("second-instance", () => focusWindow());
   app.whenReady().then(async () => {
-    // 首次启动：本机还没有节点令牌时，先走自动注册配置窗口
-    if (!cfg().token) await openSetup();
+    // 首次使用：本机还没有节点令牌时，先完成配置向导；未完成则直接退出，不进入工作台
+    if (!cfg().token) {
+      const ok = await openSetup();
+      if (!ok) {
+        app.isQuiting = true;
+        app.quit();
+        return;
+      }
+    }
     createWindow();
+
     createTray();
     createAppMenu();
     registerAgent().catch(() => {});
