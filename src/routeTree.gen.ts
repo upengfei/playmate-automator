@@ -20,6 +20,11 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
+import { Route as SettingsIndexRouteImport } from './routes/settings.index'
+import { Route as SettingsAgentsRouteImport } from './routes/settings.agents'
+import { Route as SettingsExecutionRouteImport } from './routes/settings.execution'
+import { Route as SettingsNotifyRouteImport } from './routes/settings.notify'
+import { Route as SettingsParamsRouteImport } from './routes/settings.params'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
@@ -87,6 +92,31 @@ const CasesCaseIdRoute = CasesCaseIdRouteImport.update({
   id: '/cases/$caseId',
   path: '/cases/$caseId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsAgentsRoute = SettingsAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsExecutionRoute = SettingsExecutionRouteImport.update({
+  id: '/execution',
+  path: '/execution',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotifyRoute = SettingsNotifyRouteImport.update({
+  id: '/notify',
+  path: '/notify',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsParamsRoute = SettingsParamsRouteImport.update({
+  id: '/params',
+  path: '/params',
+  getParentRoute: () => SettingsRoute,
 } as any)
 const TasksIndexRoute = TasksIndexRouteImport.update({
   id: '/tasks/',
@@ -160,10 +190,15 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/execution': typeof SettingsExecutionRoute
+  '/settings/notify': typeof SettingsNotifyRoute
+  '/settings/params': typeof SettingsParamsRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -185,10 +220,14 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/execution': typeof SettingsExecutionRoute
+  '/settings/notify': typeof SettingsNotifyRoute
+  '/settings/params': typeof SettingsParamsRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases': typeof CasesIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/tasks': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -211,10 +250,15 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/cases/$caseId': typeof CasesCaseIdRoute
+  '/settings/agents': typeof SettingsAgentsRoute
+  '/settings/execution': typeof SettingsExecutionRoute
+  '/settings/notify': typeof SettingsNotifyRoute
+  '/settings/params': typeof SettingsParamsRoute
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -240,8 +284,13 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/cases/$caseId'
+    | '/settings/agents'
+    | '/settings/execution'
+    | '/settings/notify'
+    | '/settings/params'
     | '/tasks/$taskId'
     | '/cases/'
+    | '/settings/'
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -263,10 +312,14 @@ export interface FileRouteTypes {
     | '/download'
     | '/live'
     | '/reports'
-    | '/settings'
     | '/cases/$caseId'
+    | '/settings/agents'
+    | '/settings/execution'
+    | '/settings/notify'
+    | '/settings/params'
     | '/tasks/$taskId'
     | '/cases'
+    | '/settings'
     | '/tasks'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -290,8 +343,13 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/cases/$caseId'
+    | '/settings/agents'
+    | '/settings/execution'
+    | '/settings/notify'
+    | '/settings/params'
     | '/tasks/$taskId'
     | '/cases/'
+    | '/settings/'
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -314,7 +372,7 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   LiveRoute: typeof LiveRoute
   ReportsRoute: typeof ReportsRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
@@ -410,6 +468,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CasesCaseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/agents': {
+      id: '/settings/agents'
+      path: '/agents'
+      fullPath: '/settings/agents'
+      preLoaderRoute: typeof SettingsAgentsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/execution': {
+      id: '/settings/execution'
+      path: '/execution'
+      fullPath: '/settings/execution'
+      preLoaderRoute: typeof SettingsExecutionRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notify': {
+      id: '/settings/notify'
+      path: '/notify'
+      fullPath: '/settings/notify'
+      preLoaderRoute: typeof SettingsNotifyRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/params': {
+      id: '/settings/params'
+      path: '/params'
+      fullPath: '/settings/params'
+      preLoaderRoute: typeof SettingsParamsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/tasks/': {
       id: '/tasks/'
       path: '/tasks'
@@ -497,6 +590,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface SettingsRouteChildren {
+  SettingsAgentsRoute: typeof SettingsAgentsRoute
+  SettingsExecutionRoute: typeof SettingsExecutionRoute
+  SettingsNotifyRoute: typeof SettingsNotifyRoute
+  SettingsParamsRoute: typeof SettingsParamsRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAgentsRoute: SettingsAgentsRoute,
+  SettingsExecutionRoute: SettingsExecutionRoute,
+  SettingsNotifyRoute: SettingsNotifyRoute,
+  SettingsParamsRoute: SettingsParamsRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentDashboardRoute: AgentDashboardRoute,
@@ -506,7 +619,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   LiveRoute: LiveRoute,
   ReportsRoute: ReportsRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   CasesCaseIdRoute: CasesCaseIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,

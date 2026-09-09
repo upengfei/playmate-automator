@@ -19,7 +19,7 @@ import { tickHeartbeats, useAppStore } from "@/lib/store";
 import { signOut, useAuth } from "@/lib/use-auth";
 import { cn } from "@/lib/utils";
 
-type NavLeaf = { to: string; label: string; icon: typeof Gauge };
+type NavLeaf = { to: string; label: string; icon: typeof Gauge; exact?: boolean };
 type NavGroup = { key: string; label: string; icon: typeof Gauge; children: NavLeaf[] };
 type NavItem = NavLeaf | NavGroup;
 
@@ -47,13 +47,27 @@ const NAV: NavItem[] = [
       { to: "/download", label: "客户端下载更新", icon: MonitorDown },
     ],
   },
-  { to: "/settings", label: "系统配置", icon: Settings },
+  {
+    key: "settings",
+    label: "系统配置",
+    icon: Settings,
+    children: [
+      { to: "/settings", label: "基础信息", icon: Settings, exact: true },
+      { to: "/settings/agents", label: "Agent 与节点校验", icon: Server },
+      { to: "/settings/execution", label: "执行策略", icon: SquareStack },
+      { to: "/settings/notify", label: "通知", icon: Activity },
+      { to: "/settings/params", label: "参数绑定", icon: FileCode2 },
+    ],
+  },
 ];
 
 const FLAT_NAV: NavLeaf[] = NAV.flatMap((item) => ("children" in item ? item.children : [item]));
 
-const isLeafActive = (to: string, pathname: string) =>
-  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+const isLeafActive = (leaf: NavLeaf, pathname: string) =>
+  leaf.to === "/" || leaf.exact
+    ? pathname === leaf.to
+    : pathname === leaf.to || pathname.startsWith(`${leaf.to}/`);
+
 
 
 export function PlatformShell({ children }: { children: ReactNode }) {
@@ -97,7 +111,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isLeafActive(item.to, pathname)
+                  isLeafActive(item, pathname)
                     ? "bg-primary-soft text-primary font-medium"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
@@ -166,7 +180,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
 }
 
 function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string }) {
-  const groupActive = group.children.some((c) => isLeafActive(c.to, pathname));
+  const groupActive = group.children.some((c) => isLeafActive(c, pathname));
   const [open, setOpen] = useState(groupActive);
 
   useEffect(() => {
@@ -198,7 +212,7 @@ function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string 
               to={child.to}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                isLeafActive(child.to, pathname)
+                isLeafActive(child, pathname)
                   ? "bg-primary-soft text-primary font-medium"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
