@@ -127,10 +127,7 @@ function AgentDashboard() {
                 </div>
 
                 <div className="mt-3 space-y-2">
-                  <ProgressBar
-                    value={rate}
-                    tone={rate >= 90 ? "success" : rate >= 70 ? "warning" : "danger"}
-                  />
+                  <ProgressBar value={rate} tone={rate >= 70 ? "success" : "danger"} />
                   <div className="text-muted-foreground flex flex-wrap gap-4 text-xs">
                     <span className="flex items-center gap-1">
                       <Cpu className="size-3.5" /> CPU {a.cpu}%
