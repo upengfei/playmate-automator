@@ -200,6 +200,9 @@ export interface State {
   release: AgentRelease;
   trend: { date: string; passed: number; failed: number }[];
   loaded: boolean;
+  /** 数据加载失败时的错误信息（成功时为空） */
+  loadError?: string;
+
 }
 
 /* ------------------------------ 真实数据本地缓存 ----------------------------- */
@@ -220,7 +223,7 @@ const emptySettings: Settings = {
   updateChannel: "稳定版",
 };
 
-let state: State = {
+const defaultState: State = {
   cases: [],
   paramBindings: [],
   agents: [],
@@ -232,6 +235,9 @@ let state: State = {
   trend: [],
   loaded: false,
 };
+
+let state: State = defaultState;
+
 
 const listeners = new Set<() => void>();
 
