@@ -71,7 +71,7 @@ function DownloadPage() {
                 onClick={() => toast.success(`开始下载 ${a.file}`)}
                 asChild
               >
-                <a href={`/downloads/${a.file}`} download>
+                <a href={a.url} download={a.file} target="_blank" rel="noreferrer">
                   <Download className="mr-1.5 size-4" />
                   下载安装包
                 </a>
