@@ -264,6 +264,8 @@ async function reportUpgrade(payload) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         agentId: cfg().agentId,
+        token: cfg().token,
+
         host: os.hostname(),
         os: `${os.type()} ${os.release()}`,
         fromVersion: app.getVersion(),
@@ -369,9 +371,11 @@ async function checkForUpdates({ manual = false, pushedBy = null } = {}) {
 
 async function pollPushedUpgrade() {
   try {
+    if (!cfg().token) return; // 未注册的节点不轮询升级推送
     const res = await fetch(
-      `${cfg().platformUrl}/api/public/agent/upgrade?agentId=${encodeURIComponent(cfg().agentId)}&version=${app.getVersion()}`,
+      `${cfg().platformUrl}/api/public/agent/upgrade?agentId=${encodeURIComponent(cfg().agentId)}&token=${encodeURIComponent(cfg().token)}&version=${app.getVersion()}`,
     );
+
     if (!res.ok) return;
     const data = await res.json();
     if (data.pending) await checkForUpdates({ pushedBy: data.jobId || "platform" });

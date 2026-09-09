@@ -3,7 +3,7 @@
  * 执行进度与日志来自真实客户端回传。
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { RELEASE, artifactUrl, compareVersion } from "./agent-fleet.server";
+import { readRelease, compareVersion } from "./agent-fleet.server";
 
 export function db(): SupabaseClient {
   return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
@@ -76,13 +76,14 @@ export async function pushUpgradeRow(
     .maybeSingle();
   if (running) return { ok: true as const, id: running["id"] as string };
   const settings = await readSettings(client);
+  const release = await readRelease(client);
   const { data, error } = await client
     .from("agent_upgrades")
     .insert({
       agent_id: agentId,
       agent_name: (agent as Row)["name"] ?? agentId,
       from_version: (agent as Row)["version"] ?? "0.0.0",
-      to_version: RELEASE.version,
+      to_version: release.version,
       channel: settings.updateChannel,
       trigger,
       stage: "排队中",
@@ -91,11 +92,12 @@ export async function pushUpgradeRow(
       logs: [
         {
           level: "info",
-          text: `创建升级任务：v${(agent as Row)["version"]} → v${RELEASE.version}（${settings.updateChannel}）`,
+          text: `创建升级任务：v${(agent as Row)["version"]} → v${release.version}（${settings.updateChannel}）`,
           time: new Date().toISOString(),
         },
       ],
     })
+
     .select("id")
     .single();
   if (error) return { ok: false as const, message: error.message };
@@ -143,6 +145,8 @@ async function reconcileTasks(client: SupabaseClient, tasks: Row[], runs: Row[])
 export async function loadSnapshot() {
   const client = db();
   const settings = await readSettings(client);
+  const release = await readRelease(client);
+
 
   const [agentsRes, casesRes, tasksRes, upgradesRes] = await Promise.all([
     client.from("agents").select("*").order("last_heartbeat", { ascending: false }),
@@ -358,11 +362,11 @@ export async function loadSnapshot() {
     upgrades,
     trend,
     release: {
-      version: RELEASE.version,
-      channel: settings.updateChannel,
-      publishedAt: RELEASE.publishedAt,
-      notes: RELEASE.notes,
-      artifacts: RELEASE.artifacts.map((a) => ({
+      version: release.version,
+      channel: release.channel || settings.updateChannel,
+      publishedAt: release.publishedAt,
+      notes: release.notes,
+      artifacts: release.artifacts.map((a) => ({
         platform:
           a.platform === "win"
             ? "Windows 10/11 x64"
@@ -372,9 +376,10 @@ export async function loadSnapshot() {
         file: a.file,
         sizeMB: a.sizeMB,
         sha256: a.sha256,
-        url: artifactUrl(a.file),
+        url: a.url,
       })),
     },
+
   };
 }
 

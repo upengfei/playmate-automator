@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_releases: {
+        Row: {
+          artifacts: Json
+          channel: string
+          created_at: string
+          id: string
+          is_current: boolean
+          min_supported: string
+          notes: Json
+          published_at: string
+          version: string
+        }
+        Insert: {
+          artifacts?: Json
+          channel?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          min_supported?: string
+          notes?: Json
+          published_at?: string
+          version: string
+        }
+        Update: {
+          artifacts?: Json
+          channel?: string
+          created_at?: string
+          id?: string
+          is_current?: boolean
+          min_supported?: string
+          notes?: Json
+          published_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       agent_tokens: {
         Row: {
           agent_id: string
