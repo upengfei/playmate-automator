@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Plus, Search, Trash2 } from "lucide-react";
+import { Blocks, Copy, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createCase, deleteCase, useAppStore } from "@/lib/store";
+import { createCase, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -134,6 +134,11 @@ function CasesPage() {
                       {c.name}
                     </Link>
                     <div className="mt-1 flex gap-1">
+                      {c.isTemplate ? (
+                        <span className="bg-primary-soft text-primary rounded px-1.5 py-0.5 text-[11px]">
+                          模板 · {(c.params ?? []).length} 个参数
+                        </span>
+                      ) : null}
                       {c.tags.map((t) => (
                         <span key={t} className="bg-secondary rounded px-1.5 py-0.5 text-[11px]">
                           {t}
@@ -170,6 +175,22 @@ function CasesPage() {
                           编排
                         </Link>
                       </Button>
+                      {c.isTemplate ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            const name = window.prompt("新用例名称", `${c.name} 副本`);
+                            if (!name) return;
+                            const id = await newCaseFromTemplate(c.id, name, c.params ?? []);
+                            toast.success("已按模板创建用例，可直接调整参数取值");
+                            navigate({ to: "/cases/$caseId", params: { caseId: id } });
+                          }}
+                        >
+                          <Copy className="mr-1 size-3.5" />
+                          用模板创建
+                        </Button>
+                      ) : null}
                       <Button
                         size="icon"
                         variant="ghost"
