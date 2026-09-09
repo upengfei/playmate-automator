@@ -709,3 +709,80 @@ export const fetchCaseStats = createServerFn({ method: "GET" }).handler(async ()
   stats.sort((a, b) => b.failed - a.failed || b.total - a.total);
   return { stats };
 });
+
+export type AgentStat = {
+  agentId: string;
+  claimed: number;
+  passed: number;
+  failed: number;
+  running: number;
+  skipped: number;
+  passRate: number;
+  avgDurationMs: number;
+  lastRunAt: string;
+  lastCaseName: string;
+  lastStatus: string;
+};
+
+/** 设备维度聚合：任务领取数、成功率、平均耗时，与任务队列联动 */
+export const fetchAgentStats = createServerFn({ method: "GET" }).handler(async () => {
+  const { db } = await import("@/lib/platform.server");
+  const client = db();
+  const { data: runs } = await client
+    .from("case_runs")
+    .select("agent_id, case_name, status, duration_ms, started_at, task_id")
+    .order("started_at", { ascending: false })
+    .limit(5000);
+  const map = new Map<string, AgentStat & { sum: number; count: number; tasks: Set<string> }>();
+  for (const r of (runs ?? []) as Record<string, any>[]) {
+    const id = (r["agent_id"] as string) ?? "";
+    if (!id) continue;
+    let s = map.get(id);
+    if (!s) {
+      s = {
+        agentId: id,
+        claimed: 0,
+        passed: 0,
+        failed: 0,
+        running: 0,
+        skipped: 0,
+        passRate: 0,
+        avgDurationMs: 0,
+        lastRunAt: "",
+        lastCaseName: "",
+        lastStatus: "",
+        sum: 0,
+        count: 0,
+        tasks: new Set<string>(),
+      };
+      map.set(id, s);
+    }
+    s.claimed += 1;
+    const status = (r["status"] as string) ?? "";
+    if (status === "通过") s.passed += 1;
+    else if (status === "失败") s.failed += 1;
+    else if (status === "已跳过") s.skipped += 1;
+    else s.running += 1;
+    const taskId = r["task_id"] as string | null;
+    if (taskId) s.tasks.add(taskId);
+    const dur = r["duration_ms"] as number | null;
+    if (typeof dur === "number" && dur > 0) {
+      s.sum += dur;
+      s.count += 1;
+    }
+    const at = (r["started_at"] as string) ?? "";
+    if (!s.lastRunAt || at > s.lastRunAt) {
+      s.lastRunAt = at;
+      s.lastStatus = status;
+      s.lastCaseName = (r["case_name"] as string) ?? "";
+    }
+  }
+  const stats = [...map.values()].map(({ sum, count, tasks, ...s }) => ({
+    ...s,
+    taskCount: tasks.size,
+    passRate: s.passed + s.failed ? Math.round((s.passed / (s.passed + s.failed)) * 100) : 0,
+    avgDurationMs: count ? Math.round(sum / count) : 0,
+  }));
+  stats.sort((a, b) => b.claimed - a.claimed);
+  return { stats };
+});
