@@ -14,7 +14,6 @@ import { Route as AgentDashboardRouteImport } from './routes/agent-dashboard'
 import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoardRouteImport } from './routes/board'
-import { Route as DesktopRouteImport } from './routes/desktop'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -57,11 +56,6 @@ const AuthRoute = AuthRouteImport.update({
 const BoardRoute = BoardRouteImport.update({
   id: '/board',
   path: '/board',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesktopRoute = DesktopRouteImport.update({
-  id: '/desktop',
-  path: '/desktop',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DownloadRoute = DownloadRouteImport.update({
@@ -163,7 +157,6 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
-  '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
@@ -189,7 +182,6 @@ export interface FileRoutesByTo {
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
-  '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
@@ -216,7 +208,6 @@ export interface FileRoutesById {
   '/agents': typeof AgentsRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
-  '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
@@ -244,7 +235,6 @@ export interface FileRouteTypes {
     | '/agents'
     | '/auth'
     | '/board'
-    | '/desktop'
     | '/download'
     | '/live'
     | '/reports'
@@ -270,7 +260,6 @@ export interface FileRouteTypes {
     | '/agents'
     | '/auth'
     | '/board'
-    | '/desktop'
     | '/download'
     | '/live'
     | '/reports'
@@ -296,7 +285,6 @@ export interface FileRouteTypes {
     | '/agents'
     | '/auth'
     | '/board'
-    | '/desktop'
     | '/download'
     | '/live'
     | '/reports'
@@ -323,7 +311,6 @@ export interface RootRouteChildren {
   AgentsRoute: typeof AgentsRoute
   AuthRoute: typeof AuthRoute
   BoardRoute: typeof BoardRoute
-  DesktopRoute: typeof DesktopRoute
   DownloadRoute: typeof DownloadRoute
   LiveRoute: typeof LiveRoute
   ReportsRoute: typeof ReportsRoute
@@ -379,13 +366,6 @@ declare module '@tanstack/react-router' {
       path: '/board'
       fullPath: '/board'
       preLoaderRoute: typeof BoardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/desktop': {
-      id: '/desktop'
-      path: '/desktop'
-      fullPath: '/desktop'
-      preLoaderRoute: typeof DesktopRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/download': {
@@ -523,7 +503,6 @@ const rootRouteChildren: RootRouteChildren = {
   AgentsRoute: AgentsRoute,
   AuthRoute: AuthRoute,
   BoardRoute: BoardRoute,
-  DesktopRoute: DesktopRoute,
   DownloadRoute: DownloadRoute,
   LiveRoute: LiveRoute,
   ReportsRoute: ReportsRoute,
