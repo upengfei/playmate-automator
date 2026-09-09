@@ -52,6 +52,18 @@ export const Route = createFileRoute("/api/public/agent/run-report")({
           runId = data.id as string;
         }
 
+        if (finished) {
+          const { data: agent } = await db
+            .from("agents")
+            .select("total_runs")
+            .eq("id", d.agentId)
+            .maybeSingle();
+          await db
+            .from("agents")
+            .update({ total_runs: ((agent?.total_runs as number) ?? 0) + 1 })
+            .eq("id", d.agentId);
+        }
+
         if (d.logs.length) {
           await db
             .from("run_logs")

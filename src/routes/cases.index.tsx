@@ -56,8 +56,8 @@ function CasesPage() {
         desc={`共 ${cases.length} 个用例，其中 ${cases.filter((c) => c.source === "Agent 录制").length} 个由桌面端录制上传`}
         action={
           <Button
-            onClick={() => {
-              const c = createCase({ name: "新建用例", module: "未分类" });
+            onClick={async () => {
+              const c = await createCase({ name: "新建用例", module: "未分类" });
               toast.success("已创建用例，开始积木式编排");
               navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
             }}

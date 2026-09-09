@@ -33,6 +33,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
+    tickHeartbeats();
     const id = setInterval(() => tickHeartbeats(), 3000);
     return () => clearInterval(id);
   }, []);

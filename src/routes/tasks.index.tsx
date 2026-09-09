@@ -48,12 +48,12 @@ function TasksPage() {
   const selectedAgent = agents.find((a) => a.id === agentId);
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
 
-  const submit = (dispatch: boolean) => {
+  const submit = async (dispatch: boolean) => {
     if (picked.length === 0) {
       toast.error("请至少选择一个用例");
       return;
     }
-    const task = createTask({
+    const task = await createTask({
       name,
       caseIds: picked,
       agentId,
@@ -63,8 +63,9 @@ function TasksPage() {
       retry: Number(retry),
     });
     if (dispatch) {
-      dispatchTask(task.id);
-      toast.success(`任务已下发到 ${selectedAgent?.name}`);
+      const res = await dispatchTask(task.id);
+      if (res.ok) toast.success(`任务已下发到 ${selectedAgent?.name}，节点领取后开始真实执行`);
+      else toast.error(res.message ?? "下发失败");
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
     } else {
       toast.success("任务已创建并进入队列");
