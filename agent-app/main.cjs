@@ -264,6 +264,8 @@ async function reportUpgrade(payload) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         agentId: cfg().agentId,
+        token: cfg().token,
+
         host: os.hostname(),
         os: `${os.type()} ${os.release()}`,
         fromVersion: app.getVersion(),
