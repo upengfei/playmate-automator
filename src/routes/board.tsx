@@ -32,6 +32,12 @@ export const Route = createFileRoute("/board")({
 
 function BoardPage() {
   const { tasks, agents } = useAppStore();
+  const { data: caseStats } = useQuery({
+    queryKey: ["board-case-stats"],
+    queryFn: () => fetchCaseStats(),
+    refetchInterval: 5000,
+  });
+  const stats = caseStats?.stats ?? [];
   const failures = tasks.flatMap((t) =>
     t.caseRuns
       .filter((r) => r.status === "失败")
