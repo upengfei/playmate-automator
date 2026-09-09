@@ -32,6 +32,7 @@ import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
+import { Route as ApiPublicAgentInspectRouteImport } from './routes/api/public/agent/inspect'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentRegisterRouteImport } from './routes/api/public/agent/register'
 import { Route as ApiPublicAgentReleaseRouteImport } from './routes/api/public/agent/release'
@@ -156,6 +157,11 @@ const ApiPublicAgentCasesRoute = ApiPublicAgentCasesRouteImport.update({
   path: '/api/public/agent/cases',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentInspectRoute = ApiPublicAgentInspectRouteImport.update({
+  id: '/api/public/agent/inspect',
+  path: '/api/public/agent/inspect',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentJobsRoute = ApiPublicAgentJobsRouteImport.update({
   id: '/api/public/agent/jobs',
   path: '/api/public/agent/jobs',
@@ -223,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -255,6 +262,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -289,6 +297,7 @@ export interface FileRoutesById {
   '/tasks/': typeof TasksIndexRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
+  '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
   '/api/public/agent/release': typeof ApiPublicAgentReleaseRoute
@@ -324,6 +333,7 @@ export interface FileRouteTypes {
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -356,6 +366,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/tasks/'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
+    | '/api/public/agent/inspect'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
     | '/api/public/agent/release'
@@ -417,6 +429,7 @@ export interface RootRouteChildren {
   TasksIndexRoute: typeof TasksIndexRoute
   ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
+  ApiPublicAgentInspectRoute: typeof ApiPublicAgentInspectRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentRegisterRoute: typeof ApiPublicAgentRegisterRoute
   ApiPublicAgentReleaseRoute: typeof ApiPublicAgentReleaseRoute
@@ -590,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentCasesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/inspect': {
+      id: '/api/public/agent/inspect'
+      path: '/api/public/agent/inspect'
+      fullPath: '/api/public/agent/inspect'
+      preLoaderRoute: typeof ApiPublicAgentInspectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/jobs': {
       id: '/api/public/agent/jobs'
       path: '/api/public/agent/jobs'
@@ -689,6 +709,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksIndexRoute: TasksIndexRoute,
   ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,
+  ApiPublicAgentInspectRoute: ApiPublicAgentInspectRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentRegisterRoute: ApiPublicAgentRegisterRoute,
   ApiPublicAgentReleaseRoute: ApiPublicAgentReleaseRoute,
