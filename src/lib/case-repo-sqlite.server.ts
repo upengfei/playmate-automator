@@ -57,10 +57,19 @@ function toVersion(r: Record<string, any> | undefined): CaseVersionRow | null {
 }
 
 async function openDb(): Promise<Db> {
-  const specifier = "node:sqlite";
-  const { DatabaseSync } = (await import(/* @vite-ignore */ specifier)) as {
-    DatabaseSync: new (path: string) => Db;
-  };
+  // Node 22+ 使用内置 node:sqlite；Bun 运行时回退到 bun:sqlite
+  let Ctor: (new (path: string) => Db) | undefined;
+  for (const specifier of ["node:sqlite", "bun:sqlite"]) {
+    try {
+      const mod = (await import(/* @vite-ignore */ specifier)) as Record<string, any>;
+      Ctor = (mod["DatabaseSync"] ?? mod["Database"]) as new (path: string) => Db;
+      if (Ctor) break;
+    } catch {
+      /* 尝试下一个实现 */
+    }
+  }
+  if (!Ctor) throw new Error("当前运行环境没有可用的 SQLite 实现");
+  const DatabaseSync = Ctor;
   const file = resolve(process.env["CASE_DB_FILE"] ?? ".data/cases.db");
   mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
