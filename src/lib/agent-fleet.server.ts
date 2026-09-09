@@ -120,12 +120,13 @@ export async function readRelease(db?: SupabaseClient): Promise<Release> {
 /** 登记一次真实发布（供 CI 发布安装包后调用），并把它设为当前版本 */
 export async function publishRelease(input: {
   version: string;
-  channel?: string;
-  publishedAt?: string;
-  minSupported?: string;
-  notes?: string[];
-  artifacts: Omit<ReleaseArtifact, "url">[] & { url?: string }[];
+  channel?: string | undefined;
+  publishedAt?: string | undefined;
+  minSupported?: string | undefined;
+  notes?: string[] | undefined;
+  artifacts: { platform: ReleaseArtifact["platform"]; file: string; sizeMB: number; sha256: string; url?: string | undefined }[];
 }): Promise<{ ok: boolean; message?: string }> {
+
   const c = client();
   await c.from("agent_releases").update({ is_current: false }).eq("is_current", true);
   const { error } = await c.from("agent_releases").upsert(
