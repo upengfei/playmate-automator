@@ -75,3 +75,11 @@
 - [x] 下载页新增「注册设备并获取节点令牌」（需平台登录），支持重置令牌
 - [x] 客户端支持用 PLAYFLOW_AGENT_TOKEN 预置令牌；注册/心跳、领任务、执行与升级回传全部校验令牌
 - [ ] 登录后的端到端人工验收：当前平台还没有任何注册账号，需你先在登录页注册一个账号
+
+## 条件循环与拖拽编辑（本轮）
+- [x] 关键字积木新增条件 / 循环，客户端执行内核（agent-app/runner.cjs）真实解析并执行条件分支与循环
+- [x] 循环变量 ${LOOP_INDEX} / ${当前循环} / ${循环次数}，与参数绑定共存，运行时由循环上下文替换
+- [x] 用例编辑改为拖拽式积木编辑器（拖入插入、拖动排序、上下移动、删除），右侧脚本实时生成并置顶跟随
+- [x] 端到端验收：SQLite 注册设备 AG-LOOP-01 → 上传含条件+3 次循环的用例 → 下发 → 真实 Chromium 执行通过（7.6s，29 条日志，循环截图 loop-1/2/3-of-3）写入本地数据库
+- [x] 发布流程加入 macOS Developer ID 签名与 Apple 公证（缺证书时降级为未签名包）
+- [ ] macOS 签名/公证需在 GitHub 配置证书密钥：MACOS_CERT_P12_BASE64、MACOS_CERT_PASSWORD、MACOS_SIGN_IDENTITY、APPLE_ID、APPLE_APP_PASSWORD、APPLE_TEAM_ID

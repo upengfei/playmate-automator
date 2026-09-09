@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { CaseParam } from "@/lib/store";
+import { isLoopVar } from "@/lib/case-params";
 
 /** 用例参数（模板变量）编辑器：步骤与起始地址里用 ${参数名} 引用 */
 export function CaseParamsEditor({
@@ -20,7 +21,8 @@ export function CaseParamsEditor({
   usedNames: string[];
 }) {
   const defined = new Set(params.map((p) => p.name));
-  const missing = usedNames.filter((n) => !defined.has(n));
+  // 循环变量（${当前循环} 等）由执行时的循环上下文提供，不需要在这里定义默认值
+  const missing = usedNames.filter((n) => !defined.has(n) && !isLoopVar(n));
 
   const update = (i: number, patch: Partial<CaseParam>) =>
     onChange(params.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));

@@ -6,6 +6,12 @@
  * 这样同一个模板用例可以在不同环境或不同设备上直接复用，无需重复录制。
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { LOOP_VAR_NAMES } from "./keywords";
+
+/** 循环变量不参与参数绑定替换，由客户端执行时按循环上下文取值 */
+function isLoopVar(name: string): boolean {
+  return LOOP_VAR_NAMES.includes(name);
+}
 
 export type CaseParam = { name: string; value: string; note?: string };
 export type ParamBinding = {
@@ -71,6 +77,7 @@ export function applyParams(text: string, map: Record<string, string>): string {
   if (!text) return text ?? "";
   return text.replace(PLACEHOLDER, (raw, a: string | undefined, b: string | undefined) => {
     const key = (a ?? b ?? "").trim();
+    if (isLoopVar(key)) return raw;
     return key in map ? map[key]! : raw;
   });
 }
@@ -90,7 +97,7 @@ export function missingParams(texts: string[], map: Record<string, string>): str
   for (const t of texts) {
     for (const m of (t ?? "").matchAll(PLACEHOLDER)) {
       const key = (m[1] ?? m[2] ?? "").trim();
-      if (key && !(key in map)) missing.add(key);
+      if (key && !isLoopVar(key) && !(key in map)) missing.add(key);
     }
   }
   return [...missing];

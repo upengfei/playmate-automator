@@ -38,6 +38,44 @@ export interface KeywordDef {
   template: (target: string, value: string) => string;
 }
 
+/**
+ * 循环变量：可以像普通参数一样写在步骤里（${LOOP_INDEX} / {{当前循环}}），
+ * 但取值来自运行时的循环上下文，而不是参数绑定。
+ */
+export const LOOP_VARS: Record<string, string> = {
+  LOOP_INDEX: "i",
+  LOOP_ITERATION: "(i + 1)",
+  LOOP_COUNT: "__loopCount",
+  当前循环: "(i + 1)",
+  循环序号: "i",
+  循环次数: "__loopCount",
+};
+
+export const LOOP_VAR_NAMES = Object.keys(LOOP_VARS);
+
+const ANY_PLACEHOLDER =
+  /\$\{\s*([A-Za-z0-9_\-.\u4e00-\u9fa5]+)\s*\}|\{\{\s*([A-Za-z0-9_\-.\u4e00-\u9fa5]+)\s*\}\}/g;
+
+function escBacktick(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+}
+
+/** 把步骤文本转成 JS 字符串字面量：循环变量插值成真实表达式，其他内容原样保留 */
+export function lit(text: string): string {
+  const raw = String(text ?? "");
+  let out = "";
+  let last = 0;
+  for (const m of raw.matchAll(ANY_PLACEHOLDER)) {
+    const key = (m[1] ?? m[2] ?? "").trim();
+    const expr = LOOP_VARS[key];
+    if (!expr) continue;
+    out += escBacktick(raw.slice(last, m.index ?? 0)) + "${" + expr + "}";
+    last = (m.index ?? 0) + m[0].length;
+  }
+  out += escBacktick(raw.slice(last));
+  return "`" + out + "`";
+}
+
 export const KEYWORDS: KeywordDef[] = [
   {
     id: "goto",
@@ -48,7 +86,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "",
     valueLabel: "地址",
     color: "chart-1",
-    template: (_t, v) => `await page.goto('${v}');`,
+    template: (_t, v) => `await page.goto(${lit(v)});`,
   },
   {
     id: "click",
@@ -59,7 +97,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-1",
-    template: (t) => `await page.locator('${t}').click();`,
+    template: (t) => `await page.locator(${lit(t)}).click();`,
   },
   {
     id: "fill",
@@ -70,7 +108,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "文本",
     color: "chart-1",
-    template: (t, v) => `await page.locator('${t}').fill('${v}');`,
+    template: (t, v) => `await page.locator(${lit(t)}).fill(${lit(v)});`,
   },
   {
     id: "press",
@@ -81,7 +119,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "按键",
     color: "chart-1",
-    template: (t, v) => `await page.locator('${t}').press('${v}');`,
+    template: (t, v) => `await page.locator(${lit(t)}).press(${lit(v)});`,
   },
   {
     id: "select",
@@ -92,7 +130,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "选项值",
     color: "chart-1",
-    template: (t, v) => `await page.locator('${t}').selectOption('${v}');`,
+    template: (t, v) => `await page.locator(${lit(t)}).selectOption(${lit(v)});`,
   },
   {
     id: "hover",
@@ -103,7 +141,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-1",
-    template: (t) => `await page.locator('${t}').hover();`,
+    template: (t) => `await page.locator(${lit(t)}).hover();`,
   },
   {
     id: "waitFor",
@@ -114,7 +152,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-3",
-    template: (t) => `await page.locator('${t}').waitFor({ state: 'visible' });`,
+    template: (t) => `await page.locator(${lit(t)}).waitFor({ state: 'visible' });`,
   },
   {
     id: "wait",
@@ -136,7 +174,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "期望文本",
     color: "chart-2",
-    template: (t, v) => `await expect(page.locator('${t}')).toContainText('${v}');`,
+    template: (t, v) => `await expect(page.locator(${lit(t)})).toContainText(${lit(v)});`,
   },
   {
     id: "expectUrl",
@@ -158,7 +196,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-2",
-    template: (t) => `await expect(page.locator('${t}')).toBeVisible();`,
+    template: (t) => `await expect(page.locator(${lit(t)})).toBeVisible();`,
   },
   {
     id: "screenshot",
@@ -169,7 +207,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "",
     valueLabel: "文件名",
     color: "chart-5",
-    template: (_t, v) => `await page.screenshot({ path: '${v || "shot.png"}' });`,
+    template: (_t, v) => `await page.screenshot({ path: ${lit(v || "shot.png")} });`,
   },
   {
     id: "ifVisible",
@@ -181,7 +219,7 @@ export const KEYWORDS: KeywordDef[] = [
     valueLabel: "",
     color: "chart-4",
     opensBlock: true,
-    template: (t) => `if (await page.locator('${t}').isVisible()) {`,
+    template: (t) => `if (await page.locator(${lit(t)}).isVisible()) {`,
   },
   {
     id: "ifNotVisible",
@@ -193,7 +231,7 @@ export const KEYWORDS: KeywordDef[] = [
     valueLabel: "",
     color: "chart-4",
     opensBlock: true,
-    template: (t) => `if (!(await page.locator('${t}').isVisible())) {`,
+    template: (t) => `if (!(await page.locator(${lit(t)}).isVisible())) {`,
   },
   {
     id: "ifText",
@@ -206,7 +244,7 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-4",
     opensBlock: true,
     template: (t, v) =>
-      `if (((await page.locator('${t}').textContent()) ?? '').includes('${v}')) {`,
+      `if (((await page.locator(${lit(t)}).textContent()) ?? '').includes(${lit(v)})) {`,
   },
   {
     id: "elseBranch",
@@ -241,7 +279,8 @@ export const KEYWORDS: KeywordDef[] = [
     valueLabel: "次数",
     color: "chart-4",
     opensBlock: true,
-    template: (_t, v) => `for (let i = 0; i < ${Number(v) > 0 ? Number(v) : 3}; i++) {`,
+    template: (_t, v) =>
+      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 3}; i < __loopCount; i++) {`,
   },
   {
     id: "whileVisible",
@@ -254,7 +293,7 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-4",
     opensBlock: true,
     template: (t, v) =>
-      `for (let i = 0; i < ${Number(v) > 0 ? Number(v) : 10} && (await page.locator('${t}').isVisible()); i++) {`,
+      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 10}; i < __loopCount && (await page.locator(${lit(t)}).isVisible()); i++) {`,
   },
   {
     id: "endLoop",
