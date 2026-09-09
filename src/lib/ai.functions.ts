@@ -24,6 +24,8 @@ export const saveAiSettings = createServerFn({ method: "POST" })
         apiKey: z.string().max(300).default(""),
         models: z.array(z.string().min(1).max(80)).max(40).default([]),
         defaultModel: z.string().max(80).default(""),
+        inspectCacheMinutes: z.number().min(0).max(1440).default(10),
+        inspectScreenshot: z.boolean().default(true),
       })
       .parse(input),
   )
@@ -34,6 +36,8 @@ export const saveAiSettings = createServerFn({ method: "POST" })
       baseUrl: data.baseUrl,
       models: data.models,
       defaultModel: data.defaultModel,
+      inspectCacheMinutes: data.inspectCacheMinutes,
+      inspectScreenshot: data.inspectScreenshot,
     };
     if (data.apiKey) patch["apiKey"] = data.apiKey;
     const saved = await writeAiSettings(patch);
