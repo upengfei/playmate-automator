@@ -76,13 +76,14 @@ export async function pushUpgradeRow(
     .maybeSingle();
   if (running) return { ok: true as const, id: running["id"] as string };
   const settings = await readSettings(client);
+  const release = await readRelease(client);
   const { data, error } = await client
     .from("agent_upgrades")
     .insert({
       agent_id: agentId,
       agent_name: (agent as Row)["name"] ?? agentId,
       from_version: (agent as Row)["version"] ?? "0.0.0",
-      to_version: RELEASE.version,
+      to_version: release.version,
       channel: settings.updateChannel,
       trigger,
       stage: "排队中",
@@ -91,11 +92,12 @@ export async function pushUpgradeRow(
       logs: [
         {
           level: "info",
-          text: `创建升级任务：v${(agent as Row)["version"]} → v${RELEASE.version}（${settings.updateChannel}）`,
+          text: `创建升级任务：v${(agent as Row)["version"]} → v${release.version}（${settings.updateChannel}）`,
           time: new Date().toISOString(),
         },
       ],
     })
+
     .select("id")
     .single();
   if (error) return { ok: false as const, message: error.message };
