@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentDashboardRouteImport } from './routes/agent-dashboard'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as AiRouteImport } from './routes/ai'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as LiveRouteImport } from './routes/live'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as SettingsIndexRouteImport } from './routes/settings.index'
@@ -53,6 +55,11 @@ const AgentsRoute = AgentsRouteImport.update({
   path: '/agents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AiRoute = AiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -81,6 +88,11 @@ const ReportsRoute = ReportsRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CasesIndexRoute = CasesIndexRouteImport.update({
@@ -185,12 +197,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
   '/settings/execution': typeof SettingsExecutionRoute
@@ -215,11 +229,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
   '/settings/execution': typeof SettingsExecutionRoute
@@ -245,12 +261,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/agent-dashboard': typeof AgentDashboardRoute
   '/agents': typeof AgentsRoute
+  '/ai': typeof AiRoute
   '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/download': typeof DownloadRoute
   '/live': typeof LiveRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/api/chat': typeof ApiChatRoute
   '/cases/$caseId': typeof CasesCaseIdRoute
   '/settings/agents': typeof SettingsAgentsRoute
   '/settings/execution': typeof SettingsExecutionRoute
@@ -277,12 +295,14 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
     | '/settings'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
     | '/settings/execution'
@@ -307,11 +327,13 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
     | '/settings/execution'
@@ -336,12 +358,14 @@ export interface FileRouteTypes {
     | '/'
     | '/agent-dashboard'
     | '/agents'
+    | '/ai'
     | '/auth'
     | '/board'
     | '/download'
     | '/live'
     | '/reports'
     | '/settings'
+    | '/api/chat'
     | '/cases/$caseId'
     | '/settings/agents'
     | '/settings/execution'
@@ -367,12 +391,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentDashboardRoute: typeof AgentDashboardRoute
   AgentsRoute: typeof AgentsRoute
+  AiRoute: typeof AiRoute
   AuthRoute: typeof AuthRoute
   BoardRoute: typeof BoardRoute
   DownloadRoute: typeof DownloadRoute
   LiveRoute: typeof LiveRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  ApiChatRoute: typeof ApiChatRoute
   CasesCaseIdRoute: typeof CasesCaseIdRoute
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
@@ -410,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai': {
+      id: '/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -452,6 +485,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cases/': {
@@ -614,12 +654,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentDashboardRoute: AgentDashboardRoute,
   AgentsRoute: AgentsRoute,
+  AiRoute: AiRoute,
   AuthRoute: AuthRoute,
   BoardRoute: BoardRoute,
   DownloadRoute: DownloadRoute,
   LiveRoute: LiveRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  ApiChatRoute: ApiChatRoute,
   CasesCaseIdRoute: CasesCaseIdRoute,
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,

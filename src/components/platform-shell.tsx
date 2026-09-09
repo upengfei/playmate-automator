@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  Bot,
+
   ChevronDown,
   FileCode2,
   Gauge,
@@ -36,6 +38,8 @@ const NAV: NavItem[] = [
     ],
   },
   { to: "/reports", label: "测试报告分析", icon: Activity },
+  { to: "/ai", label: "AI 助手", icon: Bot },
+
   {
     key: "agents",
     label: "Agent 管理",
@@ -57,6 +61,8 @@ const NAV: NavItem[] = [
       { to: "/settings/execution", label: "执行策略", icon: SquareStack },
       { to: "/settings/notify", label: "通知", icon: Activity },
       { to: "/settings/params", label: "参数绑定", icon: FileCode2 },
+      { to: "/settings/ai", label: "AI 设置", icon: Bot },
+
     ],
   },
 ];

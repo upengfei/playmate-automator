@@ -162,7 +162,19 @@ const SCHEMA: Record<string, TableDef> = {
     { json: ["notes", "artifacts"], bool: ["is_current"], defaults: { id: uuid, created_at: now } },
   ),
   agent_tokens: def(["agent_id", "token", "created_at"], { defaults: { created_at: now } }),
+  /** AI 页面元素定位：平台下发抓取指令，客户端用本机 Playwright 回传元素清单 */
+  agent_inspects: def(
+    ["id", "agent_id", "url", "description", "status", "elements", "error", "created_at", "finished_at"],
+    { json: ["elements"], defaults: { id: uuid, created_at: now, status: () => "排队中" } },
+  ),
+  /** AI 模型接入配置：内置 Lovable AI / OpenAI 兼容 / Anthropic 兼容 / 自定义 */
+  ai_settings: def(
+    ["id", "mode", "base_url", "api_key", "models", "default_model", "updated_at"],
+    { json: ["models"], defaults: { updated_at: now } },
+  ),
 };
+
+
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS agents (
@@ -214,7 +226,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_releases_version ON agent_releases(version
 CREATE TABLE IF NOT EXISTS agent_tokens (
   agent_id TEXT PRIMARY KEY, token TEXT NOT NULL, created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS agent_inspects (
+  id TEXT PRIMARY KEY, agent_id TEXT, url TEXT, description TEXT, status TEXT,
+  elements TEXT DEFAULT '[]', error TEXT, created_at TEXT, finished_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_inspects_agent ON agent_inspects(agent_id, status);
+CREATE TABLE IF NOT EXISTS ai_settings (
+  id INTEGER PRIMARY KEY, mode TEXT DEFAULT 'lovable', base_url TEXT, api_key TEXT,
+  models TEXT DEFAULT '[]', default_model TEXT, updated_at TEXT
+);
+INSERT INTO ai_settings (id, mode, base_url, api_key, models, default_model, updated_at)
+SELECT 1, 'lovable', '', '', '[]', '', datetime('now')
+WHERE NOT EXISTS (SELECT 1 FROM ai_settings WHERE id = 1);
 `;
+
+
 
 const SETTINGS_SEED = `
 INSERT INTO platform_settings (id, platform_name, min_agent_version, heartbeat_timeout_sec,
