@@ -58,7 +58,8 @@ jobs:
         run: >-
           bunx electron-packager . PlayFlowAgent
           --platform=${{ matrix.platform }} --arch=${{ matrix.arch }}
-          --app-version="$VERSION" --out=electron-release --overwrite
+          --app-version="$VERSION" --icon=agent-app/assets/icon
+          --out=electron-release --overwrite
           --prune=false
           --ignore='^/node_modules' --ignore='^/src' --ignore='^/public'
           --ignore='^/electron-release' --ignore='^/dist' --ignore='^/\.git'
