@@ -23,20 +23,35 @@ export const Route = createFileRoute("/agent-dashboard")({
     ],
   }),
   component: AgentDashboard,
+  errorComponent: ({ error, reset }) => (
+    <PlatformShell>
+      <div className="border-destructive/40 bg-destructive/10 mt-2 rounded-xl border p-4 text-sm">
+        <p className="font-medium">页面数据加载失败</p>
+        <p className="text-muted-foreground mt-1 text-xs break-all">{error.message}</p>
+        <Button size="sm" className="mt-3" onClick={reset}>
+          重试
+        </Button>
+      </div>
+    </PlatformShell>
+  ),
 });
 
 type Stat = AgentStat & { taskCount: number };
 
 function AgentDashboard() {
-  const { agents, tasks, settings } = useAppStore();
+  const { agents, tasks, settings, loadError } = useAppStore();
   const [stats, setStats] = useState<Stat[]>([]);
+  const [statError, setStatError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
       const res = await fetchAgentStats();
-      setStats(res.stats as Stat[]);
+      setStats((res?.stats ?? []) as Stat[]);
+      setStatError("");
+    } catch (e) {
+      setStatError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -57,9 +72,21 @@ function AgentDashboard() {
   const totalPassed = stats.reduce((s, x) => s + x.passed, 0);
   const totalFailed = stats.reduce((s, x) => s + x.failed, 0);
   const overallRate = totalPassed + totalFailed ? Math.round((totalPassed / (totalPassed + totalFailed)) * 100) : 0;
+  const banner = loadError || statError;
 
   return (
     <PlatformShell>
+      {banner && (
+        <div className="border-destructive/40 bg-destructive/10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
+          <span className="flex-1">
+            {loadError ? `数据加载失败：${loadError}` : `统计暂不可用：${statError}`}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => void load()}>
+            <RefreshCw className="mr-1 size-3.5" />
+            重试
+          </Button>
+        </div>
+      )}
       <PageHeader
         title="Agent 仪表盘"
         desc="每台设备的在线状态、任务领取数与执行成功率，实时与任务队列联动"
@@ -70,6 +97,7 @@ function AgentDashboard() {
           </Button>
         }
       />
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="在线设备" value={`${online.length}/${agents.length}`} unit="台" tone="success" />
