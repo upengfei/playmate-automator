@@ -258,6 +258,8 @@ export const addTask = createServerFn({ method: "POST" })
         concurrency: z.number().int().min(1).max(32),
         retry: z.number().int().min(0).max(10),
         trigger: z.string().max(12).default("手动"),
+        /** 串行依赖：按所选顺序，前置用例通过后才执行下一个，失败则自动跳过后续 */
+        serialDependency: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -271,7 +273,7 @@ export const addTask = createServerFn({ method: "POST" })
         env: data.env,
         browser: data.browser,
         agent_id: data.agentId,
-        concurrency: data.concurrency,
+        concurrency: data.serialDependency ? 1 : data.concurrency,
         retry: data.retry,
         status: "排队中",
         stage: "等待下发",
@@ -285,7 +287,11 @@ export const addTask = createServerFn({ method: "POST" })
       .from("test_cases")
       .select("id, name, steps, version")
       .in("id", data.caseIds);
-    const rows = (cases ?? []).map((c: Record<string, any>) => ({
+    // 按用户选择顺序排列，依赖链才与编排顺序一致
+    const ordered = data.caseIds
+      .map((id) => (cases ?? []).find((c: Record<string, any>) => c["id"] === id))
+      .filter(Boolean) as Record<string, any>[];
+    const rows = ordered.map((c, i) => ({
       task_id: task["id"],
       case_id: c["id"],
       case_name: c["name"],
@@ -293,12 +299,15 @@ export const addTask = createServerFn({ method: "POST" })
       step_total: Array.isArray(c["steps"]) ? c["steps"].length : 0,
       case_version: (c["version"] as number) ?? 1,
       attempt: 1,
+      depends_on_case_id: data.serialDependency && i > 0 ? ordered[i - 1]!["id"] : null,
     }));
     if (rows.length) await client.from("case_runs").insert(rows);
     await client.from("task_logs").insert({
       task_id: task["id"],
       level: "info",
-      message: `任务「${data.name}」已创建，包含 ${rows.length} 个用例`,
+      message: data.serialDependency
+        ? `任务「${data.name}」已创建，包含 ${rows.length} 个用例，已启用串行依赖（前置用例通过后才执行下一个）`
+        : `任务「${data.name}」已创建，包含 ${rows.length} 个用例`,
     });
     return { id: task["id"] as string };
   });
