@@ -381,3 +381,69 @@ export const fetchCaseRuns = createServerFn({ method: "GET" })
       })),
     };
   });
+
+export type CaseStat = {
+  caseId: string;
+  caseName: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  avgDurationMs: number;
+  lastStatus: string;
+  lastRunAt: string;
+};
+
+/** 用例维度聚合统计：执行次数 / 通过率 / 平均耗时，失败用例自动置顶 */
+export const fetchCaseStats = createServerFn({ method: "GET" }).handler(async () => {
+  const { db } = await import("@/lib/platform.server");
+  const client = db();
+  const { data: runs } = await client
+    .from("case_runs")
+    .select("case_id, case_name, status, duration_ms, started_at")
+    .order("started_at", { ascending: false })
+    .limit(5000);
+  const map = new Map<string, CaseStat & { durationSum: number; durationCount: number }>();
+  for (const r of (runs ?? []) as Record<string, any>[]) {
+    const key = (r["case_id"] as string) ?? (r["case_name"] as string) ?? "unknown";
+    let s = map.get(key);
+    if (!s) {
+      s = {
+        caseId: (r["case_id"] as string) ?? "",
+        caseName: (r["case_name"] as string) || "未命名用例",
+        total: 0,
+        passed: 0,
+        failed: 0,
+        passRate: 0,
+        avgDurationMs: 0,
+        lastStatus: "",
+        lastRunAt: "",
+        durationSum: 0,
+        durationCount: 0,
+      };
+      map.set(key, s);
+    }
+    s.total += 1;
+    const status = (r["status"] as string) ?? "";
+    if (status === "通过") s.passed += 1;
+    if (status === "失败") s.failed += 1;
+    const dur = r["duration_ms"] as number | null;
+    if (typeof dur === "number" && dur > 0) {
+      s.durationSum += dur;
+      s.durationCount += 1;
+    }
+    const at = (r["started_at"] as string) ?? "";
+    if (!s.lastRunAt || at > s.lastRunAt) {
+      s.lastRunAt = at;
+      s.lastStatus = status;
+    }
+  }
+  const stats: CaseStat[] = [...map.values()].map(({ durationSum, durationCount, ...s }) => ({
+    ...s,
+    passRate: s.total ? Math.round((s.passed / s.total) * 100) : 0,
+    avgDurationMs: durationCount ? Math.round(durationSum / durationCount) : 0,
+  }));
+  // 失败用例自动置顶：先按失败次数降序，再按总执行次数降序
+  stats.sort((a, b) => b.failed - a.failed || b.total - a.total);
+  return { stats };
+});
