@@ -108,6 +108,62 @@ function createTray() {
   tray.on("click", () => focusWindow());
 }
 
+/* ----------------------------- 首次启动自动注册 ---------------------------- */
+
+let setupWin = null;
+
+/**
+ * 首次启动（本机还没有节点令牌）时弹出配置窗口：
+ * 用户只需填写平台地址与设备标识，客户端自动向平台注册并保存下发的节点令牌。
+ */
+function openSetup() {
+  return new Promise((resolve) => {
+    setupWin = new BrowserWindow({
+      width: 520,
+      height: 560,
+      resizable: false,
+      title: "PlayFlow Agent 首次配置",
+      backgroundColor: "#f7f8fb",
+      webPreferences: {
+        preload: path.join(__dirname, "setup-preload.cjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    setupWin.setMenuBarVisibility(false);
+    setupWin.loadFile(path.join(__dirname, "setup.html"));
+
+    ipcMain.handle("agent-setup:defaults", () => ({
+      platformUrl: cfg().platformUrl,
+      agentId: cfg().agentId,
+    }));
+
+    ipcMain.handle("agent-setup:register", async (_e, payload) => {
+      const platformUrl = String((payload && payload.platformUrl) || "").replace(/\/$/, "");
+      const agentId = String((payload && payload.agentId) || "").trim();
+      if (!platformUrl || agentId.length < 2) return { ok: false, error: "参数不完整" };
+      platform.saveConfig({ platformUrl, agentId, token: "" });
+      try {
+        const res = await platform.register("在线");
+        if (!res || !res.token) return { ok: false, error: "平台未下发节点令牌" };
+        setTimeout(() => {
+          if (setupWin && !setupWin.isDestroyed()) setupWin.destroy();
+          setupWin = null;
+          resolve(true);
+        }, 600);
+        return { ok: true, agentId };
+      } catch (err) {
+        return { ok: false, error: String((err && err.message) || err) };
+      }
+    });
+
+    setupWin.on("closed", () => {
+      setupWin = null;
+      resolve(Boolean(cfg().token));
+    });
+  });
+}
+
 /* ------------------------------ 注册与任务领取 ----------------------------- */
 
 async function registerAgent(status = "在线") {
@@ -120,6 +176,7 @@ async function registerAgent(status = "在线") {
     throw err;
   }
 }
+
 
 /** 真实执行一条用例，全过程回传平台 */
 async function executeCase(testCase, runId) {
