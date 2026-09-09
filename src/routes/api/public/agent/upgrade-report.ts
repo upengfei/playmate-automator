@@ -3,6 +3,7 @@ import { z } from "zod";
 
 const schema = z.object({
   agentId: z.string().min(1).max(64),
+  token: z.string().min(8).max(128),
   ok: z.boolean().optional(),
   stage: z.string().max(20).optional(),
   progress: z.number().min(0).max(100).optional(),
@@ -13,14 +14,18 @@ const schema = z.object({
   reportedAt: z.string().max(64).optional(),
 });
 
-/** 桌面 Agent 升级进度与结果回传（写入真实升级记录） */
+/** 桌面 Agent 升级进度与结果回传（需节点令牌校验，写入真实升级记录） */
 export const Route = createFileRoute("/api/public/agent/upgrade-report")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const parsed = schema.safeParse(await request.json().catch(() => null));
-        if (!parsed.success) return new Response("invalid payload", { status: 400 });
+        if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
         const d = parsed.data;
+        const { verifyAgent } = await import("@/lib/agent-db.server");
+        if (!(await verifyAgent(d.agentId, d.token))) {
+          return Response.json({ error: "节点令牌校验失败" }, { status: 401 });
+        }
         const { db } = await import("@/lib/platform.server");
         const client = db();
         const { data: job } = await client
@@ -31,6 +36,7 @@ export const Route = createFileRoute("/api/public/agent/upgrade-report")({
           .order("started_at", { ascending: false })
           .maybeSingle();
         if (!job) return Response.json({ ok: true, ignored: true });
+
 
         const logs = [
           ...(((job as Record<string, unknown>)["logs"] as unknown[]) ?? []),
