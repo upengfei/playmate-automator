@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
         const { data, error } = await db
           .from("case_runs")
           .select(
-            "id, task_id, case_id, case_name, case_version, depends_on_case_id, test_cases(steps, start_url, script, version)",
+            "id, task_id, case_id, case_name, case_version, depends_on_case_id, test_cases!case_runs_case_id_fkey(steps, start_url, script, version)",
           )
           .eq("agent_id", agentId)
           .eq("status", "排队中")
