@@ -1,0 +1,169 @@
+# PlayFlow CI/CD
+#
+# 每次向 main 推送（或手动触发）时：
+#   1. 构建 Web 平台（构建失败会阻止发布，保证仓库始终是可部署版本）
+#   2. 打包 Windows / macOS / Linux 三端 Agent 安装包（计算 SHA256）
+#   3. 发布/更新 GitHub Release（tag: agent-v<package.json version>），上传安装包
+#
+# 发布后安装包拥有稳定的公开下载地址：
+#   https://github.com/<owner>/<repo>/releases/latest/download/PlayFlowAgent-<version>-win-x64.zip
+#
+# 平台端读取环境变量 AGENT_DOWNLOAD_BASE（例如上面的 releases/latest/download/ 前缀），
+# 版本接口与下载页会自动指向 GitHub Release，Agent 即可从公开 URL 下载与升级。
+
+name: agent-release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: agent-release
+  cancel-in-progress: false
+
+jobs:
+  build-web:
+    name: 构建 Web 平台
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+  package:
+    name: 打包 Agent (${{ matrix.name }})
+    needs: build-web
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, name: win-x64, platform: win32, arch: x64 }
+          - { os: ubuntu-latest, name: linux-x64, platform: linux, arch: x64 }
+          - { os: macos-latest, name: darwin-arm64, platform: darwin, arch: arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      # Agent 运行时依赖（playwright-core 等），打进安装包
+      - run: npm ci --prefix agent-app
+      - name: electron-packager
+        run: >-
+          bunx electron-packager . PlayFlowAgent
+          --platform=${{ matrix.platform }} --arch=${{ matrix.arch }}
+          --app-version="$VERSION" --out=electron-release --overwrite
+          --prune=false
+          --ignore='^/node_modules' --ignore='^/src' --ignore='^/public'
+          --ignore='^/electron-release' --ignore='^/dist' --ignore='^/\.git'
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+      - id: ver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: 归档安装包
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          DIR="electron-release/PlayFlowAgent-${{ matrix.platform }}-${{ matrix.arch }}"
+          mkdir -p out
+          if [ "${{ matrix.platform }}" = "linux" ]; then
+            FILE="PlayFlowAgent-${VERSION}-linux-x64.tar.gz"
+            tar -czf "out/$FILE" -C electron-release "PlayFlowAgent-linux-x64"
+          elif [ "${{ matrix.platform }}" = "darwin" ]; then
+            FILE="PlayFlowAgent-${VERSION}-darwin-arm64.zip"
+            ditto -c -k --sequesterRsrc --keepParent "$DIR" "out/$FILE"
+          else
+            FILE="PlayFlowAgent-${VERSION}-win-x64.zip"
+            (cd electron-release && zip -qr "../out/$FILE" "PlayFlowAgent-win32-x64")
+          fi
+          echo "file=$FILE" >> "$GITHUB_ENV"
+      - name: 计算 SHA256
+        shell: bash
+        run: |
+          cd out
+          sha256sum "$file" > "$file.sha256"
+          cat "$file.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agent-${{ matrix.name }}
+          path: out/
+          if-no-files-found: error
+
+  release:
+    name: 发布 GitHub Release
+    needs: package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: ver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: agent-*
+          path: dist-agent
+          merge-multiple: true
+      - name: 生成发布清单与说明
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.version }}"
+          BASE="https://github.com/${{ github.repository }}/releases/download/agent-v${VERSION}"
+          {
+            echo "{"
+            echo "  \"version\": \"${VERSION}\","
+            echo "  \"artifacts\": ["
+            first=1
+            for f in dist-agent/PlayFlowAgent-*; do
+              case "$f" in *.sha256) continue;; esac
+              sha=$(cut -d' ' -f1 "$f.sha256")
+              size=$(du -m "$f" | cut -f1)
+              name=$(basename "$f")
+              platform=linux; case "$name" in *win*) platform=win;; *darwin*) platform=darwin;; esac
+              [ $first -eq 0 ] && echo ","
+              first=0
+              printf '    { "platform": "%s", "file": "%s", "sizeMB": %s, "sha256": "%s", "url": "%s/%s" }' \
+                "$platform" "$name" "$size" "$sha" "$BASE" "$name"
+            done
+            echo
+            echo "  ]"
+            echo "}"
+          } > dist-agent/agent-release.json
+          {
+            echo "## PlayFlow Agent v${VERSION}"
+            echo
+            echo "| 平台 | 文件 | 大小 | SHA256 |"
+            echo "| --- | --- | --- | --- |"
+            for f in dist-agent/PlayFlowAgent-*; do
+              case "$f" in *.sha256) continue;; esac
+              sha=$(cut -d' ' -f1 "$f.sha256")
+              size=$(du -m "$f" | cut -f1)
+              name=$(basename "$f")
+              echo "| \`$name\` | $name | ${size} MB | \`$sha\` |"
+            done
+            echo
+            echo "稳定下载地址（始终指向最新版本）："
+            echo '```'
+            echo "https://github.com/${{ github.repository }}/releases/latest/download/<文件名>"
+            echo '```'
+          } > release-notes.md
+      - name: 创建/更新 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="agent-v${{ steps.ver.outputs.version }}"
+          gh release delete "$TAG" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$TAG" \
+            --title "PlayFlow Agent v${{ steps.ver.outputs.version }}" \
+            --notes-file release-notes.md \
+            --latest \
+            dist-agent/*
+      - name: 输出公开下载地址
+        run: |
+          echo "安装包公开地址前缀："
+          echo "https://github.com/${{ github.repository }}/releases/latest/download/"
+          ls -1 dist-agent | grep -v sha256 | grep -v json

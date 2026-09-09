@@ -11,6 +11,17 @@ export interface ReleaseArtifact {
   url: string;
 }
 
+/**
+ * 安装包下载地址前缀。配置 AGENT_DOWNLOAD_BASE（例如 CI 发布到 GitHub Release 后的
+ * https://github.com/<owner>/<repo>/releases/latest/download/）时，版本接口与下载页
+ * 直接返回公开地址；否则回退到站点内 /downloads/ 路径。
+ */
+export function artifactUrl(file: string): string {
+  const base = process.env["AGENT_DOWNLOAD_BASE"];
+  if (base) return `${base.replace(/\/+$/, "")}/${file}`;
+  return `/downloads/${file}`;
+}
+
 export const RELEASE = {
   version: "1.8.2",
   channel: "稳定版",
@@ -27,21 +38,21 @@ export const RELEASE = {
       file: "PlayFlowAgent-1.8.2-win-x64.zip",
       sizeMB: 135.0,
       sha256: "3aae7899c54411b6b6a61b10efbed815e333128645abcfdadfe8cef28ab608c0",
-      url: "/downloads/PlayFlowAgent-1.8.2-win-x64.zip",
+      url: artifactUrl("PlayFlowAgent-1.8.2-win-x64.zip"),
     },
     {
       platform: "darwin",
       file: "PlayFlowAgent-1.8.2-darwin-arm64.zip",
       sizeMB: 325.0,
       sha256: "9aa9933e4d8422787ff5563e1fd5e2aec92422b56e96bf80449d69fdd3bd95e8",
-      url: "/downloads/PlayFlowAgent-1.8.2-darwin-arm64.zip",
+      url: artifactUrl("PlayFlowAgent-1.8.2-darwin-arm64.zip"),
     },
     {
       platform: "linux",
       file: "PlayFlowAgent-1.8.2-linux-x64.tar.gz",
       sizeMB: 110.0,
       sha256: "947d136eb25fa7c2a0ae110e421092980f97e465c3c07e4ee79782a3c3bde0ab",
-      url: "/downloads/PlayFlowAgent-1.8.2-linux-x64.tar.gz",
+      url: artifactUrl("PlayFlowAgent-1.8.2-linux-x64.tar.gz"),
     },
   ] satisfies ReleaseArtifact[],
 };

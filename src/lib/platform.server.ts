@@ -3,7 +3,7 @@
  * 执行进度与日志来自真实客户端回传。
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { RELEASE, compareVersion } from "./agent-fleet.server";
+import { RELEASE, artifactUrl, compareVersion } from "./agent-fleet.server";
 
 export function db(): SupabaseClient {
   return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
@@ -372,6 +372,7 @@ export async function loadSnapshot() {
         file: a.file,
         sizeMB: a.sizeMB,
         sha256: a.sha256,
+        url: artifactUrl(a.file),
       })),
     },
   };

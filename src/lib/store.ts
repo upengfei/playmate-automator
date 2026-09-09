@@ -161,7 +161,7 @@ export interface AgentRelease {
   channel: "稳定版" | "灰度版";
   publishedAt: string;
   notes: string[];
-  artifacts: { platform: string; file: string; sizeMB: number; sha256: string }[];
+  artifacts: { platform: string; file: string; sizeMB: number; sha256: string; url: string }[];
 }
 
 export interface State {

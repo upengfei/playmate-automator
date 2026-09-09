@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RELEASE } from "@/lib/agent-fleet.server";
+import { RELEASE, artifactUrl } from "@/lib/agent-fleet.server";
 
 /** 桌面 Agent 启动/定时拉取的版本清单（公开只读） */
 export const Route = createFileRoute("/api/public/agent/version")({
@@ -9,16 +9,22 @@ export const Route = createFileRoute("/api/public/agent/version")({
         const url = new URL(request.url);
         const platform = url.searchParams.get("platform") ?? "win";
         const origin = url.origin;
-        const artifact =
-          RELEASE.artifacts.find((a) => a.platform === platform) ?? RELEASE.artifacts[0]!;
+        // 在请求时计算下载地址：配置了 AGENT_DOWNLOAD_BASE（如 GitHub Release）
+        // 时直接返回公开绝对地址，否则拼接站点内 /downloads/ 路径。
+        const withUrl = <T extends { file: string; url: string }>(a: T) => {
+          const u = artifactUrl(a.file);
+          return { ...a, url: u.startsWith("http") ? u : `${origin}${u}` };
+        };
+        const artifacts = RELEASE.artifacts.map(withUrl);
+        const artifact = artifacts.find((a) => a.platform === platform) ?? artifacts[0]!;
         return Response.json({
           version: RELEASE.version,
           channel: RELEASE.channel,
           publishedAt: RELEASE.publishedAt,
           minSupported: RELEASE.minSupported,
           notes: RELEASE.notes,
-          artifact: { ...artifact, url: `${origin}${artifact.url}` },
-          artifacts: RELEASE.artifacts.map((a) => ({ ...a, url: `${origin}${a.url}` })),
+          artifact,
+          artifacts,
         });
       },
     },
