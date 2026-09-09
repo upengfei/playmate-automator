@@ -82,8 +82,25 @@ function DesktopAgent() {
   const [nativeInfo, setNativeInfo] = useState<{ version: string; host: string } | null>(null);
   const [tab, setTab] = useState<Tab>("record");
   const [tray, setTray] = useState(false);
-  const [agentId, setAgentId] = useState("AG-01");
-  const agent = agents.find((a) => a.id === agentId) ?? agents[0]!;
+  const [agentId, setAgentId] = useState("");
+  const agent =
+    agents.find((a) => a.id === agentId) ??
+    agents[0] ?? {
+      id: "-",
+      name: "未注册节点",
+      host: "",
+      ip: "",
+      os: "",
+      version: release.version,
+      status: "离线" as const,
+      browsers: [],
+      cpu: 0,
+      memory: 0,
+      lastHeartbeat: "-",
+      heartbeatAgoSec: 0,
+      concurrency: 1,
+      totalRuns: 0,
+    };
 
   const [caseName, setCaseName] = useState("用户名密码登录成功（本地录制）");
   const [module, setModule] = useState("登录鉴权");

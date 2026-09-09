@@ -50,6 +50,10 @@ function TasksPage() {
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
 
   const submit = async (dispatch: boolean) => {
+    if (!effectiveAgentId) {
+      toast.error("还没有已注册的执行节点，请先安装并启动桌面客户端");
+      return;
+    }
     if (picked.length === 0) {
       toast.error("请至少选择一个用例");
       return;
@@ -122,7 +126,7 @@ function TasksPage() {
             </div>
             <div className="space-y-1.5">
               <Label>执行节点</Label>
-              <Select value={agentId} onValueChange={setAgentId}>
+              <Select value={effectiveAgentId} onValueChange={setAgentId}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
