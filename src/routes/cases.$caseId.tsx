@@ -4,6 +4,7 @@ import { ArrowLeft, Play, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { KeywordPalette, StepBlocks, newStep } from "@/components/block-editor";
+import { StepFlow } from "@/components/step-flow";
 import { PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
