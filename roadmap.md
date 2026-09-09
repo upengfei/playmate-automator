@@ -84,3 +84,6 @@
 - [x] 发布流程加入 macOS ad-hoc 签名（缺证书时用 `codesign --sign -`），配置 Developer ID 证书后可自动签名与 Apple 公证
 - [x] PlayFlowAgent 使用自定义品牌图标（icon.icns / icon.ico / icon.png / tray.png），不再显示 Electron 默认图标
 - [ ] macOS Developer ID 签名与 Apple 公证需在 GitHub 配置证书密钥：MACOS_CERT_P12_BASE64、MACOS_CERT_PASSWORD、MACOS_SIGN_IDENTITY、APPLE_ID、APPLE_APP_PASSWORD、APPLE_TEAM_ID
+
+- [x] 客户端窗口改为自带本机工作台页面（断网可用、无需登录）
+- [x] 修复 macOS 客户端无法退出（Cmd+Q / 应用菜单 / 托盘退出统一生效）
