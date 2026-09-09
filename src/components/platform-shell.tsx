@@ -111,7 +111,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 to={item.to}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isLeafActive(item.to, pathname)
+                  isLeafActive(item, pathname)
                     ? "bg-primary-soft text-primary font-medium"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
@@ -180,7 +180,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
 }
 
 function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string }) {
-  const groupActive = group.children.some((c) => isLeafActive(c.to, pathname));
+  const groupActive = group.children.some((c) => isLeafActive(c, pathname));
   const [open, setOpen] = useState(groupActive);
 
   useEffect(() => {
@@ -212,7 +212,7 @@ function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string 
               to={child.to}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                isLeafActive(child.to, pathname)
+                isLeafActive(child, pathname)
                   ? "bg-primary-soft text-primary font-medium"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
