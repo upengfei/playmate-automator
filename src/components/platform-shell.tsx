@@ -164,3 +164,52 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+function NavGroupBlock({ group, pathname }: { group: NavGroup; pathname: string }) {
+  const groupActive = group.children.some((c) => isLeafActive(c.to, pathname));
+  const [open, setOpen] = useState(groupActive);
+
+  useEffect(() => {
+    if (groupActive) setOpen(true);
+  }, [groupActive]);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+          groupActive
+            ? "bg-primary-soft text-primary font-medium"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        )}
+      >
+        <group.icon className="size-4" />
+        <span className="flex-1 text-left">{group.label}</span>
+        <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="border-border/60 mt-1 ml-5 space-y-1 border-l pl-2">
+          {group.children.map((child) => (
+            <Link
+              key={child.to}
+              to={child.to}
+              className={cn(
+                "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                isLeafActive(child.to, pathname)
+                  ? "bg-primary-soft text-primary font-medium"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <child.icon className="size-4" />
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
