@@ -185,8 +185,8 @@ function CaseEditor() {
               caseId={draft.id}
               onRolledBack={async () => {
                 await refresh();
-                const next = useAppStore.length ? null : null;
-                void next;
+                const next = getState().cases.find((c) => c.id === draft.id);
+                if (next) setDraft(next);
               }}
             />
           </Panel>
