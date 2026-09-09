@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generatePlaywrightCode, describeStep, type CaseStep } from "@/lib/keywords";
-import { dispatchTask, pushUpgrade, uploadCaseFromAgent, useAppStore } from "@/lib/store";
+import { dispatchTask, pushUpgrade, refresh, uploadCaseFromAgent, useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/desktop")({
@@ -82,8 +82,25 @@ function DesktopAgent() {
   const [nativeInfo, setNativeInfo] = useState<{ version: string; host: string } | null>(null);
   const [tab, setTab] = useState<Tab>("record");
   const [tray, setTray] = useState(false);
-  const [agentId, setAgentId] = useState("AG-01");
-  const agent = agents.find((a) => a.id === agentId) ?? agents[0]!;
+  const [agentId, setAgentId] = useState("");
+  const agent =
+    agents.find((a) => a.id === agentId) ??
+    agents[0] ?? {
+      id: "-",
+      name: "未注册节点",
+      host: "",
+      ip: "",
+      os: "",
+      version: release.version,
+      status: "离线" as const,
+      browsers: [],
+      cpu: 0,
+      memory: 0,
+      lastHeartbeat: "-",
+      heartbeatAgoSec: 0,
+      concurrency: 1,
+      totalRuns: 0,
+    };
 
   const [caseName, setCaseName] = useState("用户名密码登录成功（本地录制）");
   const [module, setModule] = useState("登录鉴权");
@@ -100,6 +117,13 @@ function DesktopAgent() {
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  // 桌面端界面同样使用平台真实数据（节点、任务、升级记录）
+  useEffect(() => {
+    refresh();
+    const id = setInterval(() => refresh(), 3000);
+    return () => clearInterval(id);
+  }, []);
 
   // 运行在真实 Electron 客户端时，通过预加载桥接调用真实浏览器与平台接口
   const nativeBridge = () =>
@@ -313,7 +337,12 @@ function DesktopAgent() {
         return;
       }
     }
-    const created = uploadCaseFromAgent({ name: caseName, module, steps, agentName: agent.name });
+    const created = await uploadCaseFromAgent({
+      name: caseName,
+      module,
+      steps,
+      agentName: agent.name,
+    });
     addLog(`上传成功：平台已生成用例 ${created.id}`, "success");
     toast.success(`已上传到平台，用例编号 ${created.id}`);
     setTab("upload");

@@ -49,6 +49,16 @@ async function api(pathname, { method = "GET", body } = {}) {
   return data;
 }
 
+/** 读取本机真实负载（百分比） */
+function loadMetrics() {
+  const cpus = os.cpus() || [];
+  const load = os.loadavg ? os.loadavg()[0] || 0 : 0;
+  const cpu = Math.max(0, Math.min(100, Math.round((load / Math.max(1, cpus.length)) * 100)));
+  const total = os.totalmem() || 1;
+  const memory = Math.max(0, Math.min(100, Math.round(((total - os.freemem()) / total) * 100)));
+  return { cpu, memory, concurrency: Math.max(1, Math.min(8, Math.floor(cpus.length / 2) || 1)) };
+}
+
 /** 注册（或心跳）真实节点，首次注册由平台下发节点令牌 */
 async function register(status = "在线") {
   const data = await api("register", {
@@ -62,6 +72,7 @@ async function register(status = "在线") {
       version: app.getVersion(),
       capabilities: ["Chromium", "Firefox", "WebKit"],
       status,
+      ...loadMetrics(),
     },
   });
   if (data.token) saveConfig({ token: data.token });

@@ -10,6 +10,9 @@ const schema = z.object({
   version: z.string().max(32).default("0.0.0"),
   capabilities: z.array(z.string().max(32)).max(20).default([]),
   status: z.string().max(16).default("在线"),
+  cpu: z.number().min(0).max(100).default(0),
+  memory: z.number().min(0).max(100).default(0),
+  concurrency: z.number().int().min(1).max(32).default(1),
 });
 
 /** 真实客户端注册与心跳：首次注册下发节点令牌，之后必须携带令牌 */
@@ -45,6 +48,9 @@ export const Route = createFileRoute("/api/public/agent/register")({
           version: d.version,
           capabilities: d.capabilities,
           status: d.status,
+          cpu: Math.round(d.cpu),
+          memory: Math.round(d.memory),
+          concurrency: d.concurrency,
           last_heartbeat: new Date().toISOString(),
         });
         if (error) return Response.json({ error: error.message }, { status: 500 });

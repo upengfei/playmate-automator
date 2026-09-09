@@ -40,41 +40,104 @@ export type Database = {
           },
         ]
       }
+      agent_upgrades: {
+        Row: {
+          agent_id: string
+          agent_name: string
+          channel: string
+          finished_at: string | null
+          from_version: string
+          id: string
+          logs: Json
+          progress: number
+          report: Json | null
+          stage: string
+          started_at: string
+          status: string
+          to_version: string
+          trigger: string
+        }
+        Insert: {
+          agent_id: string
+          agent_name?: string
+          channel?: string
+          finished_at?: string | null
+          from_version?: string
+          id?: string
+          logs?: Json
+          progress?: number
+          report?: Json | null
+          stage?: string
+          started_at?: string
+          status?: string
+          to_version?: string
+          trigger?: string
+        }
+        Update: {
+          agent_id?: string
+          agent_name?: string
+          channel?: string
+          finished_at?: string | null
+          from_version?: string
+          id?: string
+          logs?: Json
+          progress?: number
+          report?: Json | null
+          stage?: string
+          started_at?: string
+          status?: string
+          to_version?: string
+          trigger?: string
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           capabilities: Json
+          concurrency: number
+          cpu: number
           created_at: string
           host: string
           id: string
           ip: string
           last_heartbeat: string
+          memory: number
           name: string
           os: string
           status: string
+          total_runs: number
           version: string
         }
         Insert: {
           capabilities?: Json
+          concurrency?: number
+          cpu?: number
           created_at?: string
           host?: string
           id: string
           ip?: string
           last_heartbeat?: string
+          memory?: number
           name: string
           os?: string
           status?: string
+          total_runs?: number
           version?: string
         }
         Update: {
           capabilities?: Json
+          concurrency?: number
+          cpu?: number
           created_at?: string
           host?: string
           id?: string
           ip?: string
           last_heartbeat?: string
+          memory?: number
           name?: string
           os?: string
           status?: string
+          total_runs?: number
           version?: string
         }
         Relationships: []
@@ -82,6 +145,7 @@ export type Database = {
       case_runs: {
         Row: {
           agent_id: string | null
+          attempt: number
           case_id: string | null
           case_name: string
           duration_ms: number | null
@@ -90,10 +154,14 @@ export type Database = {
           id: string
           started_at: string
           status: string
+          step_index: number
+          step_total: number
           steps: Json
+          task_id: string | null
         }
         Insert: {
           agent_id?: string | null
+          attempt?: number
           case_id?: string | null
           case_name?: string
           duration_ms?: number | null
@@ -102,10 +170,14 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          step_index?: number
+          step_total?: number
           steps?: Json
+          task_id?: string | null
         }
         Update: {
           agent_id?: string | null
+          attempt?: number
           case_id?: string | null
           case_name?: string
           duration_ms?: number | null
@@ -114,7 +186,10 @@ export type Database = {
           id?: string
           started_at?: string
           status?: string
+          step_index?: number
+          step_total?: number
           steps?: Json
+          task_id?: string | null
         }
         Relationships: [
           {
@@ -124,7 +199,68 @@ export type Database = {
             referencedRelation: "test_cases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "case_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      platform_settings: {
+        Row: {
+          auto_dispatch: boolean
+          auto_upgrade: boolean
+          default_concurrency: number
+          default_retry: number
+          heartbeat_timeout_sec: number
+          id: number
+          keep_report_days: number
+          min_agent_version: string
+          notify_email: string
+          notify_on_failure: boolean
+          platform_name: string
+          trace_mode: string
+          update_channel: string
+          updated_at: string
+          video_on_failure: boolean
+        }
+        Insert: {
+          auto_dispatch?: boolean
+          auto_upgrade?: boolean
+          default_concurrency?: number
+          default_retry?: number
+          heartbeat_timeout_sec?: number
+          id?: number
+          keep_report_days?: number
+          min_agent_version?: string
+          notify_email?: string
+          notify_on_failure?: boolean
+          platform_name?: string
+          trace_mode?: string
+          update_channel?: string
+          updated_at?: string
+          video_on_failure?: boolean
+        }
+        Update: {
+          auto_dispatch?: boolean
+          auto_upgrade?: boolean
+          default_concurrency?: number
+          default_retry?: number
+          heartbeat_timeout_sec?: number
+          id?: number
+          keep_report_days?: number
+          min_agent_version?: string
+          notify_email?: string
+          notify_on_failure?: boolean
+          platform_name?: string
+          trace_mode?: string
+          update_channel?: string
+          updated_at?: string
+          video_on_failure?: boolean
+        }
+        Relationships: []
       }
       run_logs: {
         Row: {
@@ -158,9 +294,90 @@ export type Database = {
           },
         ]
       }
+      task_logs: {
+        Row: {
+          at: string
+          id: number
+          level: string
+          message: string
+          task_id: string | null
+        }
+        Insert: {
+          at?: string
+          id?: number
+          level?: string
+          message?: string
+          task_id?: string | null
+        }
+        Update: {
+          at?: string
+          id?: number
+          level?: string
+          message?: string
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_logs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          agent_id: string | null
+          browser: string
+          concurrency: number
+          created_at: string
+          env: string
+          finished_at: string | null
+          id: string
+          name: string
+          retry: number
+          stage: string
+          status: string
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          browser?: string
+          concurrency?: number
+          created_at?: string
+          env?: string
+          finished_at?: string | null
+          id?: string
+          name: string
+          retry?: number
+          stage?: string
+          status?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          browser?: string
+          concurrency?: number
+          created_at?: string
+          env?: string
+          finished_at?: string | null
+          id?: string
+          name?: string
+          retry?: number
+          stage?: string
+          status?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       test_cases: {
         Row: {
           agent_id: string | null
+          author: string
           created_at: string
           id: string
           module: string
@@ -169,11 +386,14 @@ export type Database = {
           script: string
           source: string
           start_url: string
+          status: string
           steps: Json
+          tags: Json
           updated_at: string
         }
         Insert: {
           agent_id?: string | null
+          author?: string
           created_at?: string
           id?: string
           module?: string
@@ -182,11 +402,14 @@ export type Database = {
           script?: string
           source?: string
           start_url?: string
+          status?: string
           steps?: Json
+          tags?: Json
           updated_at?: string
         }
         Update: {
           agent_id?: string | null
+          author?: string
           created_at?: string
           id?: string
           module?: string
@@ -195,7 +418,9 @@ export type Database = {
           script?: string
           source?: string
           start_url?: string
+          status?: string
           steps?: Json
+          tags?: Json
           updated_at?: string
         }
         Relationships: []
