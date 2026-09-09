@@ -21,6 +21,8 @@ const CASE_COLS = [
   "script",
   "version",
   "agent_id",
+  "params",
+  "is_template",
   "updated_at",
   "created_at",
 ] as const;
@@ -43,6 +45,8 @@ function toCase(r: Record<string, any> | undefined): CaseRow | null {
     ...(r as any),
     tags: parse<string[]>(r["tags"], []),
     steps: parse<unknown[]>(r["steps"], []),
+    params: parse<unknown[]>(r["params"], []),
+    is_template: Boolean(Number(r["is_template"] ?? 0)),
     version: Number(r["version"] ?? 1),
   } as CaseRow;
 }
@@ -52,6 +56,7 @@ function toVersion(r: Record<string, any> | undefined): CaseVersionRow | null {
   return {
     ...(r as any),
     steps: parse<unknown[]>(r["steps"], []),
+    params: parse<unknown[]>(r["params"], []),
     version: Number(r["version"] ?? 1),
   } as CaseVersionRow;
 }
@@ -88,6 +93,8 @@ async function openDb(): Promise<Db> {
       script TEXT DEFAULT '',
       version INTEGER DEFAULT 1,
       agent_id TEXT,
+      params TEXT DEFAULT '[]',
+      is_template INTEGER DEFAULT 0,
       updated_at TEXT,
       created_at TEXT
     );
@@ -101,6 +108,7 @@ async function openDb(): Promise<Db> {
       start_url TEXT,
       steps TEXT DEFAULT '[]',
       script TEXT DEFAULT '',
+      params TEXT DEFAULT '[]',
       note TEXT DEFAULT '',
       author TEXT DEFAULT '',
       source TEXT DEFAULT '',
@@ -108,6 +116,18 @@ async function openDb(): Promise<Db> {
     );
     CREATE INDEX IF NOT EXISTS idx_case_versions_case ON case_versions(case_id, version);
   `);
+  // 老库补列（新增字段时不丢历史数据）
+  for (const sql of [
+    `ALTER TABLE test_cases ADD COLUMN params TEXT DEFAULT '[]'`,
+    `ALTER TABLE test_cases ADD COLUMN is_template INTEGER DEFAULT 0`,
+    `ALTER TABLE case_versions ADD COLUMN params TEXT DEFAULT '[]'`,
+  ]) {
+    try {
+      db.exec(sql);
+    } catch {
+      /* 列已存在 */
+    }
+  }
   return db;
 }
 
@@ -137,6 +157,8 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
         ...full,
         tags: json(full.tags),
         steps: json(full.steps),
+        params: json(full.params),
+        is_template: full.is_template ? 1 : 0,
       };
       db.prepare(
         `INSERT INTO test_cases (${CASE_COLS.join(",")}) VALUES (${CASE_COLS.map(() => "?").join(",")})`,
@@ -147,9 +169,11 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
       const entries = Object.entries(patch).filter(([k, v]) => v !== undefined && k !== "id");
       if (!entries.length) return;
       const sets = entries.map(([k]) => `${k} = ?`).join(", ");
-      const values = entries.map(([k, v]) =>
-        k === "tags" || k === "steps" ? json(v) : (v as unknown as string | number | null),
-      );
+      const values = entries.map(([k, v]) => {
+        if (k === "tags" || k === "steps" || k === "params") return json(v);
+        if (typeof v === "boolean") return v ? 1 : 0;
+        return v as unknown as string | number | null;
+      });
       db.prepare(`UPDATE test_cases SET ${sets} WHERE id = ?`).run(...values, id);
     },
     async deleteCase(id) {
@@ -169,8 +193,8 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
     },
     async insertVersion(row) {
       db.prepare(
-        `INSERT INTO case_versions (id, case_id, version, name, module, priority, start_url, steps, script, note, author, source, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO case_versions (id, case_id, version, name, module, priority, start_url, steps, script, params, note, author, source, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       ).run(
         crypto.randomUUID(),
         row.case_id,
@@ -181,6 +205,7 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
         row.start_url ?? "",
         json(row.steps ?? []),
         row.script ?? "",
+        json(row.params ?? []),
         row.note ?? "",
         row.author ?? "",
         row.source ?? "",
