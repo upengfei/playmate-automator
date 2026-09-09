@@ -46,7 +46,8 @@ function createWindow() {
     },
   });
 
-  win.loadURL(`${cfg().platformUrl}/desktop?agent=${encodeURIComponent(cfg().agentId)}&shell=electron`);
+  // 本机工作台随安装包一起分发：不请求平台页面，因此断网可用、无需登录
+  win.loadFile(path.join(__dirname, "workbench.html"));
 
   win.on("close", (e) => {
     if (!app.isQuiting) {
@@ -490,6 +491,8 @@ if (!single) {
     setInterval(() => pollPushedUpgrade(), 30 * 1000);
   });
   app.on("before-quit", () => {
+    // 统一置退出标记：Cmd+Q、应用菜单、托盘退出、升级重启都能真正结束进程
+    app.isQuiting = true;
     platform.register("离线").catch(() => {});
   });
   app.on("window-all-closed", () => {
