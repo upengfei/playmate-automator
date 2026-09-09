@@ -33,7 +33,7 @@ export const Route = createFileRoute("/tasks/$taskId")({
 
 function TaskDetail() {
   const { taskId } = Route.useParams();
-  const { tasks, agents } = useAppStore();
+  const { tasks, agents, loaded } = useAppStore();
   const task = tasks.find((t) => t.id === taskId);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -41,16 +41,23 @@ function TaskDetail() {
     return (
       <PlatformShell>
         <div className="text-muted-foreground py-20 text-center text-sm">
-          未找到任务 {taskId}
-          <div className="mt-4">
-            <Button variant="outline" asChild>
-              <Link to="/tasks">返回任务列表</Link>
-            </Button>
-          </div>
+          {loaded ? (
+            <>
+              未找到任务 {taskId}
+              <div className="mt-4">
+                <Button variant="outline" asChild>
+                  <Link to="/tasks">返回任务列表</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            "正在加载任务…"
+          )}
         </div>
       </PlatformShell>
     );
   }
+
 
   const agent = agents.find((a) => a.id === task.agentId);
   const done = task.caseRuns.filter((r) => r.status !== "等待中" && r.status !== "运行中").length;
