@@ -10,9 +10,17 @@ export type KeywordId =
   | "expectText"
   | "expectUrl"
   | "expectVisible"
-  | "screenshot";
+  | "screenshot"
+  | "ifVisible"
+  | "ifNotVisible"
+  | "ifText"
+  | "elseBranch"
+  | "endIf"
+  | "repeat"
+  | "whileVisible"
+  | "endLoop";
 
-export type KeywordCategory = "导航" | "交互" | "等待" | "断言" | "其他";
+export type KeywordCategory = "导航" | "交互" | "等待" | "断言" | "逻辑" | "其他";
 
 export interface KeywordDef {
   id: KeywordId;
@@ -23,6 +31,10 @@ export interface KeywordDef {
   targetLabel: string;
   valueLabel: string;
   color: string;
+  /** 结构积木：打开一个代码块（条件/循环开始） */
+  opensBlock?: boolean;
+  /** 结构积木：关闭一个代码块（结束） */
+  closesBlock?: boolean;
   template: (target: string, value: string) => string;
 }
 
