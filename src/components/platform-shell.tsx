@@ -82,21 +82,6 @@ export function PlatformShell({ children }: { children: ReactNode }) {
               </Link>
             );
           })}
-          <div className="pt-3">
-            <div className="text-muted-foreground px-3 pb-1 text-[11px] font-medium">桌面端</div>
-            <Link
-              to="/desktop"
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                pathname.startsWith("/desktop")
-                  ? "bg-primary-soft text-primary font-medium"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
-            >
-              <MonitorSmartphone className="size-4" />
-              Agent 客户端
-            </Link>
-          </div>
         </nav>
         <div className="text-muted-foreground border-t p-3 text-xs">
           <div className="flex items-center justify-between">
