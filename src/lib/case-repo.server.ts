@@ -193,12 +193,15 @@ export async function caseRepo(): Promise<CaseRepo> {
     );
   }
 
+  let repo: CaseRepo;
   try {
     const { sqliteCaseRepo } = await import("./case-repo-sqlite.server");
-    cached = sqliteCaseRepo();
+    repo = await sqliteCaseRepo();
   } catch (err) {
     console.warn("[case-repo] 本地 SQLite 不可用，回退到平台数据库：", (err as Error).message);
-    cached = supabaseRepo();
+    repo = supabaseRepo();
   }
-  return cached;
+  cached = repo;
+  return repo;
 }
+
