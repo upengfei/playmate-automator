@@ -196,20 +196,53 @@ export function buildAiTools() {
 
     inspect_page: tool({
       description:
-        "让一台在线 Agent 用本机 Playwright 打开页面，回传可交互元素清单，用于挑选最稳定的定位方式。",
+        "让一台在线 Agent 用本机 Playwright 打开页面，回传可交互元素清单、候选定位器与页面截图，用于挑选最稳定的定位方式。近期抓过的同一页面会直接命中平台缓存；需要最新页面时把 refresh 设为 true。",
       inputSchema: z.object({
         agentId: z.string().describe("执行节点 id"),
         url: z.string().describe("要打开的页面地址"),
         description: z.string().nullable().describe("要找的元素描述，例如“登录按钮”"),
+        refresh: z.boolean().nullable().describe("是否忽略缓存强制重新抓取，默认 false"),
       }),
       execute: async (input) => {
         const { localClient } = await import("@/lib/local-db.server");
+        const { readAiSettings } = await import("@/lib/ai-settings.server");
         const client = localClient();
+        const settings = await readAiSettings();
+        const urlKey = normalizeUrl(input.url);
+
+        // 命中缓存：有效期内的最近一次成功抓取直接复用，客户端无需再开浏览器
+        if (!input.refresh && settings.inspectCacheMinutes > 0) {
+          const { data: cachedRows } = await client
+            .from("agent_inspects")
+            .select("*")
+            .eq("url_key", urlKey)
+            .eq("status", "已完成")
+            .order("finished_at", { ascending: false })
+            .limit(1);
+          const cached = ((cachedRows ?? []) as Record<string, any>[])[0];
+          const at = cached?.["finished_at"] ? Date.parse(cached["finished_at"]) : 0;
+          const ageMs = at ? Date.now() - at : Number.POSITIVE_INFINITY;
+          if (cached && ageMs <= settings.inspectCacheMinutes * 60_000) {
+            return {
+              jobId: cached["id"],
+              url: cached["url"],
+              cached: true,
+              capturedAt: cached["finished_at"],
+              ageMinutes: Math.max(0, Math.round(ageMs / 60_000)),
+              cacheMinutes: settings.inspectCacheMinutes,
+              screenshotUrl: cached["screenshot"] ? `/api/inspect-shot/${cached["id"]}` : "",
+              viewport: cached["viewport"] ?? null,
+              elements: (cached["elements"] ?? []) as unknown[],
+            };
+          }
+        }
+
         const { data: created } = await client
           .from("agent_inspects")
           .insert({
             agent_id: input.agentId,
             url: input.url,
+            url_key: urlKey,
             description: input.description ?? "",
             status: "排队中",
           })
@@ -230,7 +263,15 @@ export function buildAiTools() {
           const r = row as Record<string, any> | null;
           if (!r) continue;
           if (r["status"] === "已完成") {
-            return { jobId, url: input.url, elements: (r["elements"] ?? []) as unknown[] };
+            return {
+              jobId,
+              url: input.url,
+              cached: false,
+              capturedAt: r["finished_at"],
+              screenshotUrl: r["screenshot"] ? `/api/inspect-shot/${jobId}` : "",
+              viewport: r["viewport"] ?? null,
+              elements: (r["elements"] ?? []) as unknown[],
+            };
           }
           if (r["status"] === "失败") return { jobId, error: r["error"] || "抓取失败" };
         }
@@ -242,3 +283,18 @@ export function buildAiTools() {
     }),
   };
 }
+
+/** 归一化页面地址：去掉 hash 与常见追踪参数，让缓存能命中同一页面 */
+function normalizeUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+    u.hash = "";
+    for (const k of [...u.searchParams.keys()]) {
+      if (/^(utm_|gclid|fbclid|_ga)/i.test(k)) u.searchParams.delete(k);
+    }
+    return u.toString().replace(/\/$/, "").toLowerCase();
+  } catch {
+    return raw.trim().toLowerCase();
+  }
+}
+

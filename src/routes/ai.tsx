@@ -199,14 +199,33 @@ function AiAssistantPage() {
                             );
                           if (typeof part.type === "string" && part.type.startsWith("tool-"))
                             return (
-                              <Tool key={i} defaultOpen={false}>
-                                <ToolHeader type={part.type} state={part.state} />
-                                <ToolContent>
-                                  <ToolInput input={part.input} />
-                                  <ToolOutput output={part.output} errorText={part.errorText} />
-                                </ToolContent>
-                              </Tool>
+                              <div key={i} className="space-y-2">
+                                <Tool defaultOpen={false}>
+                                  <ToolHeader type={part.type} state={part.state} />
+                                  <ToolContent>
+                                    <ToolInput input={part.input} />
+                                    <ToolOutput output={part.output} errorText={part.errorText} />
+                                  </ToolContent>
+                                </Tool>
+                                {part.output?.screenshotUrl ? (
+                                  <figure className="space-y-1">
+                                    <img
+                                      src={part.output.screenshotUrl}
+                                      alt={`页面截图：${part.output.url ?? ""}`}
+                                      loading="lazy"
+                                      className="max-h-64 w-full rounded-lg border object-cover object-top"
+                                    />
+                                    <figcaption className="text-muted-foreground text-xs">
+                                      {part.output.cached
+                                        ? `来自缓存，抓取于 ${part.output.ageMinutes ?? 0} 分钟前`
+                                        : "本次实时抓取"}
+                                      {part.output.url ? ` · ${part.output.url}` : ""}
+                                    </figcaption>
+                                  </figure>
+                                ) : null}
+                              </div>
                             );
+
                           return null;
                         })}
                       </MessageContent>

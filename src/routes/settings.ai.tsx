@@ -7,6 +7,7 @@ import { SettingsPageShell, SettingsRow } from "@/components/settings-shell";
 import { Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -61,6 +62,8 @@ function AiSettingsPage() {
   const [models, setModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState("");
   const [newModel, setNewModel] = useState("");
+  const [cacheMinutes, setCacheMinutes] = useState(10);
+  const [keepScreenshot, setKeepScreenshot] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string>("");
 
@@ -72,6 +75,8 @@ function AiSettingsPage() {
         setApiKeyMask(s.apiKeyMask);
         setModels(s.models);
         setDefaultModel(s.defaultModel);
+        setCacheMinutes(s.inspectCacheMinutes);
+        setKeepScreenshot(s.inspectScreenshot);
       })
       .catch(() => toast.error("读取 AI 配置失败"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,7 +85,17 @@ function AiSettingsPage() {
   const doSave = async () => {
     setBusy(true);
     try {
-      const s = await save({ data: { mode, baseUrl, apiKey, models, defaultModel } });
+      const s = await save({
+        data: {
+          mode,
+          baseUrl,
+          apiKey,
+          models,
+          defaultModel,
+          inspectCacheMinutes: cacheMinutes,
+          inspectScreenshot: keepScreenshot,
+        },
+      });
       setApiKey("");
       setApiKeyMask(s.apiKeyMask);
       toast.success("AI 配置已保存并生效");
@@ -239,6 +254,29 @@ function AiSettingsPage() {
                 ))}
               </div>
             )}
+          </div>
+        </Panel>
+        <Panel title="元素抓取">
+          <div className="space-y-4">
+            <SettingsRow
+              label="缓存有效期（分钟）"
+              hint="同一页面在有效期内再次抓取时直接用上次结果，客户端不再重开浏览器；填 0 表示每次都重新抓取"
+            >
+              <Input
+                type="number"
+                min={0}
+                max={1440}
+                value={cacheMinutes}
+                onChange={(e) => setCacheMinutes(Number(e.target.value) || 0)}
+              />
+            </SettingsRow>
+            <SettingsRow label="保存页面截图" hint="抓取元素时同时截一张页面截图，便于对照定位">
+              <Switch checked={keepScreenshot} onCheckedChange={setKeepScreenshot} />
+            </SettingsRow>
+            <Button onClick={doSave} disabled={busy}>
+              {busy ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
+              保存抓取设置
+            </Button>
           </div>
         </Panel>
       </div>

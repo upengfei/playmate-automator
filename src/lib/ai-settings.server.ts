@@ -17,6 +17,10 @@ export interface AiSettings {
   apiKey: string;
   models: string[];
   defaultModel: string;
+  /** 元素抓取结果缓存有效期（分钟），0 表示不缓存 */
+  inspectCacheMinutes: number;
+  /** 抓取时是否保存页面截图 */
+  inspectScreenshot: boolean;
   updatedAt: string;
 }
 
@@ -26,6 +30,8 @@ const DEFAULTS: AiSettings = {
   apiKey: "",
   models: [],
   defaultModel: "",
+  inspectCacheMinutes: 10,
+  inspectScreenshot: true,
   updatedAt: "",
 };
 
@@ -35,12 +41,17 @@ export async function readAiSettings(): Promise<AiSettings> {
     const { data } = await localClient().from("ai_settings").select("*").eq("id", 1).maybeSingle();
     const row = data as Record<string, any> | null;
     if (!row) return DEFAULTS;
+    const minutes = Number(row["inspect_cache_minutes"]);
     return {
       mode: (row["mode"] as AiMode) || "lovable",
       baseUrl: row["base_url"] ?? "",
       apiKey: row["api_key"] ?? "",
       models: Array.isArray(row["models"]) ? (row["models"] as string[]) : [],
       defaultModel: row["default_model"] ?? "",
+      inspectCacheMinutes: Number.isFinite(minutes) && minutes >= 0 ? minutes : 10,
+      inspectScreenshot: row["inspect_screenshot"] === undefined || row["inspect_screenshot"] === null
+        ? true
+        : Boolean(row["inspect_screenshot"]),
       updatedAt: row["updated_at"] ?? "",
     };
   } catch {
@@ -56,9 +67,13 @@ export async function writeAiSettings(patch: Partial<AiSettings>): Promise<AiSet
   if (patch.apiKey !== undefined) row["api_key"] = patch.apiKey;
   if (patch.models !== undefined) row["models"] = patch.models;
   if (patch.defaultModel !== undefined) row["default_model"] = patch.defaultModel;
+  if (patch.inspectCacheMinutes !== undefined)
+    row["inspect_cache_minutes"] = Math.max(0, Math.min(1440, Math.round(patch.inspectCacheMinutes)));
+  if (patch.inspectScreenshot !== undefined) row["inspect_screenshot"] = patch.inspectScreenshot;
   await localClient().from("ai_settings").upsert({ id: 1, ...row }, { onConflict: "id" });
   return readAiSettings();
 }
+
 
 export interface ResolvedModel {
   model: LanguageModel;

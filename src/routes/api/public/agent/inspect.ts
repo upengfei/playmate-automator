@@ -25,16 +25,20 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
         const job = ((data ?? []) as Record<string, any>[])[0];
         if (!job) return Response.json({ jobs: [] });
         await client.from("agent_inspects").update({ status: "抓取中" }).eq("id", job["id"]);
+        const { readAiSettings } = await import("@/lib/ai-settings.server");
+        const settings = await readAiSettings();
         return Response.json({
           jobs: [
             {
               id: job["id"],
               url: job["url"],
               description: job["description"] ?? "",
+              screenshot: settings.inspectScreenshot,
             },
           ],
         });
       },
+
 
       POST: async ({ request }) => {
         const parsed = z
@@ -49,16 +53,41 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
                   role: z.string().max(60).default(""),
                   text: z.string().max(200).default(""),
                   locator: z.string().max(400).default(""),
+                  recommended: z.string().max(40).default(""),
+                  unique: z.boolean().default(false),
+                  disabled: z.boolean().default(false),
+                  box: z
+                    .object({
+                      x: z.number().default(0),
+                      y: z.number().default(0),
+                      width: z.number().default(0),
+                      height: z.number().default(0),
+                    })
+                    .partial()
+                    .default({}),
+                  candidates: z
+                    .array(
+                      z.object({
+                        kind: z.string().max(40).default(""),
+                        value: z.string().max(400).default(""),
+                        unique: z.boolean().default(false),
+                      }),
+                    )
+                    .max(12)
+                    .default([]),
                   attributes: z.record(z.string(), z.string()).default({}),
                 }),
               )
               .max(200)
               .default([]),
+            /** 页面截图（JPEG base64，最大约 900KB 字符） */
+            screenshot: z.string().max(900_000).optional(),
+            viewport: z.object({ width: z.number(), height: z.number() }).optional(),
             error: z.string().max(2000).optional(),
           })
           .safeParse(await request.json().catch(() => null));
         if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
-        const { agentId, token, jobId, elements, error } = parsed.data;
+        const { agentId, token, jobId, elements, screenshot, viewport, error } = parsed.data;
 
         const { verifyAgent } = await import("@/lib/agent-db.server");
         if (!(await verifyAgent(agentId, token))) {
@@ -70,6 +99,8 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
           .update({
             status: error ? "失败" : "已完成",
             elements,
+            screenshot: screenshot ?? "",
+            viewport: viewport ?? null,
             error: error ?? "",
             finished_at: new Date().toISOString(),
           })
@@ -77,6 +108,7 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
           .eq("agent_id", agentId);
         return Response.json({ ok: true });
       },
+
     },
   },
 });
