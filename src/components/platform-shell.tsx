@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   FileCode2,
@@ -8,12 +8,14 @@ import {
   MonitorDown,
   MonitorSmartphone,
   Server,
+  LogOut,
   Settings,
   SquareStack,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { StatusChip } from "@/components/ui-bits";
 import { tickHeartbeats, useAppStore } from "@/lib/store";
+import { signOut, useAuth } from "@/lib/use-auth";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -31,6 +33,12 @@ const NAV = [
 export function PlatformShell({ children }: { children: ReactNode }) {
   const state = useAppStore();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { session, loading, email } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !session) navigate({ to: "/auth" });
+  }, [loading, session, navigate]);
 
   useEffect(() => {
     tickHeartbeats();
@@ -119,8 +127,22 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             <StatusChip status={running > 0 ? "运行中" : "在线"} className="hidden sm:inline-flex" />
             <ThemeToggle />
             <div className="bg-primary-soft text-primary grid size-8 place-items-center rounded-full text-xs font-semibold">
-              QA
+              {(email || "QA").slice(0, 2).toUpperCase()}
             </div>
+            <span className="text-muted-foreground hidden max-w-40 truncate text-xs sm:inline">
+              {email}
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                navigate({ to: "/auth" });
+              }}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs"
+            >
+              <LogOut className="size-3.5" />
+              退出登录
+            </button>
           </div>
         </header>
         <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>

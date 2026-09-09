@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AgentsRouteImport } from './routes/agents'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as DesktopRouteImport } from './routes/desktop'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -40,6 +41,11 @@ const IndexRoute = IndexRouteImport.update({
 const AgentsRoute = AgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BoardRoute = BoardRouteImport.update({
@@ -148,6 +154,7 @@ const ApiPublicBrowserMirrorSplatRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
@@ -197,6 +205,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/agents': typeof AgentsRoute
+  '/auth': typeof AuthRoute
   '/board': typeof BoardRoute
   '/desktop': typeof DesktopRoute
   '/download': typeof DownloadRoute
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/agents'
+    | '/auth'
     | '/board'
     | '/desktop'
     | '/download'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/agents'
+    | '/auth'
     | '/board'
     | '/desktop'
     | '/download'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/agents'
+    | '/auth'
     | '/board'
     | '/desktop'
     | '/download'
@@ -296,6 +308,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AgentsRoute: typeof AgentsRoute
+  AuthRoute: typeof AuthRoute
   BoardRoute: typeof BoardRoute
   DesktopRoute: typeof DesktopRoute
   DownloadRoute: typeof DownloadRoute
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/board': {
@@ -480,6 +500,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgentsRoute: AgentsRoute,
+  AuthRoute: AuthRoute,
   BoardRoute: BoardRoute,
   DesktopRoute: DesktopRoute,
   DownloadRoute: DownloadRoute,

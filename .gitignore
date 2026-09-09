@@ -32,3 +32,6 @@ dist-ssr
 *.sw?
 
 electron-release/
+
+# 本地用例库
+.data/
