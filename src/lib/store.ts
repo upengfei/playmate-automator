@@ -33,6 +33,27 @@ export interface TestCase {
   source: "平台编写" | "Agent 录制";
   startUrl?: string;
   steps: CaseStep[];
+  /** 模板参数默认值，步骤里用 ${参数名} 引用 */
+  params?: CaseParam[];
+  /** 模板用例可一键派生新用例 */
+  isTemplate?: boolean;
+}
+
+/** 用例参数（模板变量） */
+export interface CaseParam {
+  name: string;
+  value: string;
+  note?: string;
+}
+
+/** 环境 / 设备维度的参数绑定，下发时覆盖用例默认值 */
+export interface ParamBinding {
+  id: string;
+  scope: "环境" | "设备";
+  scopeKey: string;
+  name: string;
+  value: string;
+  note: string;
 }
 
 export interface Agent {
@@ -166,6 +187,7 @@ export interface AgentRelease {
 
 export interface State {
   cases: TestCase[];
+  paramBindings: ParamBinding[];
   agents: Agent[];
   tasks: Task[];
   reports: Report[];
@@ -196,6 +218,7 @@ const emptySettings: Settings = {
 
 let state: State = {
   cases: [],
+  paramBindings: [],
   agents: [],
   tasks: [],
   reports: [],
@@ -263,6 +286,8 @@ export async function upsertCase(c: TestCase): Promise<void> {
       status: c.status,
       source: c.source,
       startUrl: c.startUrl ?? "",
+      params: c.params ?? [],
+      isTemplate: c.isTemplate ?? false,
       steps: c.steps.map((s) => ({
         id: s.id,
         keyword: s.keyword,
@@ -285,6 +310,8 @@ export async function createCase(partial: Partial<TestCase>): Promise<TestCase> 
       status: partial.status ?? "草稿",
       source: partial.source ?? "平台编写",
       startUrl: partial.startUrl ?? "",
+      params: partial.params ?? [],
+      isTemplate: partial.isTemplate ?? false,
       steps: (partial.steps ?? []).map((s) => ({
         id: s.id,
         keyword: s.keyword,
