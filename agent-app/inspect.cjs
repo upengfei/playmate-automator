@@ -2,19 +2,22 @@
  * AI 页面元素定位：用本机 Playwright 打开页面，抓取可交互元素及候选定位器。
  * 只读取页面结构，不做任何点击或输入。
  */
-const { resolveBrowser } = require("./runner.cjs");
+const browsers = require("./browsers.cjs");
 
 const MAX_ELEMENTS = 120;
 
 async function inspectPage(job, log = () => {}) {
+  process.env.PLAYWRIGHT_BROWSERS_PATH = browsers.BROWSERS_DIR;
+  log("准备 chromium 浏览器内核…");
+  await browsers.ensure("chromium", log);
   const { chromium } = require("playwright-core");
-  const executablePath = typeof resolveBrowser === "function" ? await resolveBrowser(log) : undefined;
-  const browser = await chromium.launch(executablePath ? { executablePath } : {});
+  const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage();
     log(`打开页面 ${job.url}`);
     await page.goto(job.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.waitForTimeout(800);
+
 
     const elements = await page.evaluate((max) => {
       const pick = (el) => {
