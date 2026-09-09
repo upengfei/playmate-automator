@@ -296,29 +296,29 @@ export const registerAgentDevice = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { admin, newToken } = await import("@/lib/agent-db.server");
-    const db = admin();
+    const { newToken } = await import("@/lib/agent-db.server");
+    const { readAgentToken, writeAgentToken } = await import("@/lib/agent-store.server");
 
-    const { data: exist } = await db
-      .from("agent_tokens")
-      .select("token")
-      .eq("agent_id", data.agentId)
-      .maybeSingle();
-
-    let token = (exist?.token as string | undefined) ?? "";
+    let token = await readAgentToken(data.agentId);
     if (!token || data.rotate) {
       token = newToken();
-      if (exist) await db.from("agent_tokens").update({ token }).eq("agent_id", data.agentId);
-      else await db.from("agent_tokens").insert({ agent_id: data.agentId, token });
+      await writeAgentToken(data.agentId, token);
     }
 
-    const { error } = await db.from("agents").upsert({
-      id: data.agentId,
-      name: data.name || data.agentId,
-      status: "离线",
-      last_heartbeat: new Date(0).toISOString(),
-    });
-    if (error) throw new Error(error.message);
+    // 设备台账仍写入平台数据库，供节点看板展示；写入失败不影响令牌签发
+    try {
+      const { admin } = await import("@/lib/agent-db.server");
+      await admin()
+        .from("agents")
+        .upsert({
+          id: data.agentId,
+          name: data.name || data.agentId,
+          status: "离线",
+          last_heartbeat: new Date(0).toISOString(),
+        });
+    } catch (err) {
+      console.warn("[register-device] 设备台账写入失败：", (err as Error).message);
+    }
 
     return { agentId: data.agentId, token, registeredBy: context.userId };
   });

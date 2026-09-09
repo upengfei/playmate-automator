@@ -1,5 +1,6 @@
-/** 真实节点与用例的服务端数据访问（仅服务端，使用服务角色密钥） */
+/** 真实节点与执行数据的服务端访问（仅服务端） */
 import { createClient } from "@supabase/supabase-js";
+import { readAgentToken } from "./agent-store.server";
 
 export function admin() {
   return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
@@ -7,12 +8,11 @@ export function admin() {
   });
 }
 
-/** 校验节点令牌；返回 true 表示该请求确实来自已注册的客户端 */
+/** 校验节点令牌（令牌存放于本地 SQLite）；true 表示请求确实来自已注册的客户端 */
 export async function verifyAgent(agentId: string, token: string): Promise<boolean> {
   if (!agentId || !token) return false;
-  const db = admin();
-  const { data } = await db.from("agent_tokens").select("token").eq("agent_id", agentId).maybeSingle();
-  return Boolean(data && data.token === token);
+  const saved = await readAgentToken(agentId);
+  return Boolean(saved && saved === token);
 }
 
 export function newToken(): string {
