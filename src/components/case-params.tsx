@@ -20,7 +20,8 @@ export function CaseParamsEditor({
   usedNames: string[];
 }) {
   const defined = new Set(params.map((p) => p.name));
-  const missing = usedNames.filter((n) => !defined.has(n));
+  // 循环变量（${当前循环} 等）由执行时的循环上下文提供，不需要在这里定义默认值
+  const missing = usedNames.filter((n) => !defined.has(n) && !isLoopVar(n));
 
   const update = (i: number, patch: Partial<CaseParam>) =>
     onChange(params.map((p, idx) => (idx === i ? { ...p, ...patch } : p)));
