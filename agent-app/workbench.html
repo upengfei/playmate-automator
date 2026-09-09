@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PlayFlow Agent 工作台</title>
+    <style>
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --border: #e3e8f0;
+        --text: #1f2733;
+        --muted: #6b7686;
+        --primary: #1f6feb;
+        --ok: #197a4b;
+        --err: #c02626;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 14px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      header {
+        background: var(--card);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 { font-size: 16px; margin: 0; }
+      .meta { color: var(--muted); font-size: 12px; display: flex; gap: 14px; flex-wrap: wrap; }
+      .pill {
+        border-radius: 999px;
+        padding: 2px 10px;
+        font-size: 12px;
+        background: #eef3fd;
+        color: var(--primary);
+      }
+      .pill.off { background: #fdeeee; color: var(--err); }
+      main { padding: 18px 20px 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      main > .full { grid-column: 1 / -1; }
+      section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      section h2 { font-size: 14px; margin: 0 0 10px; }
+      button {
+        font: inherit;
+        border: 1px solid var(--border);
+        background: #fff;
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      input {
+        font: inherit;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        width: 100%;
+      }
+      .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+      .list { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+      .list div {
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .list div:last-child { border-bottom: 0; }
+      .list div.sel { background: #eef3fd; }
+      .steps { font-size: 13px; }
+      .steps li { margin-bottom: 4px; }
+      .steps .passed { color: var(--ok); }
+      .steps .failed { color: var(--err); }
+      #logs {
+        background: #10161f;
+        color: #d8e2f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        height: 260px;
+        overflow: auto;
+        font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+      }
+      #logs .error { color: #ff9a9a; }
+      #logs .success { color: #8ce0ae; }
+      #logs .warn { color: #ffd48a; }
+      .hint { color: var(--muted); font-size: 12px; }
+      .bar { height: 6px; background: #eef1f6; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+      .bar > i { display: block; height: 100%; background: var(--primary); width: 0; transition: width 0.25s; }
+      @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>PlayFlow Agent 本机工作台</h1>
+      <span class="pill" id="status">检测中…</span>
+      <div class="meta">
+        <span>节点：<b id="agentId">-</b></span>
+        <span>版本：<span id="version">-</span></span>
+        <span>平台：<span id="platformUrl">-</span></span>
+        <span>待补传：<span id="pending">0</span></span>
+      </div>
+      <div class="row" style="margin: 0 0 0 auto">
+        <button id="btn-register">重新注册</button>
+        <button id="btn-browsers">下载浏览器内核</button>
+        <button id="btn-update">检查更新</button>
+        <button id="btn-flush">立即补传</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="panel-record">
+        <h2>录制用例</h2>
+        <div class="row">
+          <input id="record-url" placeholder="起始地址，如 https://example.com" value="https://example.com" />
+        </div>
+        <div class="row">
+          <button class="primary" id="btn-record-start">开始录制</button>
+          <button id="btn-record-stop" disabled>停止并解析</button>
+          <button id="btn-upload" disabled>上传到平台</button>
+        </div>
+        <div class="hint" id="record-hint">录制会打开真实浏览器，操作完成后点“停止并解析”生成步骤。</div>
+        <ol class="steps" id="record-steps"></ol>
+      </section>
+
+      <section id="panel-cases">
+        <h2>平台用例</h2>
+        <div class="row">
+          <button id="btn-pull">拉取平台用例</button>
+          <button class="primary" id="btn-run" disabled>本机执行</button>
+          <button id="btn-debug" disabled>调试执行</button>
+        </div>
+        <div class="list" id="case-list"></div>
+        <div class="hint" id="case-hint">选择一条用例后可在本机用真实浏览器执行。</div>
+      </section>
+
+      <section id="panel-queue">
+        <h2>执行进度</h2>
+        <div class="hint" id="run-stage">暂无执行中的用例。</div>
+        <div class="bar"><i id="run-bar"></i></div>
+        <ol class="steps" id="run-steps"></ol>
+      </section>
+
+      <section id="panel-updates">
+        <h2>内核与升级</h2>
+        <div class="hint" id="browser-stage">浏览器内核状态未知。</div>
+        <div class="bar"><i id="browser-bar"></i></div>
+        <div class="hint" id="update-stage" style="margin-top: 12px">升级状态：空闲。</div>
+        <div class="bar"><i id="update-bar"></i></div>
+      </section>
+
+      <section class="full" id="panel-logs">
+        <h2>运行日志</h2>
+        <div id="logs"></div>
+      </section>
+    </main>
+
+    <script>
+      const api = window.playflowAgent;
+      const $ = (id) => document.getElementById(id);
+      let cases = [];
+      let selected = null;
+      let recorded = null;
+
+      function addLog(entry) {
+        const el = document.createElement("div");
+        el.className = entry.level || "info";
+        const at = (entry.at || new Date().toISOString()).slice(11, 19);
+        el.textContent = `[${at}] ${entry.text}`;
+        $("logs").appendChild(el);
+        $("logs").scrollTop = $("logs").scrollHeight;
+      }
+
+      async function refreshInfo() {
+        const info = await api.getInfo();
+        $("agentId").textContent = info.agentId;
+        $("version").textContent = "v" + info.version;
+        $("platformUrl").textContent = info.platformUrl;
+        const ok = info.registered;
+        $("status").textContent = ok ? "已注册 · 在线" : "未注册";
+        $("status").className = "pill" + (ok ? "" : " off");
+        const box = await api.getOutbox();
+        $("pending").textContent = box.pending || 0;
+      }
+
+      function renderCases() {
+        const list = $("case-list");
+        list.innerHTML = "";
+        if (!cases.length) {
+          $("case-hint").textContent = "平台暂无用例，或尚未拉取。";
+          return;
+        }
+        cases.forEach((c, i) => {
+          const el = document.createElement("div");
+          el.textContent = `${c.name}${c.version ? " · v" + c.version : ""}（${(c.steps || []).length} 步）`;
+          el.onclick = () => {
+            selected = c;
+            [...list.children].forEach((n) => n.classList.remove("sel"));
+            el.classList.add("sel");
+            $("btn-run").disabled = false;
+            $("btn-debug").disabled = false;
+            $("case-hint").textContent = `已选中：${c.name}`;
+          };
+          if (selected && selected.id === c.id) el.classList.add("sel");
+          list.appendChild(el);
+          if (i === 0 && !selected) el.click();
+        });
+      }
+
+      function renderRunSteps(steps) {
+        $("run-steps").innerHTML = "";
+        (steps || []).forEach((s, i) => {
+          const li = document.createElement("li");
+          li.className = s.status || "";
+          li.textContent = `${i + 1}. ${s.keyword || ""} ${s.target || s.value || ""} ${
+            s.status ? "· " + (s.status === "passed" ? "通过" : "失败") : ""
+          }`;
+          $("run-steps").appendChild(li);
+        });
+      }
+
+      $("btn-register").onclick = async () => {
+        try {
+          await api.register();
+          addLog({ level: "success", text: "已向平台重新注册" });
+        } catch (e) {
+          addLog({ level: "error", text: "注册失败：" + (e.message || e) });
+        }
+        refreshInfo();
+      };
+      $("btn-browsers").onclick = () => api.prepareBrowsers();
+      $("btn-update").onclick = () => api.checkForUpdates();
+      $("btn-flush").onclick = async () => {
+        const r = await api.flushOutbox();
+        addLog({ level: "info", text: `补传完成：已发送 ${r.sent || 0} 条，剩余 ${r.pending || 0} 条` });
+        refreshInfo();
+      };
+
+      $("btn-pull").onclick = async () => {
+        try {
+          cases = await api.pullCases();
+          renderCases();
+          addLog({ level: "info", text: `已拉取 ${cases.length} 条平台用例` });
+        } catch (e) {
+          addLog({ level: "error", text: "拉取用例失败：" + (e.message || e) });
+        }
+      };
+
+      async function runSelected(debug) {
+        if (!selected) return;
+        $("btn-run").disabled = $("btn-debug").disabled = true;
+        $("run-stage").textContent = `${debug ? "调试" : "执行"}中：${selected.name}`;
+        $("run-bar").style.width = "10%";
+        renderRunSteps(selected.steps);
+        try {
+          await api.runCase(selected);
+        } catch (e) {
+          addLog({ level: "error", text: "执行失败：" + (e.message || e) });
+          $("run-stage").textContent = "执行失败";
+        } finally {
+          $("btn-run").disabled = $("btn-debug").disabled = false;
+          refreshInfo();
+        }
+      }
+      $("btn-run").onclick = () => runSelected(false);
+      $("btn-debug").onclick = () => runSelected(true);
+
+      $("btn-record-start").onclick = async () => {
+        try {
+          await api.startRecording($("record-url").value.trim());
+          $("btn-record-start").disabled = true;
+          $("btn-record-stop").disabled = false;
+          $("record-hint").textContent = "录制中：请在弹出的浏览器里操作。";
+        } catch (e) {
+          addLog({ level: "error", text: "启动录制失败：" + (e.message || e) });
+        }
+      };
+      $("btn-record-stop").onclick = async () => {
+        $("btn-record-stop").disabled = true;
+        try {
+          recorded = await api.stopRecording();
+          const steps = (recorded && recorded.steps) || [];
+          $("record-steps").innerHTML = "";
+          steps.forEach((s, i) => {
+            const li = document.createElement("li");
+            li.textContent = `${i + 1}. ${s.keyword} ${s.target || s.value || ""}`;
+            $("record-steps").appendChild(li);
+          });
+          $("record-hint").textContent = `已解析 ${steps.length} 个步骤，可上传到平台。`;
+          $("btn-upload").disabled = steps.length === 0;
+        } catch (e) {
+          addLog({ level: "error", text: "解析录制失败：" + (e.message || e) });
+        } finally {
+          $("btn-record-start").disabled = false;
+        }
+      };
+      $("btn-upload").onclick = async () => {
+        try {
+          const res = await api.uploadCase({
+            name: (recorded && recorded.name) || `本机录制 ${new Date().toLocaleString("zh-CN")}`,
+            steps: (recorded && recorded.steps) || [],
+            startUrl: $("record-url").value.trim(),
+            script: recorded && recorded.script,
+          });
+          addLog({ level: "success", text: `已上传到平台${res && res.caseId ? "：" + res.caseId : ""}` });
+        } catch (e) {
+          addLog({ level: "error", text: "上传失败：" + (e.message || e) });
+        }
+      };
+
+      api.onLog(addLog);
+      api.onRegistered(refreshInfo);
+      api.onOutbox((d) => ($("pending").textContent = d.pending || 0));
+      api.onRunEvent((e) => {
+        if (e.type === "step-start") {
+          $("run-stage").textContent = `步骤 ${e.index + 1}：${e.step.keyword}`;
+          $("run-bar").style.width = Math.min(95, 10 + e.index * 8) + "%";
+        }
+        if (e.type === "step-end") {
+          const li = $("run-steps").children[e.index];
+          if (li) {
+            li.className = e.status === "passed" ? "passed" : "failed";
+            li.textContent += e.status === "passed" ? " · 通过" : " · 失败";
+          }
+        }
+      });
+      api.onRunDone((r) => {
+        $("run-bar").style.width = "100%";
+        $("run-stage").textContent = `执行结束：${r.status === "passed" ? "通过" : "失败"}（${r.durationMs || 0}ms）`;
+      });
+      api.onBrowserStage((d) => {
+        $("browser-stage").textContent = "浏览器内核：" + d.stage + (d.error ? "（" + d.error + "）" : "");
+        $("browser-bar").style.width = (d.progress || 0) + "%";
+      });
+      api.onUpdateStage((d) => {
+        $("update-stage").textContent = "升级状态：" + d.stage + (d.error ? "（" + d.error + "）" : "");
+        $("update-bar").style.width = (d.progress || 0) + "%";
+      });
+      api.onTrayAction((d) => {
+        const map = { record: "panel-record", run: "panel-cases", debug: "panel-cases", upload: "panel-record", queue: "panel-queue" };
+        const el = document.getElementById(map[d.tab] || "panel-logs");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+
+      refreshInfo();
+      setInterval(refreshInfo, 15000);
+      addLog({ level: "info", text: "本机工作台已就绪（无需登录平台）" });
+    </script>
+  </body>
+</html>
