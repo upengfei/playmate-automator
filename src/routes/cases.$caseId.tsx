@@ -161,6 +161,10 @@ function CaseEditor() {
           <Panel title={`步骤编排（${draft.steps.length} 步）`}>
             <StepBlocks steps={draft.steps} onChange={setSteps} />
           </Panel>
+
+          <Panel title="执行流程图与步骤日志">
+            <StepFlow caseId={draft.id} steps={draft.steps} />
+          </Panel>
         </div>
 
         <Panel title="生成的 Playwright 脚本">
