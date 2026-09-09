@@ -333,3 +333,51 @@ export const toggleAgent = createServerFn({ method: "POST" })
     await client.from("agents").update({ status: next }).eq("id", data.agentId);
     return { status: next };
   });
+
+/** 某条用例的真实执行历史（含步骤结果与日志），供用例详情的流程图调试使用 */
+export const fetchCaseRuns = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ caseId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { db } = await import("@/lib/platform.server");
+    const client = db();
+    const { data: runs } = await client
+      .from("case_runs")
+      .select("id, case_name, agent_id, status, duration_ms, error, steps, started_at")
+      .eq("case_id", data.caseId)
+      .order("started_at", { ascending: false })
+      .limit(10);
+    const rows = (runs ?? []) as Record<string, any>[];
+    const ids = rows.map((r) => r["id"] as string);
+    const { data: logs } = ids.length
+      ? await client
+          .from("run_logs")
+          .select("id, run_id, level, message, at")
+          .in("run_id", ids)
+          .order("at", { ascending: true })
+          .limit(2000)
+      : { data: [] as Record<string, any>[] };
+    return {
+      runs: rows.map((r) => ({
+        id: r["id"] as string,
+        agentId: (r["agent_id"] as string) ?? "",
+        status: (r["status"] as string) ?? "",
+        durationMs: (r["duration_ms"] as number) ?? 0,
+        error: (r["error"] as string) ?? "",
+        startedAt: (r["started_at"] as string) ?? "",
+        steps: ((r["steps"] as unknown[]) ?? []) as {
+          index: number;
+          keyword?: string;
+          status?: string;
+          durationMs?: number;
+          error?: string;
+        }[],
+      })),
+      logs: ((logs ?? []) as Record<string, any>[]).map((l) => ({
+        id: String(l["id"]),
+        runId: (l["run_id"] as string) ?? "",
+        level: (l["level"] as string) ?? "info",
+        message: (l["message"] as string) ?? "",
+        at: (l["at"] as string) ?? "",
+      })),
+    };
+  });
