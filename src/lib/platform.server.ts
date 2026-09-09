@@ -148,12 +148,14 @@ export async function loadSnapshot() {
   const release = await readRelease(client);
 
 
-  const [agentsRes, casesRes, tasksRes, upgradesRes] = await Promise.all([
+  const { caseRepo } = await import("./case-repo.server");
+  const [agentsRes, caseRows, tasksRes, upgradesRes] = await Promise.all([
     client.from("agents").select("*").order("last_heartbeat", { ascending: false }),
-    client.from("test_cases").select("*").order("updated_at", { ascending: false }).limit(300),
+    caseRepo().then((repo) => repo.listCases(300)),
     client.from("tasks").select("*").order("created_at", { ascending: false }).limit(60),
     client.from("agent_upgrades").select("*").order("started_at", { ascending: false }).limit(40),
   ]);
+
 
   const taskRows = (tasksRes.data ?? []) as Row[];
   const taskIds = taskRows.map((t) => t["id"]);
@@ -238,7 +240,7 @@ export async function loadSnapshot() {
     };
   });
 
-  const cases = ((casesRes.data ?? []) as Row[]).map((c) => ({
+  const cases = (caseRows as unknown as Row[]).map((c) => ({
     id: c["id"],
     name: c["name"],
     module: c["module"],

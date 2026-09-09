@@ -11,6 +11,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
         const agentId = url.searchParams.get("agentId") ?? "";
         const token = url.searchParams.get("token") ?? "";
         const { admin, verifyAgent } = await import("@/lib/agent-db.server");
+        const { caseRepo } = await import("@/lib/case-repo.server");
         if (!(await verifyAgent(agentId, token))) {
           return Response.json({ error: "节点令牌校验失败" }, { status: 401 });
         }
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
         const { data, error } = await db
           .from("case_runs")
           .select(
-            "id, task_id, case_id, case_name, case_version, depends_on_case_id, test_cases!case_runs_case_id_fkey(steps, start_url, script, version)",
+            "id, task_id, case_id, case_name, case_version, depends_on_case_id",
           )
           .eq("agent_id", agentId)
           .eq("status", "排队中")
@@ -86,22 +87,22 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
           .slice(0, 3);
 
         // 下发时携带版本号；若任务锁定的是旧版本，则取该版本的历史快照，保证客户端执行的是旧版本内容
+        const repo = await caseRepo();
+        const caseById = new Map<string, Record<string, any>>();
+        for (const id of [...new Set(rows.map((r) => r["case_id"]).filter(Boolean))]) {
+          const c = await repo.getCase(id as string);
+          if (c) caseById.set(id as string, c as unknown as Record<string, any>);
+        }
         const snapshots = new Map<string, Record<string, any>>();
-        const wanted = rows.filter(
-          (r) => r["case_id"] && r["case_version"] && r["case_version"] !== r["test_cases"]?.["version"],
-        );
-        for (const r of wanted) {
-          const { data: snap } = await db
-            .from("case_versions")
-            .select("steps, start_url, script, version")
-            .eq("case_id", r["case_id"])
-            .eq("version", r["case_version"])
-            .maybeSingle();
-          if (snap) snapshots.set(`${r["case_id"]}:${r["case_version"]}`, snap);
+        for (const r of rows) {
+          const c = caseById.get(r["case_id"]);
+          if (!r["case_id"] || !r["case_version"] || r["case_version"] === c?.["version"]) continue;
+          const snap = await repo.getVersion(r["case_id"] as string, r["case_version"] as number);
+          if (snap) snapshots.set(`${r["case_id"]}:${r["case_version"]}`, snap as unknown as Record<string, any>);
         }
 
         const jobs = rows.map((r) => {
-          const c = r["test_cases"] as Record<string, any> | undefined;
+          const c = caseById.get(r["case_id"]);
           const snap = snapshots.get(`${r["case_id"]}:${r["case_version"]}`);
           const src = snap ?? c ?? {};
           return {

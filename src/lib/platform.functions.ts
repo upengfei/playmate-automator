@@ -32,8 +32,9 @@ export const saveCase = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { db } = await import("@/lib/platform.server");
+    const { caseRepo } = await import("@/lib/case-repo.server");
     const { generatePlaywrightCode } = await import("@/lib/keywords");
+    const repo = await caseRepo();
     const script = generatePlaywrightCode(data.name, data.steps as any);
     const row = {
       name: data.name,
@@ -48,10 +49,9 @@ export const saveCase = createServerFn({ method: "POST" })
       script,
       updated_at: new Date().toISOString(),
     };
-    const client = db();
 
-    const snapshot = async (caseId: string, version: number, note: string) => {
-      await client.from("case_versions").insert({
+    const snapshot = (caseId: string, version: number, note: string) =>
+      repo.insertVersion({
         case_id: caseId,
         version,
         name: data.name,
@@ -64,33 +64,19 @@ export const saveCase = createServerFn({ method: "POST" })
         author: data.author,
         source: data.source,
       });
-    };
 
     if (data.id) {
-      const { data: current } = await client
-        .from("test_cases")
-        .select("version")
-        .eq("id", data.id)
-        .maybeSingle();
-      const nextVersion = ((current?.["version"] as number) ?? 1) + 1;
-      const { error } = await client
-        .from("test_cases")
-        .update({ ...row, version: nextVersion })
-        .eq("id", data.id);
-      if (error) throw new Error(error.message);
+      const current = await repo.getCase(data.id);
+      const nextVersion = (current?.version ?? 1) + 1;
+      await repo.updateCase(data.id, { ...row, version: nextVersion });
       await snapshot(data.id, nextVersion, "保存修改");
       return { id: data.id, version: nextVersion };
     }
-    const { data: created, error } = await client
-      .from("test_cases")
-      .insert({ ...row, version: 1 })
-      .select("id")
-      .single();
-    if (error) throw new Error(error.message);
-    const id = created["id"] as string;
-    await snapshot(id, 1, "初始版本");
-    return { id, version: 1 };
+    const created = await repo.insertCase({ ...row, version: 1 });
+    await snapshot(created.id, 1, "初始版本");
+    return { id: created.id, version: 1 };
   });
+
 
 export type CaseVersion = {
   id: string;
@@ -111,32 +97,27 @@ export type CaseVersion = {
 export const fetchCaseVersions = createServerFn({ method: "GET" })
   .inputValidator((input) => z.object({ caseId: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
-    const { db } = await import("@/lib/platform.server");
-    const client = db();
-    const [{ data: rows }, { data: current }] = await Promise.all([
-      client
-        .from("case_versions")
-        .select("*")
-        .eq("case_id", data.caseId)
-        .order("version", { ascending: false })
-        .limit(50),
-      client.from("test_cases").select("version").eq("id", data.caseId).maybeSingle(),
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    const repo = await caseRepo();
+    const [rows, current] = await Promise.all([
+      repo.listVersions(data.caseId, 50),
+      repo.getCase(data.caseId),
     ]);
-    const versions: CaseVersion[] = ((rows ?? []) as Record<string, any>[]).map((r) => ({
-      id: r["id"] as string,
-      version: (r["version"] as number) ?? 1,
-      name: (r["name"] as string) ?? "",
-      module: (r["module"] as string) ?? "",
-      priority: (r["priority"] as string) ?? "P1",
-      startUrl: (r["start_url"] as string) ?? "",
-      note: (r["note"] as string) ?? "",
-      author: (r["author"] as string) ?? "",
-      source: (r["source"] as string) ?? "",
-      createdAt: (r["created_at"] as string) ?? "",
-      steps: ((r["steps"] as unknown[]) ?? []) as CaseVersion["steps"],
-      script: (r["script"] as string) ?? "",
+    const versions: CaseVersion[] = rows.map((r) => ({
+      id: r.id,
+      version: r.version ?? 1,
+      name: r.name ?? "",
+      module: r.module ?? "",
+      priority: r.priority ?? "P1",
+      startUrl: r.start_url ?? "",
+      note: r.note ?? "",
+      author: r.author ?? "",
+      source: r.source ?? "",
+      createdAt: r.created_at ?? "",
+      steps: (r.steps ?? []) as CaseVersion["steps"],
+      script: r.script ?? "",
     }));
-    return { versions, currentVersion: (current?.["version"] as number) ?? 1 };
+    return { versions, currentVersion: current?.version ?? 1 };
   });
 
 /** 回滚到指定历史版本：以旧内容生成一个新版本，保证历史可追溯 */
@@ -145,47 +126,34 @@ export const rollbackCase = createServerFn({ method: "POST" })
     z.object({ caseId: z.string().uuid(), version: z.number().int().min(1) }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { db } = await import("@/lib/platform.server");
-    const client = db();
-    const { data: target } = await client
-      .from("case_versions")
-      .select("*")
-      .eq("case_id", data.caseId)
-      .eq("version", data.version)
-      .maybeSingle();
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    const repo = await caseRepo();
+    const target = await repo.getVersion(data.caseId, data.version);
     if (!target) throw new Error("找不到该版本");
-    const { data: current } = await client
-      .from("test_cases")
-      .select("version")
-      .eq("id", data.caseId)
-      .maybeSingle();
-    const nextVersion = ((current?.["version"] as number) ?? 1) + 1;
-    const { error } = await client
-      .from("test_cases")
-      .update({
-        name: target["name"],
-        module: target["module"],
-        priority: target["priority"],
-        start_url: target["start_url"],
-        steps: target["steps"],
-        script: target["script"],
-        version: nextVersion,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", data.caseId);
-    if (error) throw new Error(error.message);
-    await client.from("case_versions").insert({
+    const current = await repo.getCase(data.caseId);
+    const nextVersion = (current?.version ?? 1) + 1;
+    await repo.updateCase(data.caseId, {
+      name: target.name,
+      module: target.module,
+      priority: target.priority,
+      start_url: target.start_url,
+      steps: target.steps,
+      script: target.script,
+      version: nextVersion,
+      updated_at: new Date().toISOString(),
+    });
+    await repo.insertVersion({
       case_id: data.caseId,
       version: nextVersion,
-      name: target["name"],
-      module: target["module"],
-      priority: target["priority"],
-      start_url: target["start_url"],
-      steps: target["steps"],
-      script: target["script"],
+      name: target.name,
+      module: target.module,
+      priority: target.priority,
+      start_url: target.start_url,
+      steps: target.steps,
+      script: target.script,
       note: `回滚自 v${data.version}`,
-      author: target["author"],
-      source: target["source"],
+      author: target.author,
+      source: target.source,
     });
     return { version: nextVersion };
   });
@@ -194,9 +162,9 @@ export const rollbackCase = createServerFn({ method: "POST" })
 export const removeCase = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data }) => {
-    const { db } = await import("@/lib/platform.server");
-    const { error } = await db().from("test_cases").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    await (await caseRepo()).deleteCase(data.id);
+
     return { ok: true };
   });
 
@@ -283,14 +251,12 @@ export const addTask = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const { data: cases } = await client
-      .from("test_cases")
-      .select("id, name, steps, version")
-      .in("id", data.caseIds);
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    const repo = await caseRepo();
+    const cases = await Promise.all(data.caseIds.map((id) => repo.getCase(id)));
     // 按用户选择顺序排列，依赖链才与编排顺序一致
-    const ordered = data.caseIds
-      .map((id) => (cases ?? []).find((c: Record<string, any>) => c["id"] === id))
-      .filter(Boolean) as Record<string, any>[];
+    const ordered = cases.filter(Boolean).map((c) => c as unknown as Record<string, any>);
+
     const rows = ordered.map((c, i) => ({
       task_id: task["id"],
       case_id: c["id"],
