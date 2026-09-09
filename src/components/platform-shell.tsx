@@ -25,6 +25,8 @@ const NAV = [
   { to: "/board", label: "任务进度看板", icon: ListChecks },
   { to: "/reports", label: "测试报告分析", icon: Activity },
   { to: "/agents", label: "执行节点管理", icon: Server },
+  { to: "/agent-dashboard", label: "Agent 仪表盘", icon: Gauge },
+
   { to: "/live", label: "真实节点与用例", icon: MonitorSmartphone },
   { to: "/download", label: "客户端下载更新", icon: MonitorDown },
   { to: "/settings", label: "系统配置", icon: Settings },
