@@ -148,6 +148,7 @@ export type Database = {
           attempt: number
           case_id: string | null
           case_name: string
+          case_version: number | null
           duration_ms: number | null
           error: string | null
           finished_at: string | null
@@ -164,6 +165,7 @@ export type Database = {
           attempt?: number
           case_id?: string | null
           case_name?: string
+          case_version?: number | null
           duration_ms?: number | null
           error?: string | null
           finished_at?: string | null
@@ -180,6 +182,7 @@ export type Database = {
           attempt?: number
           case_id?: string | null
           case_name?: string
+          case_version?: number | null
           duration_ms?: number | null
           error?: string | null
           finished_at?: string | null
@@ -204,6 +207,62 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_versions: {
+        Row: {
+          author: string
+          case_id: string
+          created_at: string
+          id: string
+          module: string
+          name: string
+          note: string
+          priority: string
+          script: string
+          source: string
+          start_url: string
+          steps: Json
+          version: number
+        }
+        Insert: {
+          author?: string
+          case_id: string
+          created_at?: string
+          id?: string
+          module?: string
+          name?: string
+          note?: string
+          priority?: string
+          script?: string
+          source?: string
+          start_url?: string
+          steps?: Json
+          version: number
+        }
+        Update: {
+          author?: string
+          case_id?: string
+          created_at?: string
+          id?: string
+          module?: string
+          name?: string
+          note?: string
+          priority?: string
+          script?: string
+          source?: string
+          start_url?: string
+          steps?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_versions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "test_cases"
             referencedColumns: ["id"]
           },
         ]
@@ -390,6 +449,7 @@ export type Database = {
           steps: Json
           tags: Json
           updated_at: string
+          version: number
         }
         Insert: {
           agent_id?: string | null
@@ -406,6 +466,7 @@ export type Database = {
           steps?: Json
           tags?: Json
           updated_at?: string
+          version?: number
         }
         Update: {
           agent_id?: string | null
@@ -422,6 +483,7 @@ export type Database = {
           steps?: Json
           tags?: Json
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }

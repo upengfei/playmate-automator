@@ -174,8 +174,18 @@ async function pollJobs() {
   try {
     const jobs = await platform.claimJobs();
     for (const job of jobs) {
-      log("info", `领取平台下发任务：${job.name}`);
-      await executeCase({ id: job.caseId, name: job.name, steps: job.steps }, job.runId);
+      const ver = job.caseVersion ? ` · 用例版本 v${job.caseVersion}${job.fromSnapshot ? "（历史版本）" : ""}` : "";
+      log("info", `领取平台下发任务：${job.name}${ver}`);
+      await executeCase(
+        {
+          id: job.caseId,
+          name: job.name,
+          steps: job.steps,
+          startUrl: job.startUrl,
+          version: job.caseVersion,
+        },
+        job.runId,
+      );
     }
   } catch {
     /* 平台不可达时静默重试 */

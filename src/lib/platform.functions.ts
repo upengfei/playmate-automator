@@ -33,6 +33,8 @@ export const saveCase = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { db } = await import("@/lib/platform.server");
+    const { generatePlaywrightCode } = await import("@/lib/keywords");
+    const script = generatePlaywrightCode(data.name, data.steps as any);
     const row = {
       name: data.name,
       module: data.module,
@@ -43,22 +45,151 @@ export const saveCase = createServerFn({ method: "POST" })
       source: data.source,
       start_url: data.startUrl,
       steps: data.steps,
+      script,
       updated_at: new Date().toISOString(),
     };
     const client = db();
+
+    const snapshot = async (caseId: string, version: number, note: string) => {
+      await client.from("case_versions").insert({
+        case_id: caseId,
+        version,
+        name: data.name,
+        module: data.module,
+        priority: data.priority,
+        start_url: data.startUrl,
+        steps: data.steps,
+        script,
+        note,
+        author: data.author,
+        source: data.source,
+      });
+    };
+
     if (data.id) {
-      const { error } = await client.from("test_cases").update(row).eq("id", data.id);
+      const { data: current } = await client
+        .from("test_cases")
+        .select("version")
+        .eq("id", data.id)
+        .maybeSingle();
+      const nextVersion = ((current?.["version"] as number) ?? 1) + 1;
+      const { error } = await client
+        .from("test_cases")
+        .update({ ...row, version: nextVersion })
+        .eq("id", data.id);
       if (error) throw new Error(error.message);
-      return { id: data.id };
+      await snapshot(data.id, nextVersion, "保存修改");
+      return { id: data.id, version: nextVersion };
     }
     const { data: created, error } = await client
       .from("test_cases")
-      .insert(row)
+      .insert({ ...row, version: 1 })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { id: created["id"] as string };
+    const id = created["id"] as string;
+    await snapshot(id, 1, "初始版本");
+    return { id, version: 1 };
   });
+
+export type CaseVersion = {
+  id: string;
+  version: number;
+  name: string;
+  module: string;
+  priority: string;
+  startUrl: string;
+  note: string;
+  author: string;
+  source: string;
+  createdAt: string;
+  steps: { id?: string; keyword: string; target?: string; value?: string }[];
+  script: string;
+};
+
+/** 某条用例的真实版本历史 */
+export const fetchCaseVersions = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ caseId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { db } = await import("@/lib/platform.server");
+    const client = db();
+    const [{ data: rows }, { data: current }] = await Promise.all([
+      client
+        .from("case_versions")
+        .select("*")
+        .eq("case_id", data.caseId)
+        .order("version", { ascending: false })
+        .limit(50),
+      client.from("test_cases").select("version").eq("id", data.caseId).maybeSingle(),
+    ]);
+    const versions: CaseVersion[] = ((rows ?? []) as Record<string, any>[]).map((r) => ({
+      id: r["id"] as string,
+      version: (r["version"] as number) ?? 1,
+      name: (r["name"] as string) ?? "",
+      module: (r["module"] as string) ?? "",
+      priority: (r["priority"] as string) ?? "P1",
+      startUrl: (r["start_url"] as string) ?? "",
+      note: (r["note"] as string) ?? "",
+      author: (r["author"] as string) ?? "",
+      source: (r["source"] as string) ?? "",
+      createdAt: (r["created_at"] as string) ?? "",
+      steps: ((r["steps"] as unknown[]) ?? []) as CaseVersion["steps"],
+      script: (r["script"] as string) ?? "",
+    }));
+    return { versions, currentVersion: (current?.["version"] as number) ?? 1 };
+  });
+
+/** 回滚到指定历史版本：以旧内容生成一个新版本，保证历史可追溯 */
+export const rollbackCase = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({ caseId: z.string().uuid(), version: z.number().int().min(1) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { db } = await import("@/lib/platform.server");
+    const client = db();
+    const { data: target } = await client
+      .from("case_versions")
+      .select("*")
+      .eq("case_id", data.caseId)
+      .eq("version", data.version)
+      .maybeSingle();
+    if (!target) throw new Error("找不到该版本");
+    const { data: current } = await client
+      .from("test_cases")
+      .select("version")
+      .eq("id", data.caseId)
+      .maybeSingle();
+    const nextVersion = ((current?.["version"] as number) ?? 1) + 1;
+    const { error } = await client
+      .from("test_cases")
+      .update({
+        name: target["name"],
+        module: target["module"],
+        priority: target["priority"],
+        start_url: target["start_url"],
+        steps: target["steps"],
+        script: target["script"],
+        version: nextVersion,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.caseId);
+    if (error) throw new Error(error.message);
+    await client.from("case_versions").insert({
+      case_id: data.caseId,
+      version: nextVersion,
+      name: target["name"],
+      module: target["module"],
+      priority: target["priority"],
+      start_url: target["start_url"],
+      steps: target["steps"],
+      script: target["script"],
+      note: `回滚自 v${data.version}`,
+      author: target["author"],
+      source: target["source"],
+    });
+    return { version: nextVersion };
+  });
+
 
 export const removeCase = createServerFn({ method: "POST" })
   .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
@@ -152,7 +283,7 @@ export const addTask = createServerFn({ method: "POST" })
 
     const { data: cases } = await client
       .from("test_cases")
-      .select("id, name, steps")
+      .select("id, name, steps, version")
       .in("id", data.caseIds);
     const rows = (cases ?? []).map((c: Record<string, any>) => ({
       task_id: task["id"],
@@ -160,6 +291,7 @@ export const addTask = createServerFn({ method: "POST" })
       case_name: c["name"],
       status: "等待中",
       step_total: Array.isArray(c["steps"]) ? c["steps"].length : 0,
+      case_version: (c["version"] as number) ?? 1,
       attempt: 1,
     }));
     if (rows.length) await client.from("case_runs").insert(rows);

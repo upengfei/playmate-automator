@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Play, Save } from "lucide-react";
+import { ArrowLeft, Download, Play, Save } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { KeywordPalette, StepBlocks, newStep } from "@/components/block-editor";
 import { StepFlow } from "@/components/step-flow";
+import { CaseVersions } from "@/components/case-versions";
 import { PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generatePlaywrightCode, type CaseStep } from "@/lib/keywords";
-import { upsertCase, useAppStore, type TestCase } from "@/lib/store";
+import { getState, refresh, upsertCase, useAppStore, type TestCase } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/$caseId")({
   head: () => ({
@@ -80,6 +81,22 @@ function CaseEditor() {
             >
               <Play className="mr-1 size-4" />
               本地调试
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const blob = new Blob([code], { type: "text/javascript;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `${draft.name || "case"}.spec.js`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("已导出 Playwright 脚本");
+              }}
+            >
+              <Download className="mr-1 size-4" />
+              导出脚本
             </Button>
             <Button
               onClick={() => {
@@ -161,6 +178,17 @@ function CaseEditor() {
 
           <Panel title={`步骤编排（${draft.steps.length} 步）`}>
             <StepBlocks steps={draft.steps} onChange={setSteps} />
+          </Panel>
+
+          <Panel title="版本历史">
+            <CaseVersions
+              caseId={draft.id}
+              onRolledBack={async () => {
+                await refresh();
+                const next = getState().cases.find((c) => c.id === draft.id);
+                if (next) setDraft(next);
+              }}
+            />
           </Panel>
 
           <Panel title="执行流程图与步骤日志">
