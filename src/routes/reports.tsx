@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Camera, Clapperboard, Download, FileSearch } from "lucide-react";
+import { Bot, Camera, Clapperboard, Download, FileSearch } from "lucide-react";
 import { toast } from "sonner";
 import {
   Bar,
