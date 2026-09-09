@@ -65,7 +65,7 @@ export interface ResolvedModel {
   modelId: string;
   label: string;
   /** Lovable AI（Responses API）需要额外的推理参数 */
-  providerOptions?: Record<string, Record<string, unknown>>;
+  providerOptions?: any;
 }
 
 /** 按当前配置创建可用的模型实例；配置不完整时回退到内置 Lovable AI */
@@ -107,6 +107,6 @@ export async function resolveModel(
     model: provider.responses(AI_MODEL),
     modelId: AI_MODEL,
     label: `内置 Lovable AI · ${AI_MODEL}`,
-    providerOptions: AI_PROVIDER_OPTIONS as unknown as Record<string, Record<string, unknown>>,
+    providerOptions: AI_PROVIDER_OPTIONS as any,
   };
 }

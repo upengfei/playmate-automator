@@ -31,7 +31,7 @@ export const Route = createFileRoute("/api/chat")({
           const result = streamText({
             model: resolved.model,
             system: SYSTEM + KEYWORD_REFERENCE,
-            messages: convertToModelMessages(messages),
+            messages: await convertToModelMessages(messages),
             tools: buildAiTools(),
             stopWhen: stepCountIs(50),
             ...(resolved.providerOptions ? { providerOptions: resolved.providerOptions } : {}),
