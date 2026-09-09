@@ -10,9 +10,17 @@ export type KeywordId =
   | "expectText"
   | "expectUrl"
   | "expectVisible"
-  | "screenshot";
+  | "screenshot"
+  | "ifVisible"
+  | "ifNotVisible"
+  | "ifText"
+  | "elseBranch"
+  | "endIf"
+  | "repeat"
+  | "whileVisible"
+  | "endLoop";
 
-export type KeywordCategory = "导航" | "交互" | "等待" | "断言" | "其他";
+export type KeywordCategory = "导航" | "交互" | "等待" | "断言" | "逻辑" | "其他";
 
 export interface KeywordDef {
   id: KeywordId;
@@ -23,6 +31,10 @@ export interface KeywordDef {
   targetLabel: string;
   valueLabel: string;
   color: string;
+  /** 结构积木：打开一个代码块（条件/循环开始） */
+  opensBlock?: boolean;
+  /** 结构积木：关闭一个代码块（结束） */
+  closesBlock?: boolean;
   template: (target: string, value: string) => string;
 }
 
@@ -159,6 +171,103 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-5",
     template: (_t, v) => `await page.screenshot({ path: '${v || "shot.png"}' });`,
   },
+  {
+    id: "ifVisible",
+    label: "如果元素可见",
+    category: "逻辑",
+    needsTarget: true,
+    needsValue: false,
+    targetLabel: "定位器",
+    valueLabel: "",
+    color: "chart-4",
+    opensBlock: true,
+    template: (t) => `if (await page.locator('${t}').isVisible()) {`,
+  },
+  {
+    id: "ifNotVisible",
+    label: "如果元素不可见",
+    category: "逻辑",
+    needsTarget: true,
+    needsValue: false,
+    targetLabel: "定位器",
+    valueLabel: "",
+    color: "chart-4",
+    opensBlock: true,
+    template: (t) => `if (!(await page.locator('${t}').isVisible())) {`,
+  },
+  {
+    id: "ifText",
+    label: "如果文本包含",
+    category: "逻辑",
+    needsTarget: true,
+    needsValue: true,
+    targetLabel: "定位器",
+    valueLabel: "包含文本",
+    color: "chart-4",
+    opensBlock: true,
+    template: (t, v) =>
+      `if (((await page.locator('${t}').textContent()) ?? '').includes('${v}')) {`,
+  },
+  {
+    id: "elseBranch",
+    label: "否则",
+    category: "逻辑",
+    needsTarget: false,
+    needsValue: false,
+    targetLabel: "",
+    valueLabel: "",
+    color: "chart-4",
+    template: () => `} else {`,
+  },
+  {
+    id: "endIf",
+    label: "条件结束",
+    category: "逻辑",
+    needsTarget: false,
+    needsValue: false,
+    targetLabel: "",
+    valueLabel: "",
+    color: "chart-4",
+    closesBlock: true,
+    template: () => `}`,
+  },
+  {
+    id: "repeat",
+    label: "循环次数",
+    category: "逻辑",
+    needsTarget: false,
+    needsValue: true,
+    targetLabel: "",
+    valueLabel: "次数",
+    color: "chart-4",
+    opensBlock: true,
+    template: (_t, v) => `for (let i = 0; i < ${Number(v) > 0 ? Number(v) : 3}; i++) {`,
+  },
+  {
+    id: "whileVisible",
+    label: "当元素可见时循环",
+    category: "逻辑",
+    needsTarget: true,
+    needsValue: true,
+    targetLabel: "定位器",
+    valueLabel: "最大次数",
+    color: "chart-4",
+    opensBlock: true,
+    template: (t, v) =>
+      `for (let i = 0; i < ${Number(v) > 0 ? Number(v) : 10} && (await page.locator('${t}').isVisible()); i++) {`,
+  },
+  {
+    id: "endLoop",
+    label: "循环结束",
+    category: "逻辑",
+    needsTarget: false,
+    needsValue: false,
+    targetLabel: "",
+    valueLabel: "",
+    color: "chart-4",
+    closesBlock: true,
+    template: () => `}`,
+  },
 ];
 
 export function getKeyword(id: KeywordId): KeywordDef {
@@ -181,9 +290,25 @@ export function describeStep(step: CaseStep): string {
   return parts.join(" · ");
 }
 
+/** 依据条件/循环积木计算每个步骤的缩进层级，供编辑器与代码生成共用 */
+export function stepDepths(steps: CaseStep[]): number[] {
+  let depth = 0;
+  return steps.map((s) => {
+    const kw = getKeyword(s.keyword);
+    if (kw.closesBlock || kw.id === "elseBranch") depth = Math.max(0, depth - 1);
+    const own = depth;
+    if (kw.opensBlock || kw.id === "elseBranch") depth += 1;
+    return own;
+  });
+}
+
 export function generatePlaywrightCode(caseName: string, steps: CaseStep[]): string {
+  const depths = stepDepths(steps);
   const body = steps
-    .map((s) => `  // ${describeStep(s)}\n  ${getKeyword(s.keyword).template(s.target, s.value)}`)
+    .map((s, i) => {
+      const pad = "  ".repeat((depths[i] ?? 0) + 1);
+      return `${pad}// ${describeStep(s)}\n${pad}${getKeyword(s.keyword).template(s.target, s.value)}`;
+    })
     .join("\n");
   return `import { test, expect } from '@playwright/test';
 

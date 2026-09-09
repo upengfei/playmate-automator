@@ -1,7 +1,13 @@
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KEYWORDS, getKeyword, type CaseStep, type KeywordCategory } from "@/lib/keywords";
+import {
+  KEYWORDS,
+  getKeyword,
+  stepDepths,
+  type CaseStep,
+  type KeywordCategory,
+} from "@/lib/keywords";
 import { cn } from "@/lib/utils";
 
 let blockSeq = 0;
@@ -16,7 +22,7 @@ export function newStep(keyword: CaseStep["keyword"]): CaseStep {
   };
 }
 
-const CATEGORIES: KeywordCategory[] = ["导航", "交互", "等待", "断言", "其他"];
+const CATEGORIES: KeywordCategory[] = ["导航", "交互", "等待", "断言", "逻辑", "其他"];
 
 /** 关键字积木面板：点击积木即追加为一个步骤 */
 export function KeywordPalette({ onPick }: { onPick: (id: CaseStep["keyword"]) => void }) {
@@ -83,11 +89,14 @@ export function StepBlocks({
     );
   }
 
+  const depths = stepDepths(steps);
+
   return (
     <ol className="space-y-2">
       {steps.map((s, i) => {
         const kw = getKeyword(s.keyword);
         const st = stepStatus?.(i);
+        const depth = depths[i] ?? 0;
         return (
           <li
             key={s.id}
@@ -97,7 +106,10 @@ export function StepBlocks({
               st === "passed" && "border-success/40",
               st === "failed" && "border-destructive/60 bg-destructive/5",
             )}
-            style={{ borderLeft: `3px solid var(--${kw.color})` }}
+            style={{
+              borderLeft: `3px solid var(--${kw.color})`,
+              marginLeft: depth * 20,
+            }}
           >
             <GripVertical className="text-muted-foreground size-4 shrink-0" />
             <span className="text-muted-foreground w-6 shrink-0 text-center text-xs tabular-nums">
