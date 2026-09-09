@@ -22,6 +22,7 @@ import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
+import { Route as ApiPublicImportCasesRouteImport } from './routes/api/public/import-cases'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
@@ -98,6 +99,11 @@ const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
   path: '/tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicImportCasesRoute = ApiPublicImportCasesRouteImport.update({
+  id: '/api/public/import-cases',
+  path: '/api/public/import-cases',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentBrowsersRoute = ApiPublicAgentBrowsersRouteImport.update({
   id: '/api/public/agent/browsers',
   path: '/api/public/agent/browsers',
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/import-cases': typeof ApiPublicImportCasesRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases': typeof CasesIndexRoute
   '/tasks': typeof TasksIndexRoute
+  '/api/public/import-cases': typeof ApiPublicImportCasesRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
@@ -216,6 +224,7 @@ export interface FileRoutesById {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/import-cases': typeof ApiPublicImportCasesRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/import-cases'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
@@ -268,6 +278,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases'
     | '/tasks'
+    | '/api/public/import-cases'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
@@ -293,6 +304,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/import-cases'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
@@ -319,6 +331,7 @@ export interface RootRouteChildren {
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
+  ApiPublicImportCasesRoute: typeof ApiPublicImportCasesRoute
   ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
@@ -424,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/import-cases': {
+      id: '/api/public/import-cases'
+      path: '/api/public/import-cases'
+      fullPath: '/api/public/import-cases'
+      preLoaderRoute: typeof ApiPublicImportCasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/browsers': {
       id: '/api/public/agent/browsers'
       path: '/api/public/agent/browsers'
@@ -511,6 +531,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
+  ApiPublicImportCasesRoute: ApiPublicImportCasesRoute,
   ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,

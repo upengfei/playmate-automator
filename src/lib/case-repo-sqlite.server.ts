@@ -133,7 +133,7 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
     async insertCase(row) {
       const full = withCaseDefaults(row);
       const record: Record<string, unknown> = {
-        id: crypto.randomUUID(),
+        id: row.id ?? crypto.randomUUID(),
         ...full,
         tags: json(full.tags),
         steps: json(full.steps),
@@ -144,7 +144,7 @@ export async function sqliteCaseRepo(): Promise<CaseRepo> {
       return { ...full, id: record["id"] as string } as CaseRow;
     },
     async updateCase(id: string, patch: CasePatch) {
-      const entries = Object.entries(patch).filter(([, v]) => v !== undefined);
+      const entries = Object.entries(patch).filter(([k, v]) => v !== undefined && k !== "id");
       if (!entries.length) return;
       const sets = entries.map(([k]) => `${k} = ?`).join(", ");
       const values = entries.map(([k, v]) =>

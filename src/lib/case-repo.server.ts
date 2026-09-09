@@ -42,7 +42,7 @@ export type CaseVersionRow = {
   created_at: string;
 };
 
-export type CasePatch = Partial<Omit<CaseRow, "id" | "created_at">>;
+export type CasePatch = Partial<Omit<CaseRow, "created_at">>;
 
 export interface CaseRepo {
   readonly driver: string;
@@ -126,7 +126,7 @@ function supabaseRepo(): CaseRepo {
       const db = await client();
       const { data, error } = await db
         .from("test_cases")
-        .insert(withCaseDefaults(row))
+        .insert({ ...withCaseDefaults(row), ...(row.id ? { id: row.id } : {}) })
         .select("*")
         .single();
       if (error) throw new Error(error.message);
