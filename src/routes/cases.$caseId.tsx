@@ -6,6 +6,7 @@ import { PlatformShell } from "@/components/platform-shell";
 import { KeywordPalette, StepBlocks, newStep } from "@/components/block-editor";
 import { StepFlow } from "@/components/step-flow";
 import { CaseVersions } from "@/components/case-versions";
+import { CaseParamsEditor, extractParamNames } from "@/components/case-params";
 import { PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,10 @@ function CaseEditor() {
 
 
   const setSteps = (steps: CaseStep[]) => setDraft({ ...draft, steps });
+  const usedParams = extractParamNames([
+    draft.startUrl ?? "",
+    ...draft.steps.flatMap((s) => [s.target ?? "", s.value ?? ""]),
+  ]);
   const code = generatePlaywrightCode(draft.name, draft.steps);
 
   return (
@@ -186,6 +191,16 @@ function CaseEditor() {
                 </Select>
               </div>
             </div>
+          </Panel>
+
+          <Panel title="参数化（模板变量）">
+            <CaseParamsEditor
+              params={draft.params ?? []}
+              isTemplate={draft.isTemplate ?? false}
+              usedNames={usedParams}
+              onChange={(params) => setDraft({ ...draft, params })}
+              onTemplateChange={(isTemplate) => setDraft({ ...draft, isTemplate })}
+            />
           </Panel>
 
           <Panel title={`步骤编排（${draft.steps.length} 步）`}>
