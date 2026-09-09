@@ -600,7 +600,7 @@ if (!single) {
     setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
     setInterval(() => pollJobs(), 10 * 1000);
-    setInterval(() => pollInspects(), 3 * 1000);
+    scheduleInspectPoll();
 
     setInterval(() => flushPending(), 15 * 1000);
     setTimeout(() => checkForUpdates(), 8000);
