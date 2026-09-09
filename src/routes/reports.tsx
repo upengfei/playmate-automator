@@ -51,11 +51,27 @@ function ReportsPage() {
         title="测试报告分析"
         desc="每次任务执行都会生成报告，可下钻到用例级失败原因与执行产物"
         action={
-          <Button variant="outline" onClick={() => toast.success("报告已导出（演示）")}>
-            <Download className="mr-1 size-4" />
-            导出报告
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link
+                to="/ai"
+                search={{
+                  q: report
+                    ? `分析任务「${report.taskName}」的执行结果：通过 ${report.passed} / 共 ${report.total}，失败 ${report.failed}，总耗时 ${msToText(report.durationMs)}。请查询真实执行记录和日志，给出失败原因归类和改进建议。`
+                    : "分析最近的测试执行数据，指出失败最多和最不稳定的用例，并给出改进建议",
+                }}
+              >
+                <Bot className="mr-1 size-4" />
+                AI 摘要分析
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => toast.success("报告已导出（演示）")}>
+              <Download className="mr-1 size-4" />
+              导出报告
+            </Button>
+          </div>
         }
+
       />
 
       {report && (
