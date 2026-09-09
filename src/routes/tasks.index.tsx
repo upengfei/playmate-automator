@@ -45,6 +45,7 @@ function TasksPage() {
   const [browser, setBrowser] = useState<Task["browser"]>("Chromium");
   const [concurrency, setConcurrency] = useState(String(settings.defaultConcurrency));
   const [retry, setRetry] = useState(String(settings.defaultRetry));
+  const [serialDependency, setSerialDependency] = useState(false);
 
   const selectedAgent = agents.find((a) => a.id === effectiveAgentId);
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
@@ -66,6 +67,7 @@ function TasksPage() {
       browser,
       concurrency: Number(concurrency),
       retry: Number(retry),
+      serialDependency,
     });
     if (dispatch) {
       const res = await dispatchTask(task.id);
