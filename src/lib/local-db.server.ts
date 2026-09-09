@@ -195,8 +195,29 @@ const SCHEMA: Record<string, TableDef> = {
     ],
     { json: ["models"], bool: ["inspect_screenshot"], defaults: { updated_at: now } },
   ),
-
+  /** 多套 AI 模型配置：可保存任意条，勾选其中一条作为当前使用 */
+  ai_providers: def(
+    [
+      "id",
+      "name",
+      "mode",
+      "base_url",
+      "api_key",
+      "models",
+      "default_model",
+      "is_active",
+      "note",
+      "created_at",
+      "updated_at",
+    ],
+    {
+      json: ["models"],
+      bool: ["is_active"],
+      defaults: { id: uuid, created_at: now, updated_at: now, is_active: () => false },
+    },
+  ),
 };
+
 
 
 
@@ -263,7 +284,14 @@ CREATE TABLE IF NOT EXISTS ai_settings (
 INSERT INTO ai_settings (id, mode, base_url, api_key, models, default_model, updated_at)
 SELECT 1, 'lovable', '', '', '[]', '', datetime('now')
 WHERE NOT EXISTS (SELECT 1 FROM ai_settings WHERE id = 1);
+CREATE TABLE IF NOT EXISTS ai_providers (
+  id TEXT PRIMARY KEY, name TEXT, mode TEXT DEFAULT 'openai', base_url TEXT, api_key TEXT,
+  models TEXT DEFAULT '[]', default_model TEXT, is_active INTEGER DEFAULT 0, note TEXT,
+  created_at TEXT, updated_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ai_providers_active ON ai_providers(is_active);
 `;
+
 
 /** 老库补列：每条单独执行，已存在时忽略错误 */
 const MIGRATIONS = [
