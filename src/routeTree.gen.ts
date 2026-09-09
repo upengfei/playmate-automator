@@ -21,6 +21,7 @@ import { Route as CasesIndexRouteImport } from './routes/cases.index'
 import { Route as CasesCaseIdRouteImport } from './routes/cases.$caseId'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
+import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
 import { Route as ApiPublicAgentJobsRouteImport } from './routes/api/public/agent/jobs'
 import { Route as ApiPublicAgentRegisterRouteImport } from './routes/api/public/agent/register'
@@ -28,6 +29,7 @@ import { Route as ApiPublicAgentRunReportRouteImport } from './routes/api/public
 import { Route as ApiPublicAgentUpgradeRouteImport } from './routes/api/public/agent/upgrade'
 import { Route as ApiPublicAgentUpgradeReportRouteImport } from './routes/api/public/agent/upgrade-report'
 import { Route as ApiPublicAgentVersionRouteImport } from './routes/api/public/agent/version'
+import { Route as ApiPublicBrowserMirrorSplatRouteImport } from './routes/api/public/browser-mirror.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,6 +91,11 @@ const TasksTaskIdRoute = TasksTaskIdRouteImport.update({
   path: '/tasks/$taskId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentBrowsersRoute = ApiPublicAgentBrowsersRouteImport.update({
+  id: '/api/public/agent/browsers',
+  path: '/api/public/agent/browsers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentCasesRoute = ApiPublicAgentCasesRouteImport.update({
   id: '/api/public/agent/cases',
   path: '/api/public/agent/cases',
@@ -125,6 +132,12 @@ const ApiPublicAgentVersionRoute = ApiPublicAgentVersionRouteImport.update({
   path: '/api/public/agent/version',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicBrowserMirrorSplatRoute =
+  ApiPublicBrowserMirrorSplatRouteImport.update({
+    id: '/api/public/browser-mirror/$',
+    path: '/api/public/browser-mirror/$',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -139,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
@@ -146,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
   '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
+  '/api/public/browser-mirror/$': typeof ApiPublicBrowserMirrorSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -160,6 +175,7 @@ export interface FileRoutesByTo {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases': typeof CasesIndexRoute
   '/tasks': typeof TasksIndexRoute
+  '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
@@ -167,6 +183,7 @@ export interface FileRoutesByTo {
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
   '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
+  '/api/public/browser-mirror/$': typeof ApiPublicBrowserMirrorSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -182,6 +199,7 @@ export interface FileRoutesById {
   '/tasks/$taskId': typeof TasksTaskIdRoute
   '/cases/': typeof CasesIndexRoute
   '/tasks/': typeof TasksIndexRoute
+  '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/jobs': typeof ApiPublicAgentJobsRoute
   '/api/public/agent/register': typeof ApiPublicAgentRegisterRoute
@@ -189,6 +207,7 @@ export interface FileRoutesById {
   '/api/public/agent/upgrade': typeof ApiPublicAgentUpgradeRoute
   '/api/public/agent/upgrade-report': typeof ApiPublicAgentUpgradeReportRoute
   '/api/public/agent/version': typeof ApiPublicAgentVersionRoute
+  '/api/public/browser-mirror/$': typeof ApiPublicBrowserMirrorSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -205,6 +224,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
@@ -212,6 +232,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
     | '/api/public/agent/version'
+    | '/api/public/browser-mirror/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -226,6 +247,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases'
     | '/tasks'
+    | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
@@ -233,6 +255,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
     | '/api/public/agent/version'
+    | '/api/public/browser-mirror/$'
   id:
     | '__root__'
     | '/'
@@ -247,6 +270,7 @@ export interface FileRouteTypes {
     | '/tasks/$taskId'
     | '/cases/'
     | '/tasks/'
+    | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/jobs'
     | '/api/public/agent/register'
@@ -254,6 +278,7 @@ export interface FileRouteTypes {
     | '/api/public/agent/upgrade'
     | '/api/public/agent/upgrade-report'
     | '/api/public/agent/version'
+    | '/api/public/browser-mirror/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -269,6 +294,7 @@ export interface RootRouteChildren {
   TasksTaskIdRoute: typeof TasksTaskIdRoute
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
+  ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
   ApiPublicAgentJobsRoute: typeof ApiPublicAgentJobsRoute
   ApiPublicAgentRegisterRoute: typeof ApiPublicAgentRegisterRoute
@@ -276,6 +302,7 @@ export interface RootRouteChildren {
   ApiPublicAgentUpgradeRoute: typeof ApiPublicAgentUpgradeRoute
   ApiPublicAgentUpgradeReportRoute: typeof ApiPublicAgentUpgradeReportRoute
   ApiPublicAgentVersionRoute: typeof ApiPublicAgentVersionRoute
+  ApiPublicBrowserMirrorSplatRoute: typeof ApiPublicBrowserMirrorSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -364,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksTaskIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/browsers': {
+      id: '/api/public/agent/browsers'
+      path: '/api/public/agent/browsers'
+      fullPath: '/api/public/agent/browsers'
+      preLoaderRoute: typeof ApiPublicAgentBrowsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/cases': {
       id: '/api/public/agent/cases'
       path: '/api/public/agent/cases'
@@ -413,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/browser-mirror/$': {
+      id: '/api/public/browser-mirror/$'
+      path: '/api/public/browser-mirror/$'
+      fullPath: '/api/public/browser-mirror/$'
+      preLoaderRoute: typeof ApiPublicBrowserMirrorSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -429,6 +470,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksTaskIdRoute: TasksTaskIdRoute,
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
+  ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,
   ApiPublicAgentJobsRoute: ApiPublicAgentJobsRoute,
   ApiPublicAgentRegisterRoute: ApiPublicAgentRegisterRoute,
@@ -436,6 +478,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAgentUpgradeRoute: ApiPublicAgentUpgradeRoute,
   ApiPublicAgentUpgradeReportRoute: ApiPublicAgentUpgradeReportRoute,
   ApiPublicAgentVersionRoute: ApiPublicAgentVersionRoute,
+  ApiPublicBrowserMirrorSplatRoute: ApiPublicBrowserMirrorSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

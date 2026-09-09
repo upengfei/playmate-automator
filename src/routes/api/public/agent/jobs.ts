@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-/** 客户端轮询领取平台下发的执行任务（排队中的执行记录） */
+const DONE = ["通过", "失败", "已跳过"];
+
+/** 客户端轮询领取平台下发的执行任务（排队中的执行记录，遵守用例依赖关系） */
 export const Route = createFileRoute("/api/public/agent/jobs")({
   server: {
     handlers: {
@@ -15,14 +17,74 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
         const db = admin();
         const { data, error } = await db
           .from("case_runs")
-          .select("id, case_id, case_name, case_version, test_cases(steps, start_url, script, version)")
+          .select(
+            "id, task_id, case_id, case_name, case_version, depends_on_case_id, test_cases(steps, start_url, script, version)",
+          )
           .eq("agent_id", agentId)
           .eq("status", "排队中")
           .order("started_at", { ascending: true })
-          .limit(3);
+          .limit(10);
         if (error) return Response.json({ error: error.message }, { status: 500 });
 
-        const rows = (data ?? []) as Record<string, any>[];
+        let rows = (data ?? []) as Record<string, any>[];
+
+        /* -------- 用例依赖：前置用例通过后才可执行，前置失败/跳过则自动跳过 -------- */
+        const taskIds = [...new Set(rows.map((r) => r["task_id"]).filter(Boolean))];
+        const { data: siblings } = taskIds.length
+          ? await db.from("case_runs").select("task_id, case_id, status").in("task_id", taskIds)
+          : { data: [] as Record<string, any>[] };
+        const statusOf = new Map<string, string>(
+          ((siblings ?? []) as Record<string, any>[]).map((r) => [
+            `${r["task_id"]}:${r["case_id"]}`,
+            r["status"] as string,
+          ]),
+        );
+
+        const skipped: Record<string, any>[] = [];
+        const runnable: Record<string, any>[] = [];
+        for (const r of rows) {
+          const dep = r["depends_on_case_id"] as string | null;
+          if (!dep) {
+            runnable.push(r);
+            continue;
+          }
+          const depStatus = statusOf.get(`${r["task_id"]}:${dep}`) ?? "等待中";
+          if (depStatus === "通过") runnable.push(r);
+          else if (DONE.includes(depStatus)) skipped.push(r);
+          // 前置仍在等待/执行中：本轮不下发，保持排队
+        }
+
+        for (const r of skipped) {
+          await db
+            .from("case_runs")
+            .update({
+              status: "已跳过",
+              error: "前置用例未通过，已自动跳过",
+              finished_at: new Date().toISOString(),
+            })
+            .eq("id", r["id"]);
+          await db.from("task_logs").insert({
+            task_id: r["task_id"],
+            level: "warn",
+            message: `用例「${r["case_name"]}」的前置用例未通过，已自动跳过`,
+          });
+        }
+
+        // 串行依赖任务每轮只放行一个用例，保证执行顺序
+        const serialTasks = new Set(
+          rows.filter((r) => r["depends_on_case_id"]).map((r) => r["task_id"] as string),
+        );
+        const perTask = new Map<string, number>();
+        rows = runnable
+          .filter((r) => {
+            const t = r["task_id"] as string;
+            if (!serialTasks.has(t)) return true;
+            const n = perTask.get(t) ?? 0;
+            perTask.set(t, n + 1);
+            return n === 0;
+          })
+          .slice(0, 3);
+
         // 下发时携带版本号；若任务锁定的是旧版本，则取该版本的历史快照，保证客户端执行的是旧版本内容
         const snapshots = new Map<string, Record<string, any>>();
         const wanted = rows.filter(
@@ -48,6 +110,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
             name: r["case_name"] as string,
             caseVersion: (r["case_version"] as number) ?? (c?.["version"] as number) ?? 1,
             fromSnapshot: Boolean(snap),
+            dependsOnCaseId: (r["depends_on_case_id"] as string) ?? null,
             steps: (src["steps"] as unknown[]) ?? [],
             startUrl: (src["start_url"] as string) ?? "",
             script: (src["script"] as string) ?? "",

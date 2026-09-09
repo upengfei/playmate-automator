@@ -17,6 +17,7 @@ const crypto = require("crypto");
 const platform = require("./platform.cjs");
 const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
+const browsers = require("./browsers.cjs");
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DOWNLOAD_DIR = path.join(app.getPath("userData"), "updates");
@@ -192,6 +193,46 @@ async function pollJobs() {
   }
 }
 
+/* --------------------------- 浏览器内核与离线补传 --------------------------- */
+
+let preparing = false;
+
+/** 首次运行时从平台镜像下载浏览器内核（只下载一次，安装包因此保持轻量） */
+async function prepareBrowsers(manual = false) {
+  if (preparing) return { ok: false, message: "内核下载进行中" };
+  preparing = true;
+  try {
+    if (!manual && browsers.isInstalled("chromium")) {
+      send("agent:browser-stage", { stage: "内核已就绪", progress: 100 });
+      return { ok: true, cached: true };
+    }
+    send("agent:browser-stage", { stage: "从平台下载浏览器内核", progress: 10 });
+    await browsers.ensure("chromium", (t) => {
+      log("info", t);
+      send("agent:browser-stage", { stage: t, progress: 60 });
+    });
+    send("agent:browser-stage", { stage: "内核已就绪", progress: 100 });
+    return { ok: true };
+  } catch (err) {
+    log("error", `浏览器内核下载失败：${err.message || err}`);
+    send("agent:browser-stage", { stage: "内核下载失败", progress: 100, error: String(err.message || err) });
+    return { ok: false, message: String(err.message || err) };
+  } finally {
+    preparing = false;
+  }
+}
+
+/** 网络恢复后补传本地保留的执行结果与日志 */
+async function flushPending() {
+  if (running) return;
+  try {
+    const res = await platform.flushOutbox((t) => log("info", t));
+    if (res.sent || res.pending) send("agent:outbox", res);
+  } catch {
+    /* 仍不可达，下次再试 */
+  }
+}
+
 /* -------------------------------- 安装与更新 ------------------------------- */
 
 function compareVersion(a, b) {
@@ -359,6 +400,12 @@ ipcMain.handle("agent:run-case", (_e, testCase) => executeCase(testCase));
 ipcMain.handle("agent:record-start", (_e, url) => recorder.start(url, (t) => log("info", t)));
 ipcMain.handle("agent:record-stop", () => recorder.stop());
 ipcMain.handle("agent:recording", () => recorder.isRecording());
+ipcMain.handle("agent:outbox", () => ({
+  pending: platform.pendingCount(),
+  logDir: platform.LOG_DIR,
+}));
+ipcMain.handle("agent:flush-outbox", () => platform.flushOutbox((t) => log("info", t)));
+ipcMain.handle("agent:prepare-browsers", () => prepareBrowsers(true));
 
 /* -------------------------------- 生命周期 -------------------------------- */
 
@@ -371,8 +418,10 @@ if (!single) {
     createWindow();
     createTray();
     registerAgent().catch(() => {});
+    setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
     setInterval(() => pollJobs(), 10 * 1000);
+    setInterval(() => flushPending(), 15 * 1000);
     setTimeout(() => checkForUpdates(), 8000);
     setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
     setInterval(() => pollPushedUpgrade(), 30 * 1000);

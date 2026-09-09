@@ -348,6 +348,8 @@ export interface CreateTaskInput {
   concurrency: number;
   retry: number;
   trigger?: Task["trigger"];
+  /** 串行依赖：按所选顺序执行，前置用例通过后才执行下一个，失败自动跳过后续 */
+  serialDependency?: boolean;
 }
 
 export async function createTask(input: CreateTaskInput): Promise<{ id: string }> {
@@ -361,6 +363,7 @@ export async function createTask(input: CreateTaskInput): Promise<{ id: string }
       concurrency: input.concurrency,
       retry: input.retry,
       trigger: input.trigger ?? "手动",
+      serialDependency: input.serialDependency ?? false,
     },
   });
   await refresh();

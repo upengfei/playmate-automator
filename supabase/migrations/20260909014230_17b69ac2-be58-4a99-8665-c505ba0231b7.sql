@@ -1,0 +1,2 @@
+ALTER TABLE public.case_runs ADD COLUMN IF NOT EXISTS depends_on_case_id uuid REFERENCES public.test_cases(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS case_runs_depends_on_idx ON public.case_runs(task_id, depends_on_case_id);

@@ -149,6 +149,7 @@ export type Database = {
           case_id: string | null
           case_name: string
           case_version: number | null
+          depends_on_case_id: string | null
           duration_ms: number | null
           error: string | null
           finished_at: string | null
@@ -166,6 +167,7 @@ export type Database = {
           case_id?: string | null
           case_name?: string
           case_version?: number | null
+          depends_on_case_id?: string | null
           duration_ms?: number | null
           error?: string | null
           finished_at?: string | null
@@ -183,6 +185,7 @@ export type Database = {
           case_id?: string | null
           case_name?: string
           case_version?: number | null
+          depends_on_case_id?: string | null
           duration_ms?: number | null
           error?: string | null
           finished_at?: string | null
@@ -198,6 +201,13 @@ export type Database = {
           {
             foreignKeyName: "case_runs_case_id_fkey"
             columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "test_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_runs_depends_on_case_id_fkey"
+            columns: ["depends_on_case_id"]
             isOneToOne: false
             referencedRelation: "test_cases"
             referencedColumns: ["id"]
