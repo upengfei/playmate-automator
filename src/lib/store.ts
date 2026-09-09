@@ -3,6 +3,10 @@ import type { CaseStep } from "./keywords";
 import {
   abortTask,
   addTask,
+  createCaseFromTemplate,
+  registerAgentDevice,
+  removeParamBinding,
+  saveParamBinding,
   fetchSnapshot,
   pushAgentUpgrade,
   removeCase,
@@ -461,4 +465,48 @@ export async function pushUpgrade(agentId: string) {
 
 export function upgradesOfAgent(agentId: string): UpgradeJob[] {
   return state.upgrades.filter((j) => j.agentId === agentId);
+}
+
+
+/* ------------------------------ 模板与参数绑定 ------------------------------ */
+
+/** 从模板用例派生一个新用例 */
+export async function newCaseFromTemplate(
+  templateId: string,
+  name: string,
+  params?: CaseParam[],
+): Promise<string> {
+  const { id } = await createCaseFromTemplate({
+    data: { templateId, name, params: (params ?? []).map((p) => ({ ...p, note: p.note ?? "" })) },
+  });
+  await refresh();
+  return id;
+}
+
+/** 保存一条环境 / 设备参数绑定 */
+export async function upsertParamBinding(b: {
+  scope: "环境" | "设备";
+  scopeKey: string;
+  name: string;
+  value: string;
+  note?: string;
+}): Promise<void> {
+  await saveParamBinding({ data: { ...b, note: b.note ?? "" } });
+  await refresh();
+}
+
+export async function deleteParamBinding(id: string): Promise<void> {
+  await removeParamBinding({ data: { id } });
+  await refresh();
+}
+
+/** 为一台真实设备注册节点并签发节点令牌 */
+export async function registerDevice(
+  agentId: string,
+  name: string,
+  rotate = false,
+): Promise<{ agentId: string; token: string }> {
+  const res = await registerAgentDevice({ data: { agentId, name, rotate } });
+  await refresh();
+  return { agentId: res.agentId, token: res.token };
 }
