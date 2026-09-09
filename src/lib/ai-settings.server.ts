@@ -97,8 +97,9 @@ export async function listAiProviders(): Promise<AiProvider[]> {
 }
 
 export async function saveAiProvider(
-  input: Partial<AiProvider> & { id?: string; name: string },
+  input: { id?: string | undefined; name: string } & Partial<Omit<AiProvider, "id" | "name">>,
 ): Promise<AiProvider[]> {
+
   const client = await db();
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (input.name !== undefined) row["name"] = input.name;
