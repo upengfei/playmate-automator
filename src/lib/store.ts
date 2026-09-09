@@ -265,12 +265,30 @@ export function refresh(): Promise<void> {
   if (inflight) return inflight;
   inflight = fetchSnapshot()
     .then((snap) => {
-      state = { ...(snap as unknown as State), loaded: true };
+      const s = (snap ?? {}) as Partial<State>;
+      state = {
+        ...defaultState,
+        ...s,
+        cases: s.cases ?? [],
+        paramBindings: s.paramBindings ?? [],
+        agents: s.agents ?? [],
+        tasks: s.tasks ?? [],
+        reports: s.reports ?? [],
+        upgrades: s.upgrades ?? [],
+        trend: s.trend ?? [],
+        settings: { ...emptySettings, ...(s.settings ?? {}) },
+        release: { ...defaultState.release, ...(s.release ?? {}) },
+        loaded: true,
+        loadError: undefined,
+      };
       emit();
     })
     .catch((e) => {
       console.error("[store] 加载平台数据失败", e);
+      state = { ...state, loaded: true, loadError: e instanceof Error ? e.message : String(e) };
+      emit();
     })
+
     .finally(() => {
       inflight = null;
     });
