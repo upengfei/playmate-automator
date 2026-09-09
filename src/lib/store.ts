@@ -200,6 +200,9 @@ export interface State {
   release: AgentRelease;
   trend: { date: string; passed: number; failed: number }[];
   loaded: boolean;
+  /** 数据加载失败时的错误信息（成功时为空） */
+  loadError?: string;
+
 }
 
 /* ------------------------------ 真实数据本地缓存 ----------------------------- */
@@ -220,7 +223,7 @@ const emptySettings: Settings = {
   updateChannel: "稳定版",
 };
 
-let state: State = {
+const defaultState: State = {
   cases: [],
   paramBindings: [],
   agents: [],
@@ -232,6 +235,9 @@ let state: State = {
   trend: [],
   loaded: false,
 };
+
+let state: State = defaultState;
+
 
 const listeners = new Set<() => void>();
 
@@ -259,12 +265,29 @@ export function refresh(): Promise<void> {
   if (inflight) return inflight;
   inflight = fetchSnapshot()
     .then((snap) => {
-      state = { ...(snap as unknown as State), loaded: true };
+      const s = (snap ?? {}) as Partial<State>;
+      state = {
+        ...defaultState,
+        ...s,
+        cases: s.cases ?? [],
+        paramBindings: s.paramBindings ?? [],
+        agents: s.agents ?? [],
+        tasks: s.tasks ?? [],
+        reports: s.reports ?? [],
+        upgrades: s.upgrades ?? [],
+        trend: s.trend ?? [],
+        settings: { ...emptySettings, ...(s.settings ?? {}) },
+        release: { ...defaultState.release, ...(s.release ?? {}) },
+        loaded: true,
+            };
       emit();
     })
     .catch((e) => {
       console.error("[store] 加载平台数据失败", e);
+      state = { ...state, loaded: true, loadError: e instanceof Error ? e.message : String(e) };
+      emit();
     })
+
     .finally(() => {
       inflight = null;
     });
