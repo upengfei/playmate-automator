@@ -25,16 +25,20 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
         const job = ((data ?? []) as Record<string, any>[])[0];
         if (!job) return Response.json({ jobs: [] });
         await client.from("agent_inspects").update({ status: "抓取中" }).eq("id", job["id"]);
+        const { readAiSettings } = await import("@/lib/ai-settings.server");
+        const settings = await readAiSettings();
         return Response.json({
           jobs: [
             {
               id: job["id"],
               url: job["url"],
               description: job["description"] ?? "",
+              screenshot: settings.inspectScreenshot,
             },
           ],
         });
       },
+
 
       POST: async ({ request }) => {
         const parsed = z
