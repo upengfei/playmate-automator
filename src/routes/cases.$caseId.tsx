@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Download, Play, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -37,25 +37,37 @@ export const Route = createFileRoute("/cases/$caseId")({
 
 function CaseEditor() {
   const { caseId } = Route.useParams();
-  const { cases } = useAppStore();
+  const { cases, loaded } = useAppStore();
   const navigate = useNavigate();
   const found = cases.find((c) => c.id === caseId);
   const [draft, setDraft] = useState<TestCase | null>(found ?? null);
 
-  if (!found || !draft) {
+  // 数据是异步从数据库加载的：用例出现后同步一次草稿，避免误报“未找到用例”
+  useEffect(() => {
+    setDraft((d) => (d && d.id === caseId ? d : (found ?? null)));
+  }, [found, caseId]);
+
+  if (!draft) {
     return (
       <PlatformShell>
         <div className="text-muted-foreground py-20 text-center text-sm">
-          未找到用例 {caseId}
-          <div className="mt-4">
-            <Button variant="outline" asChild>
-              <Link to="/cases">返回用例列表</Link>
-            </Button>
-          </div>
+          {loaded ? (
+            <>
+              未找到用例 {caseId}
+              <div className="mt-4">
+                <Button variant="outline" asChild>
+                  <Link to="/cases">返回用例列表</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            "正在加载用例…"
+          )}
         </div>
       </PlatformShell>
     );
   }
+
 
   const setSteps = (steps: CaseStep[]) => setDraft({ ...draft, steps });
   const code = generatePlaywrightCode(draft.name, draft.steps);

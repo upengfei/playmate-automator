@@ -53,22 +53,55 @@ export const Route = createFileRoute("/api/public/agent/cases")({
         if (!(await verifyAgent(agentId, token))) {
           return Response.json({ error: "节点令牌校验失败" }, { status: 401 });
         }
-        const { data, error } = await admin()
+        const client = admin();
+        // 同名同节点的用例视为同一个用例的新版本，避免重复录制上传时产生多条用例
+        const { data: exist } = await client
           .from("test_cases")
-          .insert({
-            name: c.name,
-            module: c.module,
-            start_url: c.startUrl,
-            priority: c.priority,
-            steps: c.steps,
-            script: c.script,
-            source: c.source,
-            agent_id: agentId,
-          })
-          .select("id")
-          .single();
-        if (error) return Response.json({ error: error.message }, { status: 500 });
-        return Response.json({ ok: true, id: data.id });
+          .select("id, version")
+          .eq("name", c.name)
+          .eq("agent_id", agentId)
+          .maybeSingle();
+
+        const version = ((exist?.version as number | undefined) ?? 0) + 1;
+        const payload = {
+          name: c.name,
+          module: c.module,
+          start_url: c.startUrl,
+          priority: c.priority,
+          steps: c.steps,
+          script: c.script,
+          source: c.source,
+          agent_id: agentId,
+          version,
+          updated_at: new Date().toISOString(),
+        };
+
+        let caseId = exist?.id as string | undefined;
+        if (caseId) {
+          const { error } = await client.from("test_cases").update(payload).eq("id", caseId);
+          if (error) return Response.json({ error: error.message }, { status: 500 });
+        } else {
+          const { data, error } = await client.from("test_cases").insert(payload).select("id").single();
+          if (error) return Response.json({ error: error.message }, { status: 500 });
+          caseId = data.id as string;
+        }
+
+        // 录制上传同样生成版本快照，平台侧可以回滚、下发历史版本
+        await client.from("case_versions").insert({
+          case_id: caseId,
+          version,
+          name: c.name,
+          module: c.module,
+          priority: c.priority,
+          start_url: c.startUrl,
+          steps: c.steps,
+          script: c.script,
+          note: "客户端录制上传",
+          author: agentId,
+          source: c.source,
+        });
+
+        return Response.json({ ok: true, id: caseId, version });
       },
     },
   },

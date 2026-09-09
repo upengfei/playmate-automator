@@ -1,0 +1,1 @@
+DELETE FROM public.test_cases WHERE name = '录制回传验证用例' AND agent_id = 'AG-QA-01';
