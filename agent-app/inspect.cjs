@@ -8,18 +8,59 @@ const MAX_ELEMENTS = 120;
 /** 截图 base64 上限（约 600KB），超出则降低质量重截 */
 const MAX_SHOT_CHARS = 600 * 1024;
 
+/** 常驻的浏览器与页面：同一页面已打开时直接复用，不再重复启动 */
+let shared = { browser: null, page: null };
+
+/** 归一化地址：忽略 hash 差异，判断是不是同一个页面 */
+function sameUrl(a, b) {
+  const norm = (v) => String(v || "").split("#")[0].replace(/\/$/, "").toLowerCase();
+  return norm(a) === norm(b) && norm(a) !== "";
+}
+
+/** 等页面进入可交互状态（DOM 就绪 + 网络基本空闲） */
+async function waitReady(page, log) {
+  await page.waitForLoadState("domcontentloaded", { timeout: 60_000 }).catch(() => {});
+  await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {
+    log("页面仍有后台请求，按当前内容继续抓取");
+  });
+  await page.waitForFunction(() => document.readyState !== "loading", null, { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(500);
+}
+
 async function inspectPage(job, log = () => {}) {
   process.env.PLAYWRIGHT_BROWSERS_PATH = browsers.BROWSERS_DIR;
-  log("准备 chromium 浏览器内核…");
-  await browsers.ensure("chromium", log);
-  const { chromium } = require("playwright-core");
-  const browser = await chromium.launch({ headless: true });
   const viewport = { width: 1440, height: 900 };
+
+  // 先检查是否已有打开的浏览器与页面可复用
+  let browser = shared.browser;
+  if (browser && !browser.isConnected()) {
+    browser = null;
+    shared = { browser: null, page: null };
+  }
+  if (!browser) {
+    log("准备 chromium 浏览器内核…");
+    await browsers.ensure("chromium", log);
+    const { chromium } = require("playwright-core");
+    browser = await chromium.launch({ headless: true });
+    shared = { browser, page: null };
+  }
+
   try {
-    const page = await browser.newPage({ viewport });
-    log(`打开页面 ${job.url}`);
-    await page.goto(job.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.waitForTimeout(800);
+    let page = shared.page;
+    if (page && page.isClosed()) page = null;
+    if (!page) {
+      page = await browser.newPage({ viewport });
+      shared.page = page;
+    }
+
+    if (sameUrl(page.url(), job.url)) {
+      log(`页面已打开，直接复用：${job.url}`);
+    } else {
+      log(`页面未打开，正在打开并等待加载：${job.url}`);
+      await page.goto(job.url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    }
+    await waitReady(page, log);
+
 
     const elements = await page.evaluate((max) => {
       const esc = (v) => String(v).replace(/"/g, '\\"');
