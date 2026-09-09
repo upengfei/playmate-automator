@@ -24,42 +24,36 @@ export const Route = createFileRoute("/api/public/agent/register")({
         if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
         const d = parsed.data;
         const { admin, verifyAgent, newToken } = await import("@/lib/agent-db.server");
-        const db = admin();
+        const { readAgentToken, writeAgentToken } = await import("@/lib/agent-store.server");
 
-        const { data: existingToken } = await db
-          .from("agent_tokens")
-          .select("token")
-          .eq("agent_id", d.agentId)
-          .maybeSingle();
-
-        let token = existingToken?.token as string | undefined;
+        let token = await readAgentToken(d.agentId);
         if (token) {
           const ok = await verifyAgent(d.agentId, d.token ?? "");
           if (!ok) return Response.json({ error: "节点令牌校验失败" }, { status: 401 });
+        } else {
+          token = newToken();
+          await writeAgentToken(d.agentId, token);
         }
 
         const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
-        const { error } = await db.from("agents").upsert({
-          id: d.agentId,
-          name: d.name || d.agentId,
-          host: d.host,
-          os: d.os,
-          ip: ip.split(",")[0]?.trim() ?? "",
-          version: d.version,
-          capabilities: d.capabilities,
-          status: d.status,
-          cpu: Math.round(d.cpu),
-          memory: Math.round(d.memory),
-          concurrency: d.concurrency,
-          last_heartbeat: new Date().toISOString(),
-        });
+        const { error } = await admin()
+          .from("agents")
+          .upsert({
+            id: d.agentId,
+            name: d.name || d.agentId,
+            host: d.host,
+            os: d.os,
+            ip: ip.split(",")[0]?.trim() ?? "",
+            version: d.version,
+            capabilities: d.capabilities,
+            status: d.status,
+            cpu: Math.round(d.cpu),
+            memory: Math.round(d.memory),
+            concurrency: d.concurrency,
+            last_heartbeat: new Date().toISOString(),
+          });
         if (error) return Response.json({ error: error.message }, { status: 500 });
 
-        if (!token) {
-          token = newToken();
-          const { error: tErr } = await db.from("agent_tokens").insert({ agent_id: d.agentId, token });
-          if (tErr) return Response.json({ error: tErr.message }, { status: 500 });
-        }
 
         return Response.json({ ok: true, agentId: d.agentId, token });
       },
