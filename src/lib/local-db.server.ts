@@ -195,8 +195,29 @@ const SCHEMA: Record<string, TableDef> = {
     ],
     { json: ["models"], bool: ["inspect_screenshot"], defaults: { updated_at: now } },
   ),
-
+  /** 多套 AI 模型配置：可保存任意条，勾选其中一条作为当前使用 */
+  ai_providers: def(
+    [
+      "id",
+      "name",
+      "mode",
+      "base_url",
+      "api_key",
+      "models",
+      "default_model",
+      "is_active",
+      "note",
+      "created_at",
+      "updated_at",
+    ],
+    {
+      json: ["models"],
+      bool: ["is_active"],
+      defaults: { id: uuid, created_at: now, updated_at: now, is_active: () => false },
+    },
+  ),
 };
+
 
 
 
