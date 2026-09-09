@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import type { CaseParam } from "@/lib/store";
+import { isLoopVar } from "@/lib/case-params";
 
 /** 用例参数（模板变量）编辑器：步骤与起始地址里用 ${参数名} 引用 */
 export function CaseParamsEditor({
