@@ -546,6 +546,7 @@ if (!single) {
     if (!cfg().token) await openSetup();
     createWindow();
     createTray();
+    createAppMenu();
     registerAgent().catch(() => {});
     setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
