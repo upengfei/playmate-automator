@@ -475,7 +475,9 @@ if (!single) {
   app.quit();
 } else {
   app.on("second-instance", () => focusWindow());
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    // 首次启动：本机还没有节点令牌时，先走自动注册配置窗口
+    if (!cfg().token) await openSetup();
     createWindow();
     createTray();
     registerAgent().catch(() => {});
