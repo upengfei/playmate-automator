@@ -103,7 +103,7 @@ function AiAssistantPage() {
   useEffect(() => {
     if (q) {
       void sendMessage({ text: q });
-      void navigate({ to: "/ai", search: () => ({}), replace: true });
+      void navigate({ to: "/ai", search: () => ({ q: undefined }), replace: true });
     }
     // 只在首次带参进入时自动提问
     // eslint-disable-next-line react-hooks/exhaustive-deps
