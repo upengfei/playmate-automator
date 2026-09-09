@@ -101,10 +101,37 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
           if (snap) snapshots.set(`${r["case_id"]}:${r["case_version"]}`, snap as unknown as Record<string, any>);
         }
 
+        // 参数化替换：用例默认值 < 环境绑定 < 设备绑定
+        const { readParamBindings, resolveParamMap, applyParams, applyParamsToSteps, missingParams } =
+          await import("@/lib/case-params.server");
+        const bindings = await readParamBindings(db);
+        const { data: taskRows } = taskIds.length
+          ? await db.from("tasks").select("id, env").in("id", taskIds)
+          : { data: [] as Record<string, any>[] };
+        const envOf = new Map<string, string>(
+          ((taskRows ?? []) as Record<string, any>[]).map((t) => [t["id"] as string, (t["env"] as string) ?? ""]),
+        );
+
         const jobs = rows.map((r) => {
           const c = caseById.get(r["case_id"]);
           const snap = snapshots.get(`${r["case_id"]}:${r["case_version"]}`);
           const src = snap ?? c ?? {};
+          const map = resolveParamMap(
+            (src["params"] as unknown[]) ?? (c?.["params"] as unknown[]) ?? [],
+            bindings,
+            envOf.get(r["task_id"] as string) ?? "",
+            agentId,
+          );
+          const steps = applyParamsToSteps((src["steps"] as unknown[]) ?? [], map);
+          const startUrl = applyParams((src["start_url"] as string) ?? "", map);
+          const script = applyParams((src["script"] as string) ?? "", map);
+          const missing = missingParams(
+            [
+              (src["start_url"] as string) ?? "",
+              ...(((src["steps"] as any[]) ?? []).flatMap((st) => [st?.target ?? "", st?.value ?? ""])),
+            ],
+            map,
+          );
           return {
             runId: r["id"] as string,
             caseId: r["case_id"] as string,
@@ -112,9 +139,11 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
             caseVersion: (r["case_version"] as number) ?? (c?.["version"] as number) ?? 1,
             fromSnapshot: Boolean(snap),
             dependsOnCaseId: (r["depends_on_case_id"] as string) ?? null,
-            steps: (src["steps"] as unknown[]) ?? [],
-            startUrl: (src["start_url"] as string) ?? "",
-            script: (src["script"] as string) ?? "",
+            steps,
+            startUrl,
+            script,
+            params: map,
+            missingParams: missing,
           };
         });
         if (jobs.length) {

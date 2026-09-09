@@ -22,6 +22,10 @@ export type CaseRow = {
   script: string;
   version: number;
   agent_id: string | null;
+  /** 参数化默认值：[{ name, value, note }]，步骤里用 ${name} 引用 */
+  params: unknown[];
+  /** 是否为模板用例（可一键派生新用例） */
+  is_template: boolean;
   updated_at: string;
   created_at: string;
 };
@@ -36,6 +40,7 @@ export type CaseVersionRow = {
   start_url: string;
   steps: unknown[];
   script: string;
+  params: unknown[];
   note: string;
   author: string;
   source: string;
@@ -43,6 +48,7 @@ export type CaseVersionRow = {
 };
 
 export type CasePatch = Partial<Omit<CaseRow, "created_at">>;
+
 
 export interface CaseRepo {
   readonly driver: string;
@@ -75,6 +81,8 @@ export function withCaseDefaults(row: CasePatch & { name: string }): Omit<CaseRo
     script: row.script ?? "",
     version: row.version ?? 1,
     agent_id: row.agent_id ?? null,
+    params: row.params ?? [],
+    is_template: row.is_template ?? false,
     updated_at: row.updated_at ?? nowIso(),
     created_at: nowIso(),
   };
@@ -93,8 +101,11 @@ function supabaseRepo(): CaseRepo {
           ...r,
           tags: (r["tags"] as string[]) ?? [],
           steps: (r["steps"] as unknown[]) ?? [],
+          params: (r["params"] as unknown[]) ?? [],
+          is_template: Boolean(r["is_template"]),
         } as CaseRow)
       : null;
+
 
   return {
     driver: "supabase",

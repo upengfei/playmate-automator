@@ -16,7 +16,8 @@ function defaultConfig() {
   return {
     platformUrl: (process.env.PLAYFLOW_PLATFORM_URL || "https://playflow.lovable.app").replace(/\/$/, ""),
     agentId: process.env.PLAYFLOW_AGENT_ID || `AG-${os.hostname()}`.slice(0, 40),
-    token: "",
+    // 可由平台「下载与安装」页注册设备后获得，支持环境变量预置
+    token: process.env.PLAYFLOW_AGENT_TOKEN || "",
   };
 }
 

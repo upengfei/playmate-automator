@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Apple,
@@ -12,7 +13,9 @@ import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
-import { useAppStore } from "@/lib/store";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { registerDevice, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/download")({
   head: () => ({
@@ -36,6 +39,81 @@ export const Route = createFileRoute("/download")({
 });
 
 const ICONS = [MonitorDown, Apple, Terminal];
+
+/** 设备注册：为一台真实设备签发节点令牌，客户端用它登录平台并回传执行 / 升级结果 */
+function DeviceRegister() {
+  const [agentId, setAgentId] = useState("");
+  const [name, setName] = useState("");
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (rotate: boolean) => {
+    const id = agentId.trim();
+    if (!/^[A-Za-z0-9_.-]{2,64}$/.test(id)) {
+      toast.error("节点标识请使用 2-64 位字母、数字、下划线、点或短横线");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await registerDevice(id, name.trim() || id, rotate);
+      setToken(res.token);
+      toast.success(rotate ? "已重新签发节点令牌" : "设备注册成功，已签发节点令牌");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "注册失败，请重试");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Panel title="注册设备并获取节点令牌">
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
+        <div className="space-y-1.5">
+          <Label>节点标识</Label>
+          <Input value={agentId} onChange={(e) => setAgentId(e.target.value)} placeholder="QA-WIN-07" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>设备名称（可选）</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="回归测试机 07" />
+        </div>
+        <Button disabled={busy} onClick={() => submit(false)}>
+          <ShieldCheck className="mr-1.5 size-4" />
+          注册设备
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={() => submit(true)}>
+          <RefreshCcw className="mr-1.5 size-4" />
+          重置令牌
+        </Button>
+      </div>
+
+      {token ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs">
+            请把下面的节点令牌填入客户端「平台设置」，或写入环境变量后启动客户端。
+            令牌只在此处展示一次，遗失后可点「重置令牌」重新签发（旧令牌立即失效）。
+          </p>
+          <pre className="bg-muted/60 overflow-x-auto rounded-lg p-3 font-mono text-[11px] leading-relaxed">
+            {`PLAYFLOW_AGENT_ID=${agentId.trim()}
+PLAYFLOW_AGENT_TOKEN=${token}`}
+          </pre>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void navigator.clipboard?.writeText(token);
+              toast.success("节点令牌已复制");
+            }}
+          >
+            复制令牌
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            客户端注册 / 心跳、领取任务、回传执行结果与升级结果都会校验该令牌，校验不通过的请求会被平台直接拒绝。
+          </p>
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
 
 function DownloadPage() {
   const { release, settings } = useAppStore();
@@ -79,6 +157,10 @@ function DownloadPage() {
             </Panel>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <DeviceRegister />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">

@@ -252,6 +252,8 @@ export async function loadSnapshot() {
     source: c["source"] ?? "平台编写",
     startUrl: c["start_url"] ?? "",
     steps: ((c["steps"] as StepLike[]) ?? []) as StepLike[],
+    params: ((c["params"] as unknown[]) ?? []) as { name: string; value: string; note?: string }[],
+    isTemplate: Boolean(c["is_template"]),
   }));
 
   const tasks = taskRows.map((t) => {
@@ -355,8 +357,12 @@ export async function loadSnapshot() {
     })),
   }));
 
+  const { readParamBindings } = await import("./case-params.server");
+  const paramBindings = await readParamBindings(client);
+
   return {
     cases,
+    paramBindings,
     agents,
     tasks,
     reports,

@@ -93,6 +93,7 @@ export const Route = createFileRoute("/api/public/agent/cases")({
           start_url: c.startUrl,
           steps: c.steps,
           script: c.script,
+          params: (exist?.params ?? []) as unknown[],
           note: "客户端录制上传",
           author: agentId,
           source: c.source,

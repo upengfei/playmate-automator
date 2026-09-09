@@ -235,20 +235,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "case_runs_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "case_runs_depends_on_case_id_fkey"
-            columns: ["depends_on_case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "case_runs_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
@@ -266,6 +252,7 @@ export type Database = {
           module: string
           name: string
           note: string
+          params: Json
           priority: string
           script: string
           source: string
@@ -281,6 +268,7 @@ export type Database = {
           module?: string
           name?: string
           note?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
@@ -296,6 +284,7 @@ export type Database = {
           module?: string
           name?: string
           note?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
@@ -303,15 +292,37 @@ export type Database = {
           steps?: Json
           version?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "case_versions_case_id_fkey"
-            columns: ["case_id"]
-            isOneToOne: false
-            referencedRelation: "test_cases"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      param_bindings: {
+        Row: {
+          id: string
+          name: string
+          note: string
+          scope: string
+          scope_key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          note?: string
+          scope?: string
+          scope_key?: string
+          updated_at?: string
+          value?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          note?: string
+          scope?: string
+          scope_key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
       }
       platform_settings: {
         Row: {
@@ -485,8 +496,10 @@ export type Database = {
           author: string
           created_at: string
           id: string
+          is_template: boolean
           module: string
           name: string
+          params: Json
           priority: string
           script: string
           source: string
@@ -502,8 +515,10 @@ export type Database = {
           author?: string
           created_at?: string
           id?: string
+          is_template?: boolean
           module?: string
           name: string
+          params?: Json
           priority?: string
           script?: string
           source?: string
@@ -519,8 +534,10 @@ export type Database = {
           author?: string
           created_at?: string
           id?: string
+          is_template?: boolean
           module?: string
           name?: string
+          params?: Json
           priority?: string
           script?: string
           source?: string

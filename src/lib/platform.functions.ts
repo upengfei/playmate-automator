@@ -1,5 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const paramSchema = z.object({
+  name: z.string().min(1).max(60),
+  value: z.string().max(500).default(""),
+  note: z.string().max(120).default(""),
+});
 
 const stepSchema = z.object({
   id: z.string().max(64).optional(),
@@ -28,6 +35,8 @@ export const saveCase = createServerFn({ method: "POST" })
         source: z.string().max(20).default("平台编写"),
         startUrl: z.string().max(500).default(""),
         steps: z.array(stepSchema).max(300).default([]),
+        params: z.array(paramSchema).max(50).default([]),
+        isTemplate: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -47,6 +56,8 @@ export const saveCase = createServerFn({ method: "POST" })
       start_url: data.startUrl,
       steps: data.steps,
       script,
+      params: data.params,
+      is_template: data.isTemplate,
       updated_at: new Date().toISOString(),
     };
 
@@ -60,6 +71,7 @@ export const saveCase = createServerFn({ method: "POST" })
         start_url: data.startUrl,
         steps: data.steps,
         script,
+        params: data.params,
         note,
         author: data.author,
         source: data.source,
@@ -91,6 +103,7 @@ export type CaseVersion = {
   createdAt: string;
   steps: { id?: string; keyword: string; target?: string; value?: string }[];
   script: string;
+  params: { name: string; value: string; note?: string }[];
 };
 
 /** 某条用例的真实版本历史 */
@@ -116,6 +129,7 @@ export const fetchCaseVersions = createServerFn({ method: "GET" })
       createdAt: r.created_at ?? "",
       steps: (r.steps ?? []) as CaseVersion["steps"],
       script: r.script ?? "",
+      params: (r.params ?? []) as CaseVersion["params"],
     }));
     return { versions, currentVersion: current?.version ?? 1 };
   });
@@ -139,6 +153,7 @@ export const rollbackCase = createServerFn({ method: "POST" })
       start_url: target.start_url,
       steps: target.steps,
       script: target.script,
+      params: target.params ?? [],
       version: nextVersion,
       updated_at: new Date().toISOString(),
     });
@@ -151,6 +166,7 @@ export const rollbackCase = createServerFn({ method: "POST" })
       start_url: target.start_url,
       steps: target.steps,
       script: target.script,
+      params: target.params ?? [],
       note: `回滚自 v${data.version}`,
       author: target.author,
       source: target.source,
@@ -166,6 +182,145 @@ export const removeCase = createServerFn({ method: "POST" })
     await (await caseRepo()).deleteCase(data.id);
 
     return { ok: true };
+  });
+
+
+/** 从模板用例派生一个新用例（参数默认值一并复制，可再按需覆盖） */
+export const createCaseFromTemplate = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        templateId: z.string().uuid(),
+        name: z.string().min(1).max(120),
+        params: z.array(paramSchema).max(50).default([]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { caseRepo } = await import("@/lib/case-repo.server");
+    const repo = await caseRepo();
+    const tpl = await repo.getCase(data.templateId);
+    if (!tpl) throw new Error("找不到模板用例");
+    const params = data.params.length ? data.params : ((tpl.params ?? []) as typeof data.params);
+    const created = await repo.insertCase({
+      name: data.name,
+      module: tpl.module,
+      priority: tpl.priority,
+      tags: tpl.tags,
+      author: tpl.author,
+      status: "草稿",
+      source: tpl.source,
+      start_url: tpl.start_url,
+      steps: tpl.steps,
+      script: tpl.script,
+      params,
+      is_template: false,
+      version: 1,
+      updated_at: new Date().toISOString(),
+    });
+    await repo.insertVersion({
+      case_id: created.id,
+      version: 1,
+      name: data.name,
+      module: tpl.module,
+      priority: tpl.priority,
+      start_url: tpl.start_url,
+      steps: tpl.steps,
+      script: tpl.script,
+      params,
+      note: `由模板「${tpl.name}」创建`,
+      author: tpl.author,
+      source: tpl.source,
+    });
+    return { id: created.id };
+  });
+
+/** 新增或更新一条环境 / 设备参数绑定 */
+export const saveParamBinding = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        scope: z.enum(["环境", "设备"]),
+        scopeKey: z.string().min(1).max(64),
+        name: z.string().min(1).max(60),
+        value: z.string().max(500).default(""),
+        note: z.string().max(120).default(""),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { db } = await import("@/lib/platform.server");
+    const { error } = await db()
+      .from("param_bindings")
+      .upsert(
+        {
+          scope: data.scope,
+          scope_key: data.scopeKey,
+          name: data.name,
+          value: data.value,
+          note: data.note,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "scope,scope_key,name" },
+      );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const removeParamBinding = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { db } = await import("@/lib/platform.server");
+    await db().from("param_bindings").delete().eq("id", data.id);
+    return { ok: true };
+  });
+
+/**
+ * 平台端为一台真实设备注册节点并签发节点令牌（需登录）。
+ * 客户端拿到该令牌后，注册 / 心跳 / 领任务 / 回传执行结果 / 回传升级结果都会带上它，
+ * 平台侧一律用 verifyAgent 校验，未通过直接 401。
+ */
+export const registerAgentDevice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        agentId: z
+          .string()
+          .min(2)
+          .max(64)
+          .regex(/^[A-Za-z0-9_.\-]+$/, "节点标识只能使用字母、数字、下划线、点和短横线"),
+        name: z.string().max(64).default(""),
+        rotate: z.boolean().default(false),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { admin, newToken } = await import("@/lib/agent-db.server");
+    const db = admin();
+
+    const { data: exist } = await db
+      .from("agent_tokens")
+      .select("token")
+      .eq("agent_id", data.agentId)
+      .maybeSingle();
+
+    let token = (exist?.token as string | undefined) ?? "";
+    if (!token || data.rotate) {
+      token = newToken();
+      if (exist) await db.from("agent_tokens").update({ token }).eq("agent_id", data.agentId);
+      else await db.from("agent_tokens").insert({ agent_id: data.agentId, token });
+    }
+
+    const { error } = await db.from("agents").upsert({
+      id: data.agentId,
+      name: data.name || data.agentId,
+      status: "离线",
+      last_heartbeat: new Date(0).toISOString(),
+    });
+    if (error) throw new Error(error.message);
+
+    return { agentId: data.agentId, token, registeredBy: context.userId };
   });
 
 export const saveSettings = createServerFn({ method: "POST" })
