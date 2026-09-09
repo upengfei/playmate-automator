@@ -81,6 +81,8 @@ export function withCaseDefaults(row: CasePatch & { name: string }): Omit<CaseRo
     script: row.script ?? "",
     version: row.version ?? 1,
     agent_id: row.agent_id ?? null,
+    params: row.params ?? [],
+    is_template: row.is_template ?? false,
     updated_at: row.updated_at ?? nowIso(),
     created_at: nowIso(),
   };
@@ -99,8 +101,11 @@ function supabaseRepo(): CaseRepo {
           ...r,
           tags: (r["tags"] as string[]) ?? [],
           steps: (r["steps"] as unknown[]) ?? [],
+          params: (r["params"] as unknown[]) ?? [],
+          is_template: Boolean(r["is_template"]),
         } as CaseRow)
       : null;
+
 
   return {
     driver: "supabase",
