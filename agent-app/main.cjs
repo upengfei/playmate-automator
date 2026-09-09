@@ -316,19 +316,39 @@ async function pollJobs() {
   }
 }
 
-/** AI 页面元素定位：领取平台下发的抓取指令，用本机浏览器抓取元素后回传 */
+/**
+ * AI 页面元素定位：领取平台下发的抓取指令，用本机浏览器抓取元素与截图后回传。
+ * 轮询间隔自适应：刚有任务时 3 秒，连续空闲 2 分钟后降到 15 秒，减少无谓刷新。
+ */
+const INSPECT_FAST_MS = 3 * 1000;
+const INSPECT_SLOW_MS = 15 * 1000;
+const INSPECT_IDLE_BEFORE_SLOW_MS = 2 * 60 * 1000;
+let inspectLastActive = Date.now();
+let inspectTimer = null;
+
+function scheduleInspectPoll() {
+  const idle = Date.now() - inspectLastActive;
+  const delay = idle > INSPECT_IDLE_BEFORE_SLOW_MS ? INSPECT_SLOW_MS : INSPECT_FAST_MS;
+  if (inspectTimer) clearTimeout(inspectTimer);
+  inspectTimer = setTimeout(async () => {
+    await pollInspects();
+    scheduleInspectPoll();
+  }, delay);
+}
+
 async function pollInspects() {
   if (running) return;
   try {
     const jobs = await platform.claimInspects();
+    if (jobs.length) inspectLastActive = Date.now();
     for (const job of jobs) {
       running = true;
       log("info", `领取 AI 元素抓取指令：${job.url}`);
       try {
         const { inspectPage } = require("./inspect.cjs");
-        const { elements } = await inspectPage(job, (t) => log("info", t));
-        await platform.reportInspect({ jobId: job.id, elements });
-        log("success", `已回传 ${elements.length} 个元素`);
+        const { elements, screenshot, viewport } = await inspectPage(job, (t) => log("info", t));
+        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport });
+        log("success", `已回传 ${elements.length} 个元素${screenshot ? "与页面截图" : ""}`);
       } catch (err) {
         await platform
           .reportInspect({ jobId: job.id, elements: [], error: String(err && err.message ? err.message : err) })
@@ -336,12 +356,14 @@ async function pollInspects() {
         log("error", `元素抓取失败：${err && err.message ? err.message : err}`);
       } finally {
         running = false;
+        inspectLastActive = Date.now();
       }
     }
   } catch {
     /* 平台不可达时静默重试 */
   }
 }
+
 
 /* --------------------------- 浏览器内核与离线补传 --------------------------- */
 
