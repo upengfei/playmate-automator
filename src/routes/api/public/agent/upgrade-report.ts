@@ -87,17 +87,23 @@ export const Route = createFileRoute("/api/public/agent/upgrade-report")({
         return Response.json({ ok: true });
       },
       GET: async ({ request }) => {
-        const agentId = new URL(request.url).searchParams.get("agentId");
+        const url = new URL(request.url);
+        const agentId = url.searchParams.get("agentId") ?? "";
+        const token = url.searchParams.get("token") ?? "";
+        const { verifyAgent } = await import("@/lib/agent-db.server");
+        if (!(await verifyAgent(agentId, token))) {
+          return Response.json({ error: "节点令牌校验失败" }, { status: 401 });
+        }
         const { db } = await import("@/lib/platform.server");
-        let q = db()
+        const { data } = await db()
           .from("agent_upgrades")
           .select("*")
+          .eq("agent_id", agentId)
           .order("started_at", { ascending: false })
           .limit(50);
-        if (agentId) q = q.eq("agent_id", agentId);
-        const { data } = await q;
         return Response.json({ reports: data ?? [] });
       },
+
     },
   },
 });
