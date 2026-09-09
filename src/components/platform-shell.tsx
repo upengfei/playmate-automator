@@ -52,20 +52,22 @@ const NAV: NavItem[] = [
     label: "系统配置",
     icon: Settings,
     children: [
-      { to: "/settings", label: "基础信息", icon: Settings },
+      { to: "/settings", label: "基础信息", icon: Settings, exact: true },
       { to: "/settings/agents", label: "Agent 与节点校验", icon: Server },
       { to: "/settings/execution", label: "执行策略", icon: SquareStack },
       { to: "/settings/notify", label: "通知", icon: Activity },
       { to: "/settings/params", label: "参数绑定", icon: FileCode2 },
     ],
   },
-
 ];
 
 const FLAT_NAV: NavLeaf[] = NAV.flatMap((item) => ("children" in item ? item.children : [item]));
 
-const isLeafActive = (to: string, pathname: string) =>
-  to === "/" ? pathname === "/" : pathname === to || pathname.startsWith(`${to}/`);
+const isLeafActive = (leaf: NavLeaf, pathname: string) =>
+  leaf.to === "/" || leaf.exact
+    ? pathname === leaf.to
+    : pathname === leaf.to || pathname.startsWith(`${leaf.to}/`);
+
 
 
 export function PlatformShell({ children }: { children: ReactNode }) {
