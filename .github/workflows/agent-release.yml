@@ -167,3 +167,17 @@ jobs:
           echo "安装包公开地址前缀："
           echo "https://github.com/${{ github.repository }}/releases/latest/download/"
           ls -1 dist-agent | grep -v sha256 | grep -v json
+      - name: 登记发布清单到平台
+        # 配置仓库 Secrets：PLATFORM_URL（平台地址）与 AGENT_RELEASE_TOKEN（与平台同名密钥一致）
+        env:
+          PLATFORM_URL: ${{ secrets.PLATFORM_URL }}
+          AGENT_RELEASE_TOKEN: ${{ secrets.AGENT_RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PLATFORM_URL:-}" ] || [ -z "${AGENT_RELEASE_TOKEN:-}" ]; then
+            echo "未配置 PLATFORM_URL / AGENT_RELEASE_TOKEN，跳过平台登记"; exit 0
+          fi
+          curl -sS -X POST "${PLATFORM_URL%/}/api/public/agent/release" \
+            -H "content-type: application/json" \
+            -H "x-release-token: ${AGENT_RELEASE_TOKEN}" \
+            --data-binary @dist-agent/agent-release.json
