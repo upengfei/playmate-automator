@@ -362,11 +362,11 @@ export async function loadSnapshot() {
     upgrades,
     trend,
     release: {
-      version: RELEASE.version,
-      channel: settings.updateChannel,
-      publishedAt: RELEASE.publishedAt,
-      notes: RELEASE.notes,
-      artifacts: RELEASE.artifacts.map((a) => ({
+      version: release.version,
+      channel: release.channel || settings.updateChannel,
+      publishedAt: release.publishedAt,
+      notes: release.notes,
+      artifacts: release.artifacts.map((a) => ({
         platform:
           a.platform === "win"
             ? "Windows 10/11 x64"
@@ -376,9 +376,10 @@ export async function loadSnapshot() {
         file: a.file,
         sizeMB: a.sizeMB,
         sha256: a.sha256,
-        url: artifactUrl(a.file),
+        url: a.url,
       })),
     },
+
   };
 }
 
