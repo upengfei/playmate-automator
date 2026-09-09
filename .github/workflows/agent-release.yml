@@ -58,7 +58,8 @@ jobs:
         run: >-
           bunx electron-packager . PlayFlowAgent
           --platform=${{ matrix.platform }} --arch=${{ matrix.arch }}
-          --app-version="$VERSION" --out=electron-release --overwrite
+          --app-version="$VERSION" --icon=agent-app/assets/icon
+          --out=electron-release --overwrite
           --prune=false
           --ignore='^/node_modules' --ignore='^/src' --ignore='^/public'
           --ignore='^/electron-release' --ignore='^/dist' --ignore='^/\.git'
@@ -86,7 +87,17 @@ jobs:
           set -euo pipefail
           APP="electron-release/PlayFlowAgent-darwin-arm64/PlayFlowAgent.app"
           if [ -z "${MACOS_CERT_P12_BASE64:-}" ] || [ -z "${MACOS_SIGN_IDENTITY:-}" ]; then
-            echo "::warning::未配置苹果证书，产出未签名安装包（首次打开会被 Gatekeeper 拦截）"
+            echo "::warning::未配置苹果开发者证书，使用 ad-hoc 签名（首次打开会有 Gatekeeper 提示，右键打开或在系统设置中允许即可）"
+            find "$APP/Contents/Frameworks" -type f \( -name "*.dylib" -o -name "*.so" -o -perm -111 \) -print0 2>/dev/null |
+              while IFS= read -r -d '' f; do
+                codesign --force --sign - --entitlements agent-app/entitlements.mac.inherit.plist "$f" || true
+              done
+            for helper in "$APP/Contents/Frameworks/"*.app "$APP/Contents/Frameworks/"*.framework; do
+              [ -e "$helper" ] || continue
+              codesign --force --sign - --entitlements agent-app/entitlements.mac.inherit.plist "$helper" || true
+            done
+            codesign --force --sign - --entitlements agent-app/entitlements.mac.plist "$APP"
+            echo "ad-hoc 签名完成"
             exit 0
           fi
 

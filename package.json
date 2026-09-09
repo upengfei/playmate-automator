@@ -14,9 +14,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "agent:dev": "electron agent-app/main.cjs",
-    "agent:pack:linux": "electron-packager . PlayFlowAgent --platform=linux --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
-    "agent:pack:win": "electron-packager . PlayFlowAgent --platform=win32 --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
-    "agent:pack:mac": "electron-packager . PlayFlowAgent --platform=darwin --arch=x64 --app-version=1.8.2 --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist"
+    "agent:pack:linux": "electron-packager . PlayFlowAgent --platform=linux --arch=x64 --app-version=1.8.2 --icon=agent-app/assets/icon --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
+    "agent:pack:win": "electron-packager . PlayFlowAgent --platform=win32 --arch=x64 --app-version=1.8.2 --icon=agent-app/assets/icon --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist",
+    "agent:pack:mac": "electron-packager . PlayFlowAgent --platform=darwin --arch=x64 --app-version=1.8.2 --icon=agent-app/assets/icon --out=electron-release --overwrite --prune=false --ignore=node_modules --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/dist"
   },
   "overrides": {
     "rolldown": "1.2.1"

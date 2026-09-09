@@ -81,5 +81,6 @@
 - [x] 循环变量 ${LOOP_INDEX} / ${当前循环} / ${循环次数}，与参数绑定共存，运行时由循环上下文替换
 - [x] 用例编辑改为拖拽式积木编辑器（拖入插入、拖动排序、上下移动、删除），右侧脚本实时生成并置顶跟随
 - [x] 端到端验收：SQLite 注册设备 AG-LOOP-01 → 上传含条件+3 次循环的用例 → 下发 → 真实 Chromium 执行通过（7.6s，29 条日志，循环截图 loop-1/2/3-of-3）写入本地数据库
-- [x] 发布流程加入 macOS Developer ID 签名与 Apple 公证（缺证书时降级为未签名包）
-- [ ] macOS 签名/公证需在 GitHub 配置证书密钥：MACOS_CERT_P12_BASE64、MACOS_CERT_PASSWORD、MACOS_SIGN_IDENTITY、APPLE_ID、APPLE_APP_PASSWORD、APPLE_TEAM_ID
+- [x] 发布流程加入 macOS ad-hoc 签名（缺证书时用 `codesign --sign -`），配置 Developer ID 证书后可自动签名与 Apple 公证
+- [x] PlayFlowAgent 使用自定义品牌图标（icon.icns / icon.ico / icon.png / tray.png），不再显示 Electron 默认图标
+- [ ] macOS Developer ID 签名与 Apple 公证需在 GitHub 配置证书密钥：MACOS_CERT_P12_BASE64、MACOS_CERT_PASSWORD、MACOS_SIGN_IDENTITY、APPLE_ID、APPLE_APP_PASSWORD、APPLE_TEAM_ID
