@@ -1,9 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertOctagon, RotateCcw, Send } from "lucide-react";
+import { AlertOctagon, ListChecks, RotateCcw, Send } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, ProgressBar, StatCard, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
+import { fetchCaseStats } from "@/lib/platform.functions";
 import { dispatchTask, retryTask, useAppStore, type Task, type TaskStatus } from "@/lib/store";
 
 const COLUMNS: { title: string; statuses: TaskStatus[]; hint: string }[] = [
