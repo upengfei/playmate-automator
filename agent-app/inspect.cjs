@@ -160,9 +160,19 @@ async function inspectPage(job, log = () => {}) {
     }
 
     return { elements, screenshot, viewport };
-  } finally {
-    await browser.close().catch(() => {});
+  } catch (err) {
+    // 出错时释放浏览器，避免下次复用到坏页面
+    await closeInspectBrowser();
+    throw err;
   }
 }
 
-module.exports = { inspectPage };
+/** 关闭常驻抓取浏览器（客户端退出或抓取出错时调用） */
+async function closeInspectBrowser() {
+  const b = shared.browser;
+  shared = { browser: null, page: null };
+  if (b) await b.close().catch(() => {});
+}
+
+module.exports = { inspectPage, closeInspectBrowser };
+
