@@ -58,8 +58,15 @@ function sqliteStore(db: Db): AgentTokenStore {
          ON CONFLICT(agent_id) DO UPDATE SET token = excluded.token`,
       ).run(agentId, token, new Date().toISOString());
     },
+    async findByToken(token) {
+      const row = db.prepare(`SELECT agent_id FROM agent_tokens WHERE token = ?`).get(token) as
+        | { agent_id?: string }
+        | undefined;
+      return row?.agent_id ?? "";
+    },
   };
 }
+
 
 function supabaseStore(): AgentTokenStore {
   const client = async () => {
