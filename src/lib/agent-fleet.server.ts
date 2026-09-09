@@ -17,7 +17,7 @@ export interface ReleaseArtifact {
  * 直接返回公开地址；否则回退到站点内 /downloads/ 路径。
  */
 export function artifactUrl(file: string): string {
-  const base = process.env.AGENT_DOWNLOAD_BASE;
+  const base = process.env["AGENT_DOWNLOAD_BASE"];
   if (base) return `${base.replace(/\/+$/, "")}/${file}`;
   return `/downloads/${file}`;
 }
