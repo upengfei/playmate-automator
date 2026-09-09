@@ -162,16 +162,40 @@ const SCHEMA: Record<string, TableDef> = {
     { json: ["notes", "artifacts"], bool: ["is_current"], defaults: { id: uuid, created_at: now } },
   ),
   agent_tokens: def(["agent_id", "token", "created_at"], { defaults: { created_at: now } }),
-  /** AI 页面元素定位：平台下发抓取指令，客户端用本机 Playwright 回传元素清单 */
+  /** AI 页面元素定位：平台下发抓取指令，客户端用本机 Playwright 回传元素清单与页面截图 */
   agent_inspects: def(
-    ["id", "agent_id", "url", "description", "status", "elements", "error", "created_at", "finished_at"],
-    { json: ["elements"], defaults: { id: uuid, created_at: now, status: () => "排队中" } },
+    [
+      "id",
+      "agent_id",
+      "url",
+      "url_key",
+      "description",
+      "status",
+      "elements",
+      "screenshot",
+      "viewport",
+      "error",
+      "created_at",
+      "finished_at",
+    ],
+    { json: ["elements", "viewport"], defaults: { id: uuid, created_at: now, status: () => "排队中" } },
   ),
   /** AI 模型接入配置：内置 Lovable AI / OpenAI 兼容 / Anthropic 兼容 / 自定义 */
   ai_settings: def(
-    ["id", "mode", "base_url", "api_key", "models", "default_model", "updated_at"],
-    { json: ["models"], defaults: { updated_at: now } },
+    [
+      "id",
+      "mode",
+      "base_url",
+      "api_key",
+      "models",
+      "default_model",
+      "inspect_cache_minutes",
+      "inspect_screenshot",
+      "updated_at",
+    ],
+    { json: ["models"], bool: ["inspect_screenshot"], defaults: { updated_at: now } },
   ),
+
 };
 
 
