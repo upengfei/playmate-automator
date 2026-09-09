@@ -135,9 +135,12 @@ function CaseEditor() {
         <Panel title="关键字积木">
           <KeywordPalette onPick={(id) => setSteps([...draft.steps, newStep(id)])} />
           <p className="text-muted-foreground mt-4 text-xs">
-            点击积木即追加步骤，支持上下移动排序；每个积木对应一条 Playwright 指令。
+            点击积木追加步骤，也可以直接把积木拖到步骤区的任意位置插入；步骤之间可拖动排序。
+            循环里可用 <code>{"${LOOP_INDEX}"}</code>（从 0 开始）、
+            <code>{"${当前循环}"}</code>（从 1 开始）、<code>{"${循环次数}"}</code> 作为循环变量。
           </p>
         </Panel>
+
 
         <div className="space-y-4">
           <Panel title="基础信息">
@@ -216,7 +219,7 @@ function CaseEditor() {
           </Panel>
 
 
-          <Panel title={`步骤编排（${draft.steps.length} 步）`}>
+          <Panel title={`步骤编排（${draft.steps.length} 步）· 可拖拽排序`}>
             <StepBlocks steps={draft.steps} onChange={setSteps} />
           </Panel>
 
@@ -236,7 +239,8 @@ function CaseEditor() {
           </Panel>
         </div>
 
-        <Panel title="生成的 Playwright 脚本">
+        <div className="xl:sticky xl:top-4 xl:self-start">
+        <Panel title="生成的 Playwright 脚本（实时）">
           <pre className="bg-muted text-foreground max-h-[32rem] overflow-auto rounded-lg p-3 text-[11px] leading-relaxed">
             <code>{code}</code>
           </pre>
@@ -251,6 +255,7 @@ function CaseEditor() {
             复制脚本
           </Button>
         </Panel>
+        </div>
       </div>
     </PlatformShell>
   );

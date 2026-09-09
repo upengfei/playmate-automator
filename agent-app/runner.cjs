@@ -1,4 +1,4 @@
-/* 真实 Playwright 执行内核：逐步执行用例步骤，输出真实结果与产物 */
+/* 真实 Playwright 执行内核：逐步执行用例步骤（支持条件 / 循环积木），输出真实结果与产物 */
 const path = require("path");
 const fs = require("fs");
 const { app } = require("electron");
@@ -14,19 +14,80 @@ function pw() {
 function locator(page, target) {
   const t = String(target || "").trim();
   if (!t) throw new Error("缺少元素定位器");
-  if (t.startsWith("text=") || t.startsWith("role=") || t.startsWith("//") || t.startsWith("(")) {
-    return page.locator(t);
-  }
   return page.locator(t);
+}
+
+/* ---------- 循环变量 ---------- */
+
+const PLACEHOLDER =
+  /\$\{\s*([A-Za-z0-9_\-.\u4e00-\u9fa5]+)\s*\}|\{\{\s*([A-Za-z0-9_\-.\u4e00-\u9fa5]+)\s*\}\}/g;
+
+/** 把步骤文本里的循环变量替换成当前循环上下文的取值 */
+function applyLoop(text, loop) {
+  const raw = String(text ?? "");
+  if (!raw || !loop) return raw;
+  const map = {
+    LOOP_INDEX: String(loop.index),
+    循环序号: String(loop.index),
+    LOOP_ITERATION: String(loop.index + 1),
+    当前循环: String(loop.index + 1),
+    LOOP_COUNT: String(loop.count),
+    循环次数: String(loop.count),
+  };
+  return raw.replace(PLACEHOLDER, (m, a, b) => {
+    const key = String(a ?? b ?? "").trim();
+    return key in map ? map[key] : m;
+  });
+}
+
+/* ---------- 积木解析：把扁平步骤解析成条件 / 循环嵌套结构 ---------- */
+
+const IF_OPEN = new Set(["ifVisible", "ifNotVisible", "ifText"]);
+const LOOP_OPEN = new Set(["repeat", "whileVisible"]);
+const CLOSERS = new Set(["endIf", "endLoop"]);
+
+function parseNodes(steps, from) {
+  const nodes = [];
+  let i = from;
+  while (i < steps.length) {
+    const s = steps[i] || {};
+    const kw = s.keyword;
+    if (CLOSERS.has(kw)) return { nodes, next: i + 1 };
+    if (kw === "elseBranch") return { nodes, next: i, atElse: true };
+    if (IF_OPEN.has(kw) || LOOP_OPEN.has(kw)) {
+      const first = parseNodes(steps, i + 1);
+      let body = first.nodes;
+      let elseBody = [];
+      let next = first.next;
+      if (first.atElse) {
+        const second = parseNodes(steps, first.next + 1);
+        elseBody = second.nodes;
+        next = second.next;
+      }
+      nodes.push({
+        type: LOOP_OPEN.has(kw) ? "loop" : "if",
+        index: i,
+        step: s,
+        body,
+        elseBody,
+      });
+      i = next;
+      continue;
+    }
+    nodes.push({ type: "step", index: i, step: s });
+    i++;
+  }
+  return { nodes, next: i };
 }
 
 /**
  * 执行一条用例。
  * @param {{id?:string,name:string,steps:Array,browser?:string,headed?:boolean,timeoutMs?:number}} testCase
- * @param {(e:{type:string,index?:number,step?:object,level?:string,text?:string,status?:string,durationMs?:number,error?:string,shot?:string})=>void} emit
+ * @param {(e:object)=>void} emit
  */
 async function runCase(testCase, emit = () => {}) {
-  const browserName = testCase.browser === "firefox" || testCase.browser === "webkit" ? testCase.browser : "chromium";
+  const browserName =
+    testCase.browser === "firefox" || testCase.browser === "webkit" ? testCase.browser : "chromium";
   emit({ type: "log", level: "info", text: `准备 ${browserName} 浏览器内核…` });
   await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
 
@@ -45,37 +106,8 @@ async function runCase(testCase, emit = () => {}) {
     emit({ type: "log", level: "success", text: `已启动真实 ${browserName} 实例` });
 
     const steps = testCase.steps || [];
-    for (let i = 0; i < steps.length; i++) {
-      const s = steps[i];
-      const t0 = Date.now();
-      emit({ type: "step-start", index: i, step: s });
-      try {
-        await execStep(page, s);
-        const durationMs = Date.now() - t0;
-        stepResults.push({ index: i, keyword: s.keyword, status: "passed", durationMs });
-        emit({ type: "step-end", index: i, status: "passed", durationMs });
-      } catch (err) {
-        const durationMs = Date.now() - t0;
-        const shot = path.join(ARTIFACT_DIR, `fail-${Date.now()}.png`);
-        await page.screenshot({ path: shot }).catch(() => {});
-        stepResults.push({
-          index: i,
-          keyword: s.keyword,
-          status: "failed",
-          durationMs,
-          error: String(err.message || err),
-        });
-        emit({
-          type: "step-end",
-          index: i,
-          status: "failed",
-          durationMs,
-          error: String(err.message || err),
-          shot,
-        });
-        throw err;
-      }
-    }
+    const { nodes } = parseNodes(steps, 0);
+    await execNodes(nodes, { page, emit, stepResults, loop: null });
 
     const shot = path.join(ARTIFACT_DIR, `pass-${Date.now()}.png`);
     await page.screenshot({ path: shot }).catch(() => {});
@@ -91,10 +123,117 @@ async function runCase(testCase, emit = () => {}) {
       status: "failed",
       durationMs: Date.now() - startedAt,
       steps: stepResults,
-      error: String(err.message || err),
+      error: String((err && err.message) || err),
     };
   } finally {
     if (browser) await browser.close().catch(() => {});
+  }
+}
+
+async function execNodes(nodes, ctx) {
+  for (const node of nodes) {
+    if (node.type === "step") {
+      await runOne(node, ctx, () => execStep(ctx.page, resolveStep(node.step, ctx.loop)));
+      continue;
+    }
+    if (node.type === "if") {
+      let taken = false;
+      await runOne(node, ctx, async () => {
+        taken = await evalCondition(ctx.page, resolveStep(node.step, ctx.loop));
+        ctx.emit({
+          type: "log",
+          level: "info",
+          text: `条件「${node.step.keyword}」判定为 ${taken ? "成立" : "不成立"}`,
+        });
+      });
+      await execNodes(taken ? node.body : node.elseBody || [], ctx);
+      continue;
+    }
+    // 循环积木
+    const s = resolveStep(node.step, ctx.loop);
+    const max = Number(s.value) > 0 ? Number(s.value) : node.step.keyword === "repeat" ? 3 : 10;
+    await runOne(node, ctx, async () => {
+      ctx.emit({ type: "log", level: "info", text: `进入循环，最多 ${max} 次` });
+    });
+    for (let i = 0; i < max; i++) {
+      if (node.step.keyword === "whileVisible") {
+        const visible = await locator(ctx.page, s.target)
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (!visible) {
+          ctx.emit({ type: "log", level: "info", text: `元素不再可见，循环在第 ${i + 1} 次前结束` });
+          break;
+        }
+      }
+      ctx.emit({ type: "log", level: "info", text: `循环第 ${i + 1}/${max} 次` });
+      await execNodes(node.body, { ...ctx, loop: { index: i, count: max } });
+    }
+  }
+}
+
+function resolveStep(step, loop) {
+  return {
+    ...step,
+    target: applyLoop(step.target || "", loop),
+    value: applyLoop(step.value || "", loop),
+  };
+}
+
+/** 统一的单步执行包装：负责发出步骤事件、记录耗时与失败截图 */
+async function runOne(node, ctx, fn) {
+  const t0 = Date.now();
+  ctx.emit({ type: "step-start", index: node.index, step: node.step });
+  try {
+    await fn();
+    const durationMs = Date.now() - t0;
+    ctx.stepResults.push({
+      index: node.index,
+      keyword: node.step.keyword,
+      status: "passed",
+      durationMs,
+    });
+    ctx.emit({ type: "step-end", index: node.index, status: "passed", durationMs });
+  } catch (err) {
+    const durationMs = Date.now() - t0;
+    const shot = path.join(ARTIFACT_DIR, `fail-${Date.now()}.png`);
+    await ctx.page.screenshot({ path: shot }).catch(() => {});
+    const error = String((err && err.message) || err);
+    ctx.stepResults.push({
+      index: node.index,
+      keyword: node.step.keyword,
+      status: "failed",
+      durationMs,
+      error,
+    });
+    ctx.emit({ type: "step-end", index: node.index, status: "failed", durationMs, error, shot });
+    throw err;
+  }
+}
+
+async function evalCondition(page, s) {
+  const target = s.target || "";
+  const value = s.value || "";
+  switch (s.keyword) {
+    case "ifVisible":
+      return await locator(page, target)
+        .first()
+        .isVisible()
+        .catch(() => false);
+    case "ifNotVisible":
+      return !(await locator(page, target)
+        .first()
+        .isVisible()
+        .catch(() => false));
+    case "ifText": {
+      const text = await locator(page, target)
+        .first()
+        .textContent()
+        .catch(() => "");
+      return String(text || "").includes(value);
+    }
+    default:
+      throw new Error(`暂不支持的条件关键字：${s.keyword}`);
   }
 }
 
@@ -142,7 +281,7 @@ async function execStep(page, s) {
       }
       return;
     case "screenshot": {
-      const p = path.join(ARTIFACT_DIR, `shot-${Date.now()}.png`);
+      const p = path.join(ARTIFACT_DIR, value ? `${Date.now()}-${path.basename(value)}` : `shot-${Date.now()}.png`);
       await page.screenshot({ path: p });
       return;
     }
@@ -151,4 +290,4 @@ async function execStep(page, s) {
   }
 }
 
-module.exports = { runCase, ARTIFACT_DIR };
+module.exports = { runCase, ARTIFACT_DIR, applyLoop, parseNodes };
