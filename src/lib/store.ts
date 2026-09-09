@@ -279,8 +279,7 @@ export function refresh(): Promise<void> {
         settings: { ...emptySettings, ...(s.settings ?? {}) },
         release: { ...defaultState.release, ...(s.release ?? {}) },
         loaded: true,
-        loadError: undefined,
-      };
+            };
       emit();
     })
     .catch((e) => {
