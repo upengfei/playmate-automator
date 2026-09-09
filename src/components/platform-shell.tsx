@@ -124,7 +124,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="bg-card/85 sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b px-4 backdrop-blur lg:px-6">
           <div className="flex items-center gap-3 overflow-x-auto lg:hidden">
-            {NAV.map((item) => (
+            {FLAT_NAV.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -134,6 +134,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+
           </div>
           <div className="hidden text-sm font-medium lg:block">{state.settings.platformName}</div>
           <div className="flex items-center gap-2">
