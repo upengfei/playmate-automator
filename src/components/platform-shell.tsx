@@ -47,7 +47,19 @@ const NAV: NavItem[] = [
       { to: "/download", label: "客户端下载更新", icon: MonitorDown },
     ],
   },
-  { to: "/settings", label: "系统配置", icon: Settings },
+  {
+    key: "settings",
+    label: "系统配置",
+    icon: Settings,
+    children: [
+      { to: "/settings", label: "基础信息", icon: Settings },
+      { to: "/settings/agents", label: "Agent 与节点校验", icon: Server },
+      { to: "/settings/execution", label: "执行策略", icon: SquareStack },
+      { to: "/settings/notify", label: "通知", icon: Activity },
+      { to: "/settings/params", label: "参数绑定", icon: FileCode2 },
+    ],
+  },
+
 ];
 
 const FLAT_NAV: NavLeaf[] = NAV.flatMap((item) => ("children" in item ? item.children : [item]));
