@@ -283,7 +283,7 @@ export const addTask = createServerFn({ method: "POST" })
 
     const { data: cases } = await client
       .from("test_cases")
-      .select("id, name, steps")
+      .select("id, name, steps, version")
       .in("id", data.caseIds);
     const rows = (cases ?? []).map((c: Record<string, any>) => ({
       task_id: task["id"],
@@ -291,6 +291,7 @@ export const addTask = createServerFn({ method: "POST" })
       case_name: c["name"],
       status: "等待中",
       step_total: Array.isArray(c["steps"]) ? c["steps"].length : 0,
+      case_version: (c["version"] as number) ?? 1,
       attempt: 1,
     }));
     if (rows.length) await client.from("case_runs").insert(rows);
