@@ -19,7 +19,7 @@ import { tickHeartbeats, useAppStore } from "@/lib/store";
 import { signOut, useAuth } from "@/lib/use-auth";
 import { cn } from "@/lib/utils";
 
-type NavLeaf = { to: string; label: string; icon: typeof Gauge };
+type NavLeaf = { to: string; label: string; icon: typeof Gauge; exact?: boolean };
 type NavGroup = { key: string; label: string; icon: typeof Gauge; children: NavLeaf[] };
 type NavItem = NavLeaf | NavGroup;
 
