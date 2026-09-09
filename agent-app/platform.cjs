@@ -199,6 +199,22 @@ async function report(payload) {
   }
 }
 
+/** AI 页面元素定位：领取抓取指令 */
+async function claimInspects() {
+  const data = await api(
+    `inspect?agentId=${encodeURIComponent(config.agentId)}&token=${encodeURIComponent(config.token)}`,
+  );
+  return data.jobs || [];
+}
+
+/** 回传抓取到的元素清单 */
+async function reportInspect(payload) {
+  return api("inspect", {
+    method: "POST",
+    body: { agentId: config.agentId, token: config.token, ...payload },
+  });
+}
+
 module.exports = {
   getConfig,
   saveConfig,
@@ -206,6 +222,8 @@ module.exports = {
   pullCases,
   uploadCase,
   claimJobs,
+  claimInspects,
+  reportInspect,
   report,
   api,
   flushOutbox,
