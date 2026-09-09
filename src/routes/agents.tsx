@@ -14,12 +14,14 @@ import { PageHeader, Panel, ProgressBar, StatCard, StatusChip } from "@/componen
 import { Button } from "@/components/ui/button";
 import {
   pushUpgrade,
+  refresh,
   toggleAgentOnline,
   useAppStore,
   versionOutdated,
   type Agent,
   type UpgradeJob,
 } from "@/lib/store";
+
 import { cn } from "@/lib/utils";
 
 
@@ -39,19 +41,44 @@ export const Route = createFileRoute("/agents")({
     ],
   }),
   component: AgentsPage,
+  errorComponent: ({ error, reset }) => <RouteError error={error} reset={reset} />,
 });
 
+function RouteError({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <PlatformShell>
+      <div className="border-destructive/40 bg-destructive/10 mt-2 rounded-xl border p-4 text-sm">
+        <p className="font-medium">页面数据加载失败</p>
+        <p className="text-muted-foreground mt-1 text-xs break-all">{error.message}</p>
+        <Button size="sm" className="mt-3" onClick={reset}>
+          重试
+        </Button>
+      </div>
+    </PlatformShell>
+  );
+}
+
 function AgentsPage() {
-  const { agents, settings, tasks, upgrades, release } = useAppStore();
+  const { agents, settings, tasks, upgrades, release, loadError } = useAppStore();
   const online = agents.filter((a) => a.status !== "离线");
   const outdated = agents.filter((a) => versionOutdated(a, settings.minAgentVersion));
 
   return (
     <PlatformShell>
+      {loadError && (
+        <div className="border-destructive/40 bg-destructive/10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm">
+          <span className="flex-1">数据加载失败：{loadError}</span>
+          <Button size="sm" variant="outline" onClick={() => void refresh()}>
+            <RefreshCw className="mr-1 size-3.5" />
+            重试
+          </Button>
+        </div>
+      )}
       <PageHeader
         title="执行节点管理"
         desc={`心跳超时阈值 ${settings.heartbeatTimeoutSec} 秒 · 最低 Agent 版本要求 v${settings.minAgentVersion}`}
       />
+
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="注册设备" value={agents.length} unit="台" />
