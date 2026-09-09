@@ -131,3 +131,22 @@ export async function writeAgentToken(agentId: string, token: string): Promise<v
   const store = await agentTokenStore();
   await store.setToken(agentId, token);
 }
+
+/** 按节点令牌反查设备标识；本地没有时回退平台数据库（兼容早期注册的设备） */
+export async function findAgentByToken(token: string): Promise<string> {
+  if (!token) return "";
+  const store = await agentTokenStore();
+  const local = await store.findByToken(token);
+  if (local || store.driver !== "sqlite") return local;
+  try {
+    const legacy = await supabaseStore().findByToken(token);
+    if (legacy) {
+      await store.setToken(legacy, token);
+      return legacy;
+    }
+  } catch {
+    /* 平台数据库不可用时忽略，按未注册处理 */
+  }
+  return "";
+
+}
