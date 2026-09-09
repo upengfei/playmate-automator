@@ -95,6 +95,86 @@ function BoardPage() {
         className="mt-4"
         title={
           <span className="flex items-center gap-2">
+            <ListChecks className="text-primary size-4" />
+            用例维度统计（{stats.length}）
+          </span>
+        }
+        bodyClassName="p-0"
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/60 text-muted-foreground">
+              <tr className="[&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
+                <th>用例</th>
+                <th>执行次数</th>
+                <th>通过率</th>
+                <th>平均耗时</th>
+                <th>最近结果</th>
+                <th>最近执行</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {stats.map((s) => (
+                <tr
+                  key={s.caseId || s.caseName}
+                  className={
+                    s.failed > 0 ? "bg-destructive/5 [&>td]:px-4 [&>td]:py-2.5" : "[&>td]:px-4 [&>td]:py-2.5"
+                  }
+                >
+                  <td>
+                    {s.caseId ? (
+                      <Link
+                        to="/cases/$caseId"
+                        params={{ caseId: s.caseId }}
+                        className="hover:text-primary font-medium"
+                      >
+                        {s.caseName}
+                      </Link>
+                    ) : (
+                      s.caseName
+                    )}
+                    {s.failed > 0 && (
+                      <span className="bg-destructive/10 text-destructive ml-2 rounded-full px-2 py-0.5 text-xs">
+                        失败 {s.failed} 次
+                      </span>
+                    )}
+                  </td>
+                  <td className="tabular-nums">{s.total}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <ProgressBar
+                        className="w-24"
+                        value={s.passRate}
+                        tone={s.failed > 0 ? "danger" : s.passRate >= 80 ? "success" : "primary"}
+                      />
+                      <span className="text-xs tabular-nums">{s.passRate}%</span>
+                    </div>
+                  </td>
+                  <td className="text-muted-foreground text-xs tabular-nums">
+                    {s.avgDurationMs ? `${(s.avgDurationMs / 1000).toFixed(1)}s` : "-"}
+                  </td>
+                  <td>{s.lastStatus ? <StatusChip status={s.lastStatus} /> : "-"}</td>
+                  <td className="text-muted-foreground text-xs">
+                    {s.lastRunAt ? new Date(s.lastRunAt).toLocaleString("zh-CN") : "-"}
+                  </td>
+                </tr>
+              ))}
+              {stats.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="text-muted-foreground px-4 py-10 text-center text-sm">
+                    暂无执行记录，下发任务后自动生成用例统计
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel
+        className="mt-4"
+        title={
+          <span className="flex items-center gap-2">
             <AlertOctagon className="text-destructive size-4" />
             失败聚合（{failures.length}）
           </span>
