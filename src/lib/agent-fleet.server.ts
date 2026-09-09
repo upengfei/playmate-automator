@@ -3,7 +3,9 @@
  * 由 CI 发布安装包后写入。仅当数据库尚无任何发布记录时，才回退到内置的初始版本，
  * 保证平台在空库时也能正常显示与校验版本。
  */
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { localClient } from "./local-db.server";
+
 
 export interface ReleaseArtifact {
   platform: "win" | "darwin" | "linux";
@@ -72,10 +74,9 @@ const FALLBACK_RELEASE: Release = {
 };
 
 function client(): SupabaseClient {
-  return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return localClient();
 }
+
 
 function mapRow(row: Record<string, unknown>): Release {
   const artifacts = (Array.isArray(row["artifacts"]) ? row["artifacts"] : []) as Record<

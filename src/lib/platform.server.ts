@@ -1,15 +1,15 @@
 /**
- * 平台端真实数据访问（仅服务端）。所有页面数据都来自 Lovable Cloud 数据库，
- * 执行进度与日志来自真实客户端回传。
+ * 平台端真实数据访问（仅服务端）。节点、任务、执行记录与日志都保存在本地 SQLite，
+ * 离线也能查看设备状态与任务队列；执行进度与日志来自真实客户端回传。
  */
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { localClient } from "./local-db.server";
 import { readRelease, compareVersion } from "./agent-fleet.server";
 
 export function db(): SupabaseClient {
-  return createClient(process.env["SUPABASE_URL"]!, process.env["SUPABASE_SERVICE_ROLE_KEY"]!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  return localClient();
 }
+
 
 type Row = Record<string, any>;
 type StepLike = { id?: string; keyword: string; target?: string; value?: string };
