@@ -52,6 +52,8 @@ jobs:
       - run: bun install --frozen-lockfile
       # Agent 运行时依赖（playwright-core 等），打进安装包
       - run: npm ci --prefix agent-app
+      - id: ver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - name: electron-packager
         run: >-
           bunx electron-packager . PlayFlowAgent
@@ -62,8 +64,6 @@ jobs:
           --ignore='^/electron-release' --ignore='^/dist' --ignore='^/\.git'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
-      - id: ver
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - name: 归档安装包
         shell: bash
         run: |

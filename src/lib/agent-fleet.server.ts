@@ -27,10 +27,12 @@ export interface Release {
  * https://github.com/<owner>/<repo>/releases/latest/download/）时，版本接口与下载页
  * 直接返回公开地址；否则回退到站点内 /downloads/ 路径。
  */
+export const DEFAULT_DOWNLOAD_BASE =
+  "https://github.com/upengfei/playmate-automator/releases/latest/download";
+
 export function artifactUrl(file: string): string {
-  const base = process.env["AGENT_DOWNLOAD_BASE"];
-  if (base) return `${base.replace(/\/+$/, "")}/${file}`;
-  return `/downloads/${file}`;
+  const base = process.env["AGENT_DOWNLOAD_BASE"] || DEFAULT_DOWNLOAD_BASE;
+  return `${base.replace(/\/+$/, "")}/${file}`;
 }
 
 /** 空库回退：项目首个正式版本 */
