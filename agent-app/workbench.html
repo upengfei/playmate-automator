@@ -884,6 +884,7 @@
       api.onOutbox((d) => {
         $("pending").textContent = d.pending || 0;
         $("pending-side").textContent = d.pending || 0;
+        $("run-pending").textContent = d.pending || 0;
       });
       api.onRunOptions((d) => {
         $("opt-headless").checked = d.headless !== false;
