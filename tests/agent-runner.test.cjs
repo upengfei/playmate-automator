@@ -64,6 +64,18 @@ function fixture({ installError } = {}) {
       fs: { mkdirSync() {} },
       "./browsers.cjs": {
         BROWSERS_DIR: "/tmp/playflow-test",
+        // 与 agent-app/browsers.cjs 的 resolve 行为保持一致
+        resolve: (id = "chromium") => {
+          const options = [
+            { id: "chromium", label: "Chromium", engine: "chromium", channel: "", download: true },
+            { id: "chrome", label: "Google Chrome", engine: "chromium", channel: "chrome", download: false },
+            { id: "msedge", label: "Microsoft Edge", engine: "chromium", channel: "msedge", download: false },
+            { id: "webkit", label: "WebKit", engine: "webkit", channel: "", download: true },
+            { id: "firefox", label: "Firefox", engine: "firefox", channel: "", download: true },
+          ];
+          const key = String(id || "chromium").toLowerCase();
+          return options.find((o) => o.id === key) || options[0];
+        },
         ensure: async () => {
           if (installError) throw new Error(installError);
         },
