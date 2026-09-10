@@ -417,6 +417,8 @@
         });
         const hasPendingConversion = draft.steps.some((s) => s.keyword === "unsupported");
         $("btn-upload").disabled = draft.steps.length === 0 || hasPendingConversion;
+        $("btn-clear").disabled = draft.steps.length === 0;
+
         $("btn-upload").title = hasPendingConversion ? "请先转换或删除待转换步骤" : "";
         renderScript();
       }
