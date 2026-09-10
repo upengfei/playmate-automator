@@ -632,8 +632,24 @@ ipcMain.handle("agent:configure", (_e, patch) => platform.saveConfig(patch || {}
 ipcMain.handle("agent:register", () => registerAgent());
 ipcMain.handle("agent:check-updates", () => checkForUpdates({ manual: true }));
 ipcMain.handle("agent:pull-cases", () => platform.pullCases());
+ipcMain.handle("agent:pull-case", (_e, caseId) => platform.pullCase(caseId));
 ipcMain.handle("agent:upload-case", (_e, testCase) => platform.uploadCase(testCase));
-ipcMain.handle("agent:run-case", (_e, testCase) => executeCase(testCase));
+ipcMain.handle("agent:run-case", (_e, testCase, options) => executeCase(testCase, undefined, options || {}));
+ipcMain.handle("agent:keywords", () => keywords.keywordMeta());
+ipcMain.handle("agent:generate-script", (_e, name, steps) => keywords.generateScript(name, steps || []));
+ipcMain.handle("agent:run-options", () => ({
+  headless: cfg().headless !== false,
+  keepOpenOnFail: Boolean(cfg().keepOpenOnFail),
+}));
+ipcMain.handle("agent:set-run-options", (_e, patch) => {
+  const next = platform.saveConfig({
+    ...(typeof patch?.headless === "boolean" ? { headless: patch.headless } : {}),
+    ...(typeof patch?.keepOpenOnFail === "boolean" ? { keepOpenOnFail: patch.keepOpenOnFail } : {}),
+  });
+  if (tray) createTray();
+  log("info", `执行设置已更新：${next.headless === false ? "有头" : "无头"}执行${next.keepOpenOnFail ? " · 失败保留窗口" : ""}`);
+  return { headless: next.headless !== false, keepOpenOnFail: Boolean(next.keepOpenOnFail) };
+});
 ipcMain.handle("agent:record-start", (_e, url) => recorder.start(url, (t) => log("info", t)));
 ipcMain.handle("agent:record-stop", () => recorder.stop());
 ipcMain.handle("agent:recording", () => recorder.isRecording());
