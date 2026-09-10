@@ -27,7 +27,7 @@ async function start(url, onLog = () => {}, browserId = "chromium") {
   child.on("close", () => {
     child = null;
   });
-  onLog(`已用 ${target.label} 打开真实录制浏览器窗口`.replace(/^/, "") + """，你的每一步操作都会被记录");
+  onLog(`已用 ${target.label} 打开真实录制浏览器窗口，你的每一步操作都会被记录`);
   return { outFile };
 }
 
