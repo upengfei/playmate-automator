@@ -121,10 +121,16 @@ export const KEYWORDS: KeywordDef[] = [
     category: "交互",
     needsTarget: true,
     needsValue: true,
-    targetLabel: "定位器",
+    optionalTarget: true,
+    targetLabel: "定位器（选填，可用 ${变量}）",
     valueLabel: "按键",
+    valueOptions: PRESS_KEYS,
     color: "chart-1",
-    template: (t, v) => `await page.locator(${lit(t)}).press(${lit(v)});`,
+    template: (t, v) =>
+      t.trim()
+        ? `await page.locator(${lit(t)}).press(${lit(v || "Enter")});`
+        : `await page.keyboard.press(${lit(v || "Enter")});`,
+
   },
   {
     id: "select",
