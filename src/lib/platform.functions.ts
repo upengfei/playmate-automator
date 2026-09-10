@@ -447,6 +447,8 @@ export const sendTask = createServerFn({ method: "POST" })
         taskId: z.string().uuid(),
         caseIds: z.array(z.string().uuid()).max(200).optional(),
         skipAutoUpgrade: z.boolean().default(false),
+        // 明确指定时保留任务创建时锁定的历史版本，默认下发平台最新版本
+        pinVersion: z.boolean().default(false),
       })
       .parse(input),
   )
