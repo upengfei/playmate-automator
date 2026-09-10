@@ -287,7 +287,7 @@ function CasesPage() {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-muted-foreground px-4 py-10 text-center text-sm">
+                  <td colSpan={11} className="text-muted-foreground px-4 py-10 text-center text-sm">
                     没有符合条件的用例
                   </td>
                 </tr>
