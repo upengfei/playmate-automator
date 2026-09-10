@@ -273,7 +273,19 @@ export function buildAiTools() {
               elements: (r["elements"] ?? []) as unknown[],
             };
           }
-          if (r["status"] === "失败") return { jobId, error: r["error"] || "抓取失败" };
+          if (r["status"] === "失败") {
+            const kind = (r["fail_kind"] as string) || "unknown";
+            return {
+              jobId,
+              url: input.url,
+              failKind: kind,
+              /** 中文失败原因与建议，直接转述给用户，不要再猜别的原因 */
+              reason: FAIL_REASON[kind] ?? FAIL_REASON["unknown"],
+              detail: (r["fail_detail"] as string) || (r["error"] as string) || "",
+              attempts: Number(r["attempt"] ?? 1),
+              error: r["error"] || "抓取失败",
+            };
+          }
         }
         return {
           jobId,
