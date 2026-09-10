@@ -170,6 +170,13 @@ function CasesPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/60 text-muted-foreground">
               <tr className="[&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
+                <th className="w-10">
+                  <Checkbox
+                    aria-label="全选当前筛选结果"
+                    checked={allChecked ? true : someChecked ? "indeterminate" : false}
+                    onCheckedChange={toggleAll}
+                  />
+                </th>
                 <th>编号</th>
                 <th>用例名称</th>
                 <th>模块</th>
