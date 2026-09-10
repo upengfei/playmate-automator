@@ -363,14 +363,23 @@ async function pollInspects() {
       log("info", `领取 AI 元素抓取指令：${job.url}`);
       try {
         const { inspectPage } = require("./inspect.cjs");
-        const { elements, screenshot, viewport } = await inspectPage(job, (t) => log("info", t));
-        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport });
+        const { elements, screenshot, viewport, attempt } = await inspectPage(job, (t) => log("info", t));
+        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport, attempt });
         log("success", `已回传 ${elements.length} 个元素${screenshot ? "与页面截图" : ""}`);
       } catch (err) {
+        const failKind = (err && err.failKind) || "unknown";
+        const message = String(err && err.message ? err.message : err);
         await platform
-          .reportInspect({ jobId: job.id, elements: [], error: String(err && err.message ? err.message : err) })
+          .reportInspect({
+            jobId: job.id,
+            elements: [],
+            error: message,
+            failKind,
+            failDetail: String((err && err.failDetail) || message).slice(0, 2000),
+            attempt: (err && err.attempt) || 1,
+          })
           .catch(() => {});
-        log("error", `元素抓取失败：${err && err.message ? err.message : err}`);
+        log("error", `元素抓取失败（${failKind}）：${message}`);
       } finally {
         running = false;
         inspectLastActive = Date.now();
