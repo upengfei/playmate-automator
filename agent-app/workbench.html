@@ -189,6 +189,8 @@
         .system-grid { grid-template-columns: 1fr; }
         .drawer-body { grid-template-columns: 1fr; }
         #panel-queue { display: none; }
+        .run-drawer.inline #panel-queue { display: block; border-right: none; border-bottom: 1px solid #2b3733; }
+        .run-drawer.inline .drawer-body { grid-template-columns: 1fr; grid-template-rows: minmax(120px, 34%) 1fr; }
         .block { flex-wrap: wrap; }
         .block select.kw { width: calc(100% - 34px); }
       }
