@@ -752,6 +752,9 @@
         }
       }
       $("btn-run").onclick = runDraft;
+      $("run-mode").onchange = () => {
+        $("run-mode-text").textContent = $("run-mode").value === "headless" ? "无头运行" : "有头运行";
+      };
       $("btn-rerun").onclick = runDraft;
 
       $("btn-upload").onclick = async () => {
