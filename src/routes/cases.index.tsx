@@ -32,11 +32,13 @@ export const Route = createFileRoute("/cases/")({
 });
 
 function CasesPage() {
-  const { cases } = useAppStore();
+  const { cases, agents, settings } = useAppStore();
   const navigate = useNavigate();
   const [kw, setKw] = useState("");
   const [module, setModule] = useState("全部模块");
   const [status, setStatus] = useState("全部状态");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -49,6 +51,47 @@ function CasesPage() {
       (status === "全部状态" || c.status === status) &&
       (kw === "" || c.name.includes(kw) || c.id.toLowerCase().includes(kw.toLowerCase())),
   );
+
+  // 筛选或数据变化后，剔除已不在当前筛选结果里的勾选
+  useEffect(() => {
+    const visible = new Set(list.map((c) => c.id));
+    setPicked((p) => (p.every((id) => visible.has(id)) ? p : p.filter((id) => visible.has(id))));
+  }, [list]);
+
+  const listIds = useMemo(() => list.map((c) => c.id), [list]);
+  const allChecked = listIds.length > 0 && listIds.every((id) => picked.includes(id));
+  const someChecked = !allChecked && listIds.some((id) => picked.includes(id));
+
+  const toggleAll = () => {
+    setPicked(allChecked ? [] : listIds);
+  };
+
+  const quickCreateTask = async () => {
+    if (picked.length === 0 || creating) return;
+    const target = agents.find((a) => a.status !== "离线") ?? agents[0];
+    if (!target) {
+      toast.error("还没有已注册的执行节点，请先安装并启动桌面客户端");
+      return;
+    }
+    setCreating(true);
+    try {
+      const scope = module !== "全部模块" ? module : "筛选";
+      const task = await createTask({
+        name: `批量任务（${scope}）${new Date().toLocaleDateString("zh-CN")}`,
+        caseIds: picked,
+        agentId: target.id,
+        env: "测试环境",
+        browser: "Chromium",
+        concurrency: settings.defaultConcurrency,
+        retry: settings.defaultRetry,
+      });
+      toast.success(`已用 ${picked.length} 个用例创建任务，可在详情页确认后下发`);
+      setPicked([]);
+      navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <PlatformShell>
