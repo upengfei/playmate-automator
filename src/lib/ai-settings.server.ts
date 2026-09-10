@@ -206,8 +206,24 @@ export async function importAiProviders(
   return { providers: await listAiProviders(), addedProviders, addedModels };
 }
 
+/** 当前生效配置缓存：任何配置写入都会清空，读取时才重新查库 */
+let settingsCache: { at: number; value: AiSettings } | undefined;
+const SETTINGS_TTL_MS = 30_000;
+
+/** 配置有改动时清空缓存，下一次用到模型时重新从数据库加载 */
+export function invalidateAiConfigCache() {
+  settingsCache = undefined;
+}
+
 /** 当前生效配置：模型接入取自数据库里被勾选的那一套，抓取参数仍存在 ai_settings */
 export async function readAiSettings(): Promise<AiSettings> {
+  if (settingsCache && Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.value;
+  const value = await readAiSettingsFresh();
+  settingsCache = { at: Date.now(), value };
+  return value;
+}
+
+async function readAiSettingsFresh(): Promise<AiSettings> {
   try {
     const client = await db();
     const { data } = await client.from("ai_settings").select("*").eq("id", 1).maybeSingle();
