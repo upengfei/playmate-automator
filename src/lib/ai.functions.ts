@@ -88,53 +88,7 @@ export const switchAiProvider = createServerFn({ method: "POST" })
     return (await activateAiProvider(data.id)).map(publicProvider);
   });
 
-/** 解析上传的模型清单文件内容：支持 JSON / CSV / 纯文本每行一个模型名 */
-function parseModelFile(filename: string, content: string) {
-  const trimmed = content.trim();
-  if (!trimmed) return [];
-  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
-    const parsed = JSON.parse(trimmed) as any;
-    const list: any[] = Array.isArray(parsed)
-      ? parsed
-      : Array.isArray(parsed.providers)
-        ? parsed.providers
-        : Array.isArray(parsed.models)
-          ? parsed.models
-          : Array.isArray(parsed.data)
-            ? parsed.data
-            : [parsed];
-    return list.map((item) => {
-      if (typeof item === "string") return { models: [item] };
-      const models = Array.isArray(item.models)
-        ? item.models.map((m: any) => (typeof m === "string" ? m : m?.id || m?.name)).filter(Boolean)
-        : [item.model || item.id].filter(Boolean);
-      return {
-        name: item.name || item.label || "",
-        mode: item.mode || item.provider || "",
-        baseUrl: item.baseUrl || item.base_url || item.baseURL || "",
-        apiKey: item.apiKey || item.api_key || "",
-        defaultModel: item.defaultModel || item.default_model || "",
-        models,
-      };
-    });
-  }
-
-  // CSV / 纯文本：第一列为模型名，可选后续列为地址、密钥
-  const lines = trimmed
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith("#"));
-  const isCsv = filename.toLowerCase().endsWith(".csv") || lines.some((l) => l.includes(","));
-  return lines.map((line) => {
-    if (!isCsv) return { models: [line] };
-    const [model = "", baseUrl = "", apiKey = "", name = ""] = line.split(",").map((c) => c.trim());
-    return baseUrl
-      ? { name: name || baseUrl, mode: "openai", baseUrl, apiKey, models: [model], defaultModel: model }
-      : { models: [model] };
-  });
-}
-
-/** 上传本地模型清单文件导入：整套配置直接入库，只有模型名时并入指定配置 */
+/** 上传本地模型清单文件导入：原文完整入库，解析结果写进模型配置 */
 export const importAiModelFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -147,7 +101,9 @@ export const importAiModelFile = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const { importAiProviders } = await import("@/lib/ai-settings.server");
+    const { importAiProviders, parseModelFile, saveAiModelFile, listAiModelFiles } = await import(
+      "@/lib/ai-settings.server"
+    );
     let entries;
     try {
       entries = parseModelFile(data.filename, data.content);
@@ -156,11 +112,54 @@ export const importAiModelFile = createServerFn({ method: "POST" })
     }
     if (!entries.length) throw new Error("文件里没有解析到任何模型");
     const res = await importAiProviders(entries, data.targetProviderId || undefined);
+    const modelCount = new Set(entries.flatMap((e) => e.models ?? [])).size;
+    await saveAiModelFile({
+      filename: data.filename,
+      content: data.content,
+      providerId: data.targetProviderId || undefined,
+      modelCount,
+    });
     return {
       providers: res.providers.map(publicProvider),
       addedProviders: res.addedProviders,
       addedModels: res.addedModels,
+      files: await listAiModelFiles(),
     };
+  });
+
+/** 数据库里已保存的清单文件列表（不返回原文，避免传输过大） */
+export const fetchAiModelFiles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { listAiModelFiles } = await import("@/lib/ai-settings.server");
+    return listAiModelFiles();
+  });
+
+/** 按原文重新解析一份清单文件，把模型写回配置 */
+export const reparseAiModelFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({ id: z.string().min(1).max(64), targetProviderId: z.string().max(64).default("") })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { reparseAiModelFile: reparse } = await import("@/lib/ai-settings.server");
+    const res = await reparse(data.id, data.targetProviderId || undefined);
+    return {
+      providers: res.providers.map(publicProvider),
+      addedProviders: res.addedProviders,
+      addedModels: res.addedModels,
+      files: res.files,
+    };
+  });
+
+export const removeAiModelFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ id: z.string().min(1).max(64) }).parse(input))
+  .handler(async ({ data }) => {
+    const { deleteAiModelFile } = await import("@/lib/ai-settings.server");
+    return deleteAiModelFile(data.id);
   });
 
 

@@ -117,12 +117,14 @@ export async function saveAiProvider(
     const existing = await listAiProviders();
     await client.from("ai_providers").insert({ ...row, api_key: input.apiKey ?? "", is_active: !existing.length });
   }
+  invalidateAiConfigCache();
   return listAiProviders();
 }
 
 export async function deleteAiProvider(id: string): Promise<AiProvider[]> {
   const client = await db();
   await client.from("ai_providers").delete().eq("id", id);
+  invalidateAiConfigCache();
   const left = await listAiProviders();
   if (left.length && !left.some((p) => p.isActive)) return activateAiProvider(left[0]!.id);
   return left;
@@ -136,6 +138,7 @@ export async function activateAiProvider(id: string): Promise<AiProvider[]> {
     const want = p.id === id;
     if (p.isActive !== want) await client.from("ai_providers").update({ is_active: want }).eq("id", p.id);
   }
+  invalidateAiConfigCache();
   return listAiProviders();
 }
 
@@ -203,11 +206,28 @@ export async function importAiProviders(
     }
   }
 
+  invalidateAiConfigCache();
   return { providers: await listAiProviders(), addedProviders, addedModels };
+}
+
+/** 当前生效配置缓存：任何配置写入都会清空，读取时才重新查库 */
+let settingsCache: { at: number; value: AiSettings } | undefined;
+const SETTINGS_TTL_MS = 30_000;
+
+/** 配置有改动时清空缓存，下一次用到模型时重新从数据库加载 */
+export function invalidateAiConfigCache() {
+  settingsCache = undefined;
 }
 
 /** 当前生效配置：模型接入取自数据库里被勾选的那一套，抓取参数仍存在 ai_settings */
 export async function readAiSettings(): Promise<AiSettings> {
+  if (settingsCache && Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.value;
+  const value = await readAiSettingsFresh();
+  settingsCache = { at: Date.now(), value };
+  return value;
+}
+
+async function readAiSettingsFresh(): Promise<AiSettings> {
   try {
     const client = await db();
     const { data } = await client.from("ai_settings").select("*").eq("id", 1).maybeSingle();
@@ -240,6 +260,7 @@ export async function writeAiSettings(patch: Partial<AiSettings>): Promise<AiSet
     row["inspect_cache_minutes"] = Math.max(0, Math.min(1440, Math.round(patch.inspectCacheMinutes)));
   if (patch.inspectScreenshot !== undefined) row["inspect_screenshot"] = patch.inspectScreenshot;
   await client.from("ai_settings").upsert({ id: 1, ...row }, { onConflict: "id" });
+  invalidateAiConfigCache();
   return readAiSettings();
 }
 
@@ -294,4 +315,150 @@ export async function resolveModel(
     label: `内置 Lovable AI · ${AI_MODEL}`,
     providerOptions: AI_PROVIDER_OPTIONS as any,
   };
+}
+
+/* ------------------------------ 模型清单文件 ------------------------------ */
+
+/** 数据库里完整保存的一份模型清单文件 */
+export interface AiModelFile {
+  id: string;
+  providerId: string;
+  filename: string;
+  format: string;
+  size: number;
+  modelCount: number;
+  createdAt: string;
+}
+
+export interface ParsedModelEntry {
+  name?: string;
+  mode?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  models?: string[];
+  defaultModel?: string;
+}
+
+/** 解析模型清单文件：支持 JSON / CSV / 纯文本每行一个模型名 */
+export function parseModelFile(filename: string, content: string): ParsedModelEntry[] {
+  const trimmed = content.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    const parsed = JSON.parse(trimmed) as any;
+    const list: any[] = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed.providers)
+        ? parsed.providers
+        : Array.isArray(parsed.models)
+          ? parsed.models
+          : Array.isArray(parsed.data)
+            ? parsed.data
+            : [parsed];
+    return list.map((item) => {
+      if (typeof item === "string") return { models: [item] };
+      const models = Array.isArray(item.models)
+        ? item.models.map((m: any) => (typeof m === "string" ? m : m?.id || m?.name)).filter(Boolean)
+        : [item.model || item.id].filter(Boolean);
+      return {
+        name: item.name || item.label || "",
+        mode: item.mode || item.provider || "",
+        baseUrl: item.baseUrl || item.base_url || item.baseURL || "",
+        apiKey: item.apiKey || item.api_key || "",
+        defaultModel: item.defaultModel || item.default_model || "",
+        models,
+      } as ParsedModelEntry;
+    });
+  }
+
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith("#"));
+  const isCsv = filename.toLowerCase().endsWith(".csv") || lines.some((l) => l.includes(","));
+  return lines.map((line) => {
+    if (!isCsv) return { models: [line] };
+    const [model = "", baseUrl = "", apiKey = "", name = ""] = line.split(",").map((c) => c.trim());
+    return baseUrl
+      ? { name: name || baseUrl, mode: "openai", baseUrl, apiKey, models: [model], defaultModel: model }
+      : { models: [model] };
+  });
+}
+
+function fileFormat(filename: string) {
+  const ext = filename.toLowerCase().split(".").pop() ?? "";
+  return ["json", "csv", "txt"].includes(ext) ? ext : "txt";
+}
+
+function countModels(entries: ParsedModelEntry[]) {
+  const set = new Set<string>();
+  for (const e of entries) for (const m of e.models ?? []) if (m) set.add(String(m).trim());
+  return set.size;
+}
+
+/** 保存清单文件原文（同名文件覆盖旧记录），返回保存后的记录 */
+export async function saveAiModelFile(input: {
+  filename: string;
+  content: string;
+  providerId?: string | undefined;
+  modelCount: number;
+}): Promise<AiModelFile[]> {
+  const client = await db();
+  const filename = input.filename || "models.txt";
+  const { data: existing } = await client.from("ai_model_files").select("*").eq("filename", filename);
+  const rows = (existing as Record<string, any>[] | null) ?? [];
+  const row = {
+    provider_id: input.providerId ?? "",
+    filename,
+    format: fileFormat(filename),
+    content: input.content,
+    size: input.content.length,
+    model_count: input.modelCount,
+    created_at: new Date().toISOString(),
+  };
+  if (rows[0]) await client.from("ai_model_files").update(row).eq("id", rows[0]["id"]);
+  else await client.from("ai_model_files").insert(row);
+  return listAiModelFiles();
+}
+
+export async function listAiModelFiles(): Promise<AiModelFile[]> {
+  try {
+    const client = await db();
+    const { data } = await client.from("ai_model_files").select("*").order("created_at", { ascending: false });
+    return ((data as Record<string, any>[] | null) ?? []).map((r) => ({
+      id: String(r["id"]),
+      providerId: r["provider_id"] ?? "",
+      filename: r["filename"] ?? "",
+      format: r["format"] ?? "txt",
+      size: Number(r["size"] ?? 0),
+      modelCount: Number(r["model_count"] ?? 0),
+      createdAt: r["created_at"] ?? "",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** 读取清单文件原文（用于重新解析或查看） */
+export async function readAiModelFile(id: string): Promise<{ filename: string; content: string; providerId: string } | undefined> {
+  const client = await db();
+  const { data } = await client.from("ai_model_files").select("*").eq("id", id).maybeSingle();
+  const row = data as Record<string, any> | null;
+  if (!row) return undefined;
+  return { filename: row["filename"] ?? "", content: row["content"] ?? "", providerId: row["provider_id"] ?? "" };
+}
+
+export async function deleteAiModelFile(id: string): Promise<AiModelFile[]> {
+  const client = await db();
+  await client.from("ai_model_files").delete().eq("id", id);
+  return listAiModelFiles();
+}
+
+/** 按数据库里保存的原文重新解析一遍，把模型清单写回配置 */
+export async function reparseAiModelFile(id: string, targetProviderId?: string) {
+  const file = await readAiModelFile(id);
+  if (!file) throw new Error("找不到这个清单文件");
+  const entries = parseModelFile(file.filename, file.content);
+  if (!entries.length) throw new Error("清单文件里没有解析到任何模型");
+  const res = await importAiProviders(entries, targetProviderId || file.providerId || undefined);
+  return { ...res, files: await listAiModelFiles() };
 }

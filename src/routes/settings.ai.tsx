@@ -16,9 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  fetchAiModelFiles,
   fetchAiProviders,
   fetchAiSettings,
   importAiModelFile,
+  removeAiModelFile,
+  reparseAiModelFile,
   removeAiProvider,
   saveAiProvider,
   saveAiSettings,
@@ -59,6 +62,16 @@ interface Provider {
   updatedAt: string;
 }
 
+interface ModelFile {
+  id: string;
+  providerId: string;
+  filename: string;
+  format: string;
+  size: number;
+  modelCount: number;
+  createdAt: string;
+}
+
 const MODE_LABEL: Record<Mode, string> = {
   lovable: "内置 Lovable AI（无需密钥）",
   openai: "OpenAI 兼容接口",
@@ -92,9 +105,13 @@ function AiSettingsPage() {
   const deleteProvider = useServerFn(removeAiProvider);
   const activate = useServerFn(switchAiProvider);
   const importFile = useServerFn(importAiModelFile);
+  const loadFiles = useServerFn(fetchAiModelFiles);
+  const reparseFile = useServerFn(reparseAiModelFile);
+  const deleteFile = useServerFn(removeAiModelFile);
   const test = useServerFn(testAiConnection);
 
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [files, setFiles] = useState<ModelFile[]>([]);
   const [form, setForm] = useState({ ...emptyForm });
   const [newModel, setNewModel] = useState("");
   const [cacheMinutes, setCacheMinutes] = useState(10);
@@ -109,6 +126,9 @@ function AiSettingsPage() {
     void loadProviders()
       .then((list) => setProviders(list as Provider[]))
       .catch(() => toast.error("读取模型配置失败"));
+    void loadFiles()
+      .then((list) => setFiles(list as ModelFile[]))
+      .catch(() => undefined);
     void loadSettings()
       .then((s) => {
         setCacheMinutes(s.inspectCacheMinutes);
@@ -196,6 +216,7 @@ function AiSettingsPage() {
         data: { filename: file.name, content, targetProviderId: form.id || "" },
       });
       setProviders(res.providers as Provider[]);
+      setFiles(res.files as ModelFile[]);
       const target = (res.providers as Provider[]).find((p) => p.id === form.id);
       if (target) setForm((f) => ({ ...f, models: target.models, defaultModel: target.defaultModel }));
       toast.success(`导入完成：新增 ${res.addedProviders} 套配置、${res.addedModels} 个模型`);
@@ -204,6 +225,32 @@ function AiSettingsPage() {
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const doReparse = async (id: string) => {
+    setBusy(true);
+    try {
+      const res = await reparseFile({ data: { id, targetProviderId: form.id || "" } });
+      setProviders(res.providers as Provider[]);
+      setFiles(res.files as ModelFile[]);
+      toast.success(`已按原文重新解析：新增 ${res.addedProviders} 套配置、${res.addedModels} 个模型`);
+    } catch (e) {
+      toast.error(`重新解析失败：${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doDeleteFile = async (id: string) => {
+    setBusy(true);
+    try {
+      setFiles((await deleteFile({ data: { id } })) as ModelFile[]);
+      toast.success("清单文件已删除");
+    } catch (e) {
+      toast.error(`删除失败：${(e as Error).message}`);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -472,6 +519,43 @@ function AiSettingsPage() {
               )}
             </div>
             {result && <p className="text-muted-foreground text-xs">{result}</p>}
+          </div>
+        </Panel>
+
+        <Panel title="已入库的模型清单文件">
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-xs">
+              上传的清单文件原文会完整保存在平台数据库里，平台和客户端启动后都从这里加载模型，不依赖任何外部清单。
+            </p>
+            {files.length === 0 ? (
+              <p className="text-muted-foreground text-xs">还没有上传过清单文件。</p>
+            ) : (
+              <div className="space-y-1.5">
+                {files.map((f) => (
+                  <div key={f.id} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{f.filename}</p>
+                      <p className="text-muted-foreground truncate text-xs">
+                        {f.format.toUpperCase()} · {f.modelCount} 个模型 · {Math.max(1, Math.round(f.size / 1024))} KB
+                        {f.createdAt ? ` · ${new Date(f.createdAt).toLocaleString("zh-CN")}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => void doReparse(f.id)}>
+                        重新解析
+                      </Button>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => void doDeleteFile(f.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Panel>
 

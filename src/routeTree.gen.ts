@@ -31,6 +31,7 @@ import { Route as SettingsParamsRouteImport } from './routes/settings.params'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiInspectShotIdRouteImport } from './routes/api/inspect-shot.$id'
+import { Route as ApiPublicAgentAiConfigRouteImport } from './routes/api/public/agent/ai-config'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
 import { Route as ApiPublicAgentInspectRouteImport } from './routes/api/public/agent/inspect'
@@ -154,6 +155,11 @@ const ApiInspectShotIdRoute = ApiInspectShotIdRouteImport.update({
   path: '/api/inspect-shot/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentAiConfigRoute = ApiPublicAgentAiConfigRouteImport.update({
+  id: '/api/public/agent/ai-config',
+  path: '/api/public/agent/ai-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentBrowsersRoute = ApiPublicAgentBrowsersRouteImport.update({
   id: '/api/public/agent/browsers',
   path: '/api/public/agent/browsers',
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/tasks': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
@@ -312,6 +320,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
   '/api/public/agent/inspect': typeof ApiPublicAgentInspectRoute
@@ -350,6 +359,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/tasks/'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/inspect'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/inspect'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/tasks/'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
     | '/api/public/agent/inspect'
@@ -452,6 +464,7 @@ export interface RootRouteChildren {
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
   ApiInspectShotIdRoute: typeof ApiInspectShotIdRoute
+  ApiPublicAgentAiConfigRoute: typeof ApiPublicAgentAiConfigRoute
   ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
   ApiPublicAgentInspectRoute: typeof ApiPublicAgentInspectRoute
@@ -622,6 +635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInspectShotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/ai-config': {
+      id: '/api/public/agent/ai-config'
+      path: '/api/public/agent/ai-config'
+      fullPath: '/api/public/agent/ai-config'
+      preLoaderRoute: typeof ApiPublicAgentAiConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/browsers': {
       id: '/api/public/agent/browsers'
       path: '/api/public/agent/browsers'
@@ -748,6 +768,7 @@ const rootRouteChildren: RootRouteChildren = {
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
   ApiInspectShotIdRoute: ApiInspectShotIdRoute,
+  ApiPublicAgentAiConfigRoute: ApiPublicAgentAiConfigRoute,
   ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,
   ApiPublicAgentInspectRoute: ApiPublicAgentInspectRoute,

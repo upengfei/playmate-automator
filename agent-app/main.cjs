@@ -353,6 +353,23 @@ function scheduleInspectPoll() {
   }, delay);
 }
 
+/** 启动时从平台加载当前生效的 AI 模型配置（每 10 分钟刷新一次） */
+let aiConfig = null;
+
+async function loadAiConfig() {
+  try {
+    aiConfig = await platform.fetchAiConfig();
+    const name = aiConfig.mode === "lovable" ? "内置模型" : aiConfig.defaultModel || "未指定模型";
+    log("info", `已从平台加载 AI 配置：${name}（可用模型 ${(aiConfig.models || []).length} 个）`);
+    if (!aiConfig.configured) log("warn", "平台当前的 AI 配置不完整，请在系统配置 → AI 设置里检查");
+  } catch (err) {
+    log("warn", `读取平台 AI 配置失败：${err && err.message ? err.message : err}`);
+  }
+  return aiConfig;
+}
+
+setInterval(() => loadAiConfig().catch(() => {}), 10 * 60 * 1000);
+
 async function pollInspects() {
   if (running) return;
   try {
@@ -363,14 +380,23 @@ async function pollInspects() {
       log("info", `领取 AI 元素抓取指令：${job.url}`);
       try {
         const { inspectPage } = require("./inspect.cjs");
-        const { elements, screenshot, viewport } = await inspectPage(job, (t) => log("info", t));
-        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport });
+        const { elements, screenshot, viewport, attempt } = await inspectPage(job, (t) => log("info", t));
+        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport, attempt });
         log("success", `已回传 ${elements.length} 个元素${screenshot ? "与页面截图" : ""}`);
       } catch (err) {
+        const failKind = (err && err.failKind) || "unknown";
+        const message = String(err && err.message ? err.message : err);
         await platform
-          .reportInspect({ jobId: job.id, elements: [], error: String(err && err.message ? err.message : err) })
+          .reportInspect({
+            jobId: job.id,
+            elements: [],
+            error: message,
+            failKind,
+            failDetail: String((err && err.failDetail) || message).slice(0, 2000),
+            attempt: (err && err.attempt) || 1,
+          })
           .catch(() => {});
-        log("error", `元素抓取失败：${err && err.message ? err.message : err}`);
+        log("error", `元素抓取失败（${failKind}）：${message}`);
       } finally {
         running = false;
         inspectLastActive = Date.now();
@@ -622,6 +648,7 @@ if (!single) {
     createTray();
     createAppMenu();
     registerAgent().catch(() => {});
+    loadAiConfig().catch(() => {});
     setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
     setInterval(() => pollJobs(), 10 * 1000);

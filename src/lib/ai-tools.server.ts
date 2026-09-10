@@ -273,7 +273,19 @@ export function buildAiTools() {
               elements: (r["elements"] ?? []) as unknown[],
             };
           }
-          if (r["status"] === "失败") return { jobId, error: r["error"] || "抓取失败" };
+          if (r["status"] === "失败") {
+            const kind = (r["fail_kind"] as string) || "unknown";
+            return {
+              jobId,
+              url: input.url,
+              failKind: kind,
+              /** 中文失败原因与建议，直接转述给用户，不要再猜别的原因 */
+              reason: FAIL_REASON[kind] ?? FAIL_REASON["unknown"],
+              detail: (r["fail_detail"] as string) || (r["error"] as string) || "",
+              attempts: Number(r["attempt"] ?? 1),
+              error: r["error"] || "抓取失败",
+            };
+          }
         }
         return {
           jobId,
@@ -283,6 +295,17 @@ export function buildAiTools() {
     }),
   };
 }
+
+/** 抓取失败原因 → 中文说明与建议 */
+const FAIL_REASON: Record<string, string> = {
+  blocked: "页面被拦截或需要登录，抓取到的不是目标页面。建议先在客户端窗口里登录，再重新抓取。",
+  captcha: "页面出现验证码或人机验证，需要人工在客户端完成验证后再抓取。",
+  crash: "客户端浏览器崩溃，已重建浏览器重试仍失败。建议确认设备内存充足后重试。",
+  timeout: "页面加载超时或网络不通，多次重试仍未打开页面。建议检查网络与页面地址。",
+  structure: "页面结构异常，元素抓取脚本执行失败，可能页面仍在渲染。",
+  launch: "客户端无法启动本机浏览器内核，请在客户端重新下载浏览器内核。",
+  unknown: "抓取失败，原因未知，可稍后再试一次。",
+};
 
 /** 归一化页面地址：去掉 hash 与常见追踪参数，让缓存能命中同一页面 */
 function normalizeUrl(raw: string): string {
