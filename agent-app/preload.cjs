@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld("playflowAgent", {
   generateScript: (name, steps) => ipcRenderer.invoke("agent:generate-script", name, steps),
   getRunOptions: () => ipcRenderer.invoke("agent:run-options"),
   setRunOptions: (patch) => ipcRenderer.invoke("agent:set-run-options", patch),
-  startRecording: (url) => ipcRenderer.invoke("agent:record-start", url),
+  startRecording: (url, browserId) => ipcRenderer.invoke("agent:record-start", url, browserId),
   stopRecording: () => ipcRenderer.invoke("agent:record-stop"),
   isRecording: () => ipcRenderer.invoke("agent:recording"),
   getOutbox: () => ipcRenderer.invoke("agent:outbox"),

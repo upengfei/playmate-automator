@@ -25,6 +25,8 @@ function defaultConfig() {
     headless: process.env.PLAYFLOW_HEADLESS === "0" ? false : true,
     // 执行失败后是否保留浏览器窗口，便于现场排查
     keepOpenOnFail: false,
+    // 录制与执行使用的浏览器：chromium / chrome / msedge / webkit / firefox
+    browser: process.env.PLAYFLOW_BROWSER || "chromium",
   };
 }
 
