@@ -39,6 +39,58 @@ test("recording codegen preserves nested Frame transitions and common operations
   );
 });
 
+test("recording keeps element locators when codegen uses contentFrame()", () => {
+  const steps = recorder().parse(`
+    await page.goto('https://example.test');
+    await page.locator('#outer').contentFrame().getByRole('button', { name: 'Open' }).click();
+    await page.locator('#outer').contentFrame().locator('iframe[name=inner]').contentFrame().getByLabel('Terms').check();
+    await page.locator('#outer').contentFrame().frameLocator('iframe[name=inner]').locator('#name').fill('张三');
+    await expect(page.locator('#outer').contentFrame().locator('iframe[name=inner]').contentFrame().locator('#name')).toHaveValue('张三');
+    await page.locator('#outer').contentFrame().locator('#source').dragTo(page.locator('#outer').contentFrame().locator('#target'));
+    await page.getByRole('button', { name: 'Save' }).click();
+  `);
+
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(steps.map(({ keyword, target, value }) => ({ keyword, target, value })))),
+    [
+      { keyword: "goto", target: "", value: "https://example.test" },
+      { keyword: "switchFrame", target: "#outer", value: "" },
+      { keyword: "click", target: 'role=button[name="Open"]', value: "" },
+      { keyword: "switchFrame", target: "iframe[name=inner]", value: "" },
+      { keyword: "check", target: "label=Terms", value: "" },
+      { keyword: "fill", target: "#name", value: "张三" },
+      { keyword: "expectValue", target: "#name", value: "张三" },
+      { keyword: "parentFrame", target: "", value: "" },
+      { keyword: "dragTo", target: "#source", value: "#target" },
+      { keyword: "parentFrame", target: "", value: "" },
+      { keyword: "click", target: 'role=button[name="Save"]', value: "" },
+    ],
+  );
+});
+
+test("recording maps a role-based iframe into the Frame context", () => {
+  const steps = recorder().parse(
+    "await page.getByTestId('editor').contentFrame().getByPlaceholder('内容').fill('hello');",
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(steps.map(({ keyword, target, value }) => ({ keyword, target, value })))),
+    [
+      { keyword: "switchFrame", target: '[data-testid="editor"]', value: "" },
+      { keyword: "fill", target: "placeholder=内容", value: "hello" },
+    ],
+  );
+});
+
+test("recording keeps a page-level keyboard press without a locator", () => {
+  const steps = recorder().parse("await page.keyboard.press('Enter');");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(steps.map(({ keyword, target, value }) => ({ keyword, target, value })))),
+    [{ keyword: "press", target: "", value: "Enter" }],
+  );
+});
+
+
+
 test("recording exposes unsupported Playwright statements instead of dropping them", () => {
   const steps = recorder().parse("await page.getByRole('dialog').waitFor({ state: 'hidden' });");
   assert.deepEqual(JSON.parse(JSON.stringify(steps.map(({ keyword, value }) => ({ keyword, value })))), [

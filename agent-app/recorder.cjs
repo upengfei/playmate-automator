@@ -90,20 +90,80 @@ function parse(script) {
   return steps;
 }
 
-const FRAME_SCOPE = "page(?:\\.frameLocator\\((?:'[^']*'|\"[^\"]*\"|`[^`]*`)\\))*";
-const ACTION_RE = new RegExp(
-  `^await (${FRAME_SCOPE})\\.(.+)\\.(click|dblclick|fill|press|selectOption|hover|check|uncheck|setInputFiles|focus|scrollIntoViewIfNeeded|dragTo)\\((.*)\\);?$`,
-);
-const EXPECT_RE = new RegExp(
-  `^await expect\\((${FRAME_SCOPE})\\.(.+)\\)\\.(toContainText|toBeVisible|toBeChecked|toBeEnabled|toHaveValue)\\((.*)\\);?$`,
-);
+const ACTION_NAMES =
+  "click|dblclick|fill|press|selectOption|hover|check|uncheck|setInputFiles|focus|scrollIntoViewIfNeeded|dragTo";
+const ACTION_RE = new RegExp(`^await (.+)\\.(${ACTION_NAMES})\\((.*)\\);?$`);
+const ASSERT_NAMES = "toContainText|toBeVisible|toBeChecked|toBeEnabled|toHaveValue";
+const EXPECT_RE = new RegExp(`^await expect\\((.+)\\)\\.(${ASSERT_NAMES})\\((.*)\\);?$`);
 
-function frameSelectors(scope) {
-  const selectors = [];
-  const re = /\.frameLocator\((['"`])((?:\\.|(?!\1)[\s\S])*)\1\)/g;
-  let m;
-  while ((m = re.exec(scope))) selectors.push(m[2]);
-  return selectors;
+/** 按顶层的点切分链式调用，忽略字符串与括号内部的点 */
+function splitChain(expr) {
+  const parts = [];
+  let current = "";
+  let depth = 0;
+  let quote = "";
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (quote) {
+      current += ch;
+      if (ch === "\\") {
+        current += expr[++i] ?? "";
+      } else if (ch === quote) {
+        quote = "";
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "(" || ch === "{" || ch === "[") depth++;
+    if (ch === ")" || ch === "}" || ch === "]") depth--;
+    if (ch === "." && depth === 0) {
+      parts.push(current);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  parts.push(current);
+  return parts;
+}
+
+function callArg(segment) {
+  const m = segment.match(/^[A-Za-z]+\(([\s\S]*)\)$/);
+  return m ? m[1] : null;
+}
+
+/**
+ * 把一条定位链拆成 Frame 路径与元素定位。
+ * 同时支持 page.frameLocator('#f') 与 page.locator('#f').contentFrame() 两种写法。
+ */
+function splitScope(rawExpr) {
+  const expr = String(rawExpr || "").trim();
+  const parts = splitChain(expr);
+  if (parts.shift() !== "page") return null;
+  const frames = [];
+  let pending = [];
+  for (const segment of parts) {
+    if (/^frameLocator\(/.test(segment)) {
+      if (pending.length) return null;
+      const selector = literalValue(callArg(segment));
+      if (!selector) return null;
+      frames.push(selector);
+      continue;
+    }
+    if (segment === "contentFrame()") {
+      if (!pending.length) return null;
+      frames.push(toSelector(pending.join(".")));
+      pending = [];
+      continue;
+    }
+    if (!/^[A-Za-z]+\([\s\S]*\)$/.test(segment)) return null;
+    pending.push(segment);
+  }
+  return { frames, target: pending.length ? toSelector(pending.join(".")) : "" };
 }
 
 function literalValue(raw) {
@@ -124,7 +184,7 @@ function inputFileValue(raw) {
 function parseAction(line) {
   const m = line.match(ACTION_RE);
   if (!m) return null;
-  const [, scope, expression, action, rawValue] = m;
+  const [, expression, action, rawValue] = m;
   const keyword = {
     click: "click",
     dblclick: "dblclick",
@@ -139,24 +199,26 @@ function parseAction(line) {
     scrollIntoViewIfNeeded: "scrollIntoView",
     dragTo: "dragTo",
   }[action];
-  const target = toSelector(expression);
+  if (action === "press" && expression.trim() === "page.keyboard") {
+    return { frames: [], keyword, target: "", value: literalValue(rawValue) || "Enter" };
+  }
+  const scope = splitScope(expression);
+  if (!scope || !scope.target) return null;
   if (action === "dragTo") {
     const destination = parseScopedLocator(rawValue);
-    if (!destination || !sameFrames(frameSelectors(scope), destination.frames)) {
-      return { frames: frameSelectors(scope), keyword: "unsupported", target: "", value: line };
+    if (!destination || !destination.target || !sameFrames(scope.frames, destination.frames)) {
+      return { frames: scope.frames, keyword: "unsupported", target: "", value: line };
     }
-    return { frames: frameSelectors(scope), keyword, target, value: destination.target };
+    return { frames: scope.frames, keyword, target: scope.target, value: destination.target };
   }
   const value = action === "setInputFiles"
         ? inputFileValue(rawValue)
         : literalValue(rawValue) || (action === "press" ? "Enter" : "");
-  return { frames: frameSelectors(scope), keyword, target, value };
+  return { frames: scope.frames, keyword, target: scope.target, value };
 }
 
 function parseScopedLocator(raw) {
-  const match = String(raw || "").trim().match(new RegExp(`^(${FRAME_SCOPE})\\.(.+)$`));
-  if (!match) return null;
-  return { frames: frameSelectors(match[1]), target: toSelector(match[2]) };
+  return splitScope(raw);
 }
 
 function sameFrames(a, b) {
@@ -166,7 +228,7 @@ function sameFrames(a, b) {
 function parseExpectation(line) {
   const m = line.match(EXPECT_RE);
   if (!m) return null;
-  const [, scope, expression, assertion, rawValue] = m;
+  const [, expression, assertion, rawValue] = m;
   const keyword = {
     toContainText: "expectText",
     toBeVisible: "expectVisible",
@@ -174,13 +236,16 @@ function parseExpectation(line) {
     toBeEnabled: "expectEnabled",
     toHaveValue: "expectValue",
   }[assertion];
+  const scope = splitScope(expression);
+  if (!scope || !scope.target) return null;
   return {
-    frames: frameSelectors(scope),
+    frames: scope.frames,
     keyword,
-    target: toSelector(expression),
+    target: scope.target,
     value: literalValue(rawValue),
   };
 }
+
 
 /** page.getByRole('button', { name: '登录' }) → role/文本定位器；page.locator('#id') → 原样 */
 function toSelector(expr) {
