@@ -211,6 +211,13 @@ async function claimInspects() {
   return data.jobs || [];
 }
 
+/** 读取平台当前生效的 AI 配置（模型全部来自平台数据库） */
+async function fetchAiConfig() {
+  return api(
+    `ai-config?agentId=${encodeURIComponent(config.agentId)}&token=${encodeURIComponent(config.token)}`,
+  );
+}
+
 /** 回传抓取到的元素清单 */
 async function reportInspect(payload) {
   return api("inspect", {
@@ -227,6 +234,7 @@ module.exports = {
   uploadCase,
   claimJobs,
   claimInspects,
+  fetchAiConfig,
   reportInspect,
   report,
   api,

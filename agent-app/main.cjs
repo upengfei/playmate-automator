@@ -353,6 +353,23 @@ function scheduleInspectPoll() {
   }, delay);
 }
 
+/** 启动时从平台加载当前生效的 AI 模型配置（每 10 分钟刷新一次） */
+let aiConfig = null;
+
+async function loadAiConfig() {
+  try {
+    aiConfig = await platform.fetchAiConfig();
+    const name = aiConfig.mode === "lovable" ? "内置模型" : aiConfig.defaultModel || "未指定模型";
+    log("info", `已从平台加载 AI 配置：${name}（可用模型 ${(aiConfig.models || []).length} 个）`);
+    if (!aiConfig.configured) log("warn", "平台当前的 AI 配置不完整，请在系统配置 → AI 设置里检查");
+  } catch (err) {
+    log("warn", `读取平台 AI 配置失败：${err && err.message ? err.message : err}`);
+  }
+  return aiConfig;
+}
+
+setInterval(() => loadAiConfig().catch(() => {}), 10 * 60 * 1000);
+
 async function pollInspects() {
   if (running) return;
   try {
@@ -631,6 +648,7 @@ if (!single) {
     createTray();
     createAppMenu();
     registerAgent().catch(() => {});
+    loadAiConfig().catch(() => {});
     setTimeout(() => prepareBrowsers(), 3000);
     setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
     setInterval(() => pollJobs(), 10 * 1000);
