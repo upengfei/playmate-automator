@@ -262,16 +262,25 @@ async function registerAgent(status = "在线") {
 }
 
 
-/** 真实执行一条用例，全过程回传平台 */
-async function executeCase(testCase, runId) {
+/**
+ * 真实执行一条用例，全过程回传平台。
+ * @param {object} testCase 用例内容
+ * @param {string=} runId 平台执行记录 ID（本机调试时不传）
+ * @param {{headed?:boolean}=} options 本次运行覆盖项（有头 / 无头）
+ */
+async function executeCase(testCase, runId, options = {}) {
   if (running) throw new Error("当前节点已有用例在执行");
   running = true;
+  const headed = typeof options.headed === "boolean" ? options.headed : !cfg().headless;
+  const job = { ...testCase, headed, keepOpenOnFail: Boolean(cfg().keepOpenOnFail) };
+  testCase = job;
   const logs = [];
   const collect = (level, text) => {
     logs.push({ level, message: text });
     log(level, text);
   };
   try {
+    collect("info", `执行模式：${headed ? "有头（可见浏览器窗口）" : "无头"}`);
     await platform
       .report({
         runId,
