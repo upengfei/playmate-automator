@@ -15,6 +15,19 @@ const SYSTEM = `你是 PlayFlow 自动化测试平台的 AI 助手，全程使�
 可用关键字：
 `;
 
+/** 把底层报错转成可执行的中文提示 */
+function explainAiError(error: unknown, label: string) {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  const hint = "（可在「系统配置 → AI 设置」检查模型接入）";
+  if (/ENOTFOUND|EAI_AGAIN/i.test(raw)) return `模型接口地址无法解析，请检查 Base URL${hint}`;
+  if (/ECONNREFUSED/i.test(raw)) return `模型接口拒绝连接，请检查 Base URL 与端口${hint}`;
+  if (/401|403|invalid api key|unauthorized/i.test(raw)) return `模型接口拒绝了 API Key${hint}`;
+  if (/429|rate limit/i.test(raw)) return "模型接口达到调用频率上限，请稍后重试";
+  if (/without a finish reason/i.test(raw))
+    return `模型（${label}）中途断开连接，未返回完整结果。多为自填接口不支持流式或工具调用${hint}`;
+  return `${raw || "AI 调用失败"}${hint}`;
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
@@ -40,7 +53,7 @@ export const Route = createFileRoute("/api/chat")({
 
           return result.toUIMessageStreamResponse({
             sendReasoning: true,
-            onError: (error) => (error instanceof Error ? error.message : "AI 调用失败"),
+            onError: (error) => explainAiError(error, resolved.label),
           });
         } catch (error) {
           if ((error as Error).name === "AbortError") return new Response(null, { status: 499 });
