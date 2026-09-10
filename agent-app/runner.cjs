@@ -240,6 +240,7 @@ async function runOne(node, ctx, fn) {
     ctx.stepResults.push({
       index: node.index,
       keyword: node.step.keyword,
+      target: node.step.target || "",
       status: "failed",
       durationMs,
       error,
