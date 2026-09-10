@@ -399,7 +399,7 @@ function countModels(entries: ParsedModelEntry[]) {
 export async function saveAiModelFile(input: {
   filename: string;
   content: string;
-  providerId?: string;
+  providerId?: string | undefined;
   modelCount: number;
 }): Promise<AiModelFile[]> {
   const client = await db();
