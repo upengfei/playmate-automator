@@ -148,7 +148,22 @@ function CasesPage() {
         </Select>
       </div>
 
-      <div className="md-elevation-1 bg-card overflow-hidden rounded-xl border">
+      {picked.length > 0 && (
+        <div className="bg-primary-soft/60 border-primary/20 mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-sm">
+          <span className="font-medium">已选 {picked.length} 个用例</span>
+          <Button size="sm" disabled={creating} onClick={quickCreateTask}>
+            <ListChecks className="mr-1 size-4" />
+            {creating ? "创建中…" : "创建任务"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setPicked([])}>
+            <X className="mr-1 size-4" />
+            清空
+          </Button>
+          <span className="text-muted-foreground text-xs">
+            创建后跳到任务详情页，确认节点与参数后再下发
+          </span>
+        </div>
+      )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/60 text-muted-foreground">
