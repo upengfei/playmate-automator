@@ -272,6 +272,27 @@ export interface ResolvedModel {
   label: string;
   /** Lovable AI（Responses API）需要额外的推理参数 */
   providerOptions?: any;
+  /** 自填接口不可用时自动改用内置模型的原因（中文，可直接展示） */
+  fallbackReason?: string;
+}
+
+/** 自填接口连通性探测：地址打不通时不要拖着对话失败，直接改用内置模型 */
+async function probeCustomEndpoint(baseUrl: string, apiKey: string): Promise<string> {
+  const url = `${baseUrl.replace(/\/$/, "")}/models`;
+  try {
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.status === 401 || res.status === 403) return `自填接口拒绝了密钥（${res.status}）`;
+    return "";
+  } catch (error) {
+    const msg = (error as Error).message || String(error);
+    if (/ENOTFOUND|EAI_AGAIN/i.test(msg)) return `自填接口地址无法解析（${baseUrl}）`;
+    if (/ECONNREFUSED/i.test(msg)) return `自填接口拒绝连接（${baseUrl}）`;
+    if (/timed? ?out|abort/i.test(msg)) return `自填接口连接超时（${baseUrl}）`;
+    return `自填接口不可用（${baseUrl}）：${msg}`;
+  }
 }
 
 /** 按当前配置创建可用的模型实例；配置不完整时回退到内置 Lovable AI */
@@ -279,10 +300,17 @@ export async function resolveModel(
   settings: AiSettings,
   request?: Request,
   overrideModel?: string,
+  /** 是否先探测自填接口连通性（对话与分析开启，连接测试关闭以便看到真实错误） */
+  probe = true,
 ): Promise<ResolvedModel> {
   const wanted = (overrideModel || settings.defaultModel || settings.models[0] || "").trim();
 
+  let fallbackReason = "";
   if (settings.mode !== "lovable" && settings.baseUrl && settings.apiKey && wanted) {
+    fallbackReason = probe ? await probeCustomEndpoint(settings.baseUrl, settings.apiKey) : "";
+  }
+
+  if (settings.mode !== "lovable" && settings.baseUrl && settings.apiKey && wanted && !fallbackReason) {
     if (settings.mode === "anthropic") {
       const { createAnthropic } = await import("@ai-sdk/anthropic");
       const anthropic = createAnthropic({ baseURL: settings.baseUrl, apiKey: settings.apiKey });
@@ -302,7 +330,13 @@ export async function resolveModel(
   }
 
   const key = process.env["LOVABLE_API_KEY"];
-  if (!key) throw new Error("未配置任何可用的 AI 模型：请在系统配置 → AI 设置里填写模型接入信息");
+  if (!key) {
+    throw new Error(
+      fallbackReason
+        ? `${fallbackReason}；且没有可用的内置模型，请在系统配置 → AI 设置里修正接入信息`
+        : "未配置任何可用的 AI 模型：请在系统配置 → AI 设置里填写模型接入信息",
+    );
+  }
   const { createLovableResponsesProvider, AI_MODEL, AI_PROVIDER_OPTIONS, getLovableAiGatewayRunId } =
     await import("@/lib/ai-gateway.server");
   const { provider } = createLovableResponsesProvider(
@@ -314,6 +348,7 @@ export async function resolveModel(
     modelId: AI_MODEL,
     label: `内置 Lovable AI · ${AI_MODEL}`,
     providerOptions: AI_PROVIDER_OPTIONS as any,
+    ...(fallbackReason ? { fallbackReason } : {}),
   };
 }
 
