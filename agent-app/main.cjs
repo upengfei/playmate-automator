@@ -149,11 +149,23 @@ function createAppMenu() {
 function createTray() {
   const iconPath = path.join(__dirname, "assets", "tray.png");
   const icon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
+  if (tray && !tray.isDestroyed()) tray.destroy();
   tray = new Tray(icon);
   tray.setToolTip(`PlayFlow Agent ${app.getVersion()}`);
+  const headless = cfg().headless !== false;
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: `节点：${cfg().agentId}`, enabled: false },
+      { label: `执行模式：${headless ? "无头" : "有头"}`, enabled: false },
+      {
+        label: headless ? "切换为有头执行" : "切换为无头执行",
+        click: () => {
+          platform.saveConfig({ headless: !headless });
+          createTray();
+          log("info", `执行模式已切换为${headless ? "有头" : "无头"}`);
+          send("agent:run-options", { headless: !headless, keepOpenOnFail: Boolean(cfg().keepOpenOnFail) });
+        },
+      },
       { type: "separator" },
       { label: "开始录制用例", click: () => focusWindow("record") },
       { label: "执行当前用例", click: () => focusWindow("run") },
