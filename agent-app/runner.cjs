@@ -110,11 +110,16 @@ async function runCase(testCase, emit = () => {}) {
     await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
     const engine = pw()[browserName];
     fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
-    browser = await engine.launch({ headless: testCase.headed ? false : true });
+    const headless = testCase.headed ? false : true;
+    browser = await engine.launch({ headless });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const page = await context.newPage();
+    page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
-    emit({ type: "log", level: "success", text: `已启动真实 ${browserName} 实例` });
+    emit({
+      type: "log",
+      level: "success",
+      text: `已启动真实 ${browserName} 实例（${headless ? "无头模式" : "有头模式"}）`,
+    });
 
     // An explicit leading navigation takes precedence over the default URL.
     if (testCase.startUrl && nodes[0]?.step.keyword !== "goto") {
