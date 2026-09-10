@@ -175,10 +175,18 @@ const SCHEMA: Record<string, TableDef> = {
       "screenshot",
       "viewport",
       "error",
+      "attempt",
+      "fail_kind",
+      "fail_detail",
       "created_at",
       "finished_at",
     ],
     { json: ["elements", "viewport"], defaults: { id: uuid, created_at: now, status: () => "排队中" } },
+  ),
+  /** 上传的模型清单文件：完整保存原文，可随时按原文重新解析 */
+  ai_model_files: def(
+    ["id", "provider_id", "filename", "format", "content", "size", "model_count", "created_at"],
+    { defaults: { id: uuid, created_at: now } },
   ),
   /** AI 模型接入配置：内置 Lovable AI / OpenAI 兼容 / Anthropic 兼容 / 自定义 */
   ai_settings: def(
@@ -290,6 +298,11 @@ CREATE TABLE IF NOT EXISTS ai_providers (
   created_at TEXT, updated_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ai_providers_active ON ai_providers(is_active);
+CREATE TABLE IF NOT EXISTS ai_model_files (
+  id TEXT PRIMARY KEY, provider_id TEXT, filename TEXT, format TEXT, content TEXT,
+  size INTEGER DEFAULT 0, model_count INTEGER DEFAULT 0, created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_ai_model_files_provider ON ai_model_files(provider_id);
 `;
 
 
@@ -301,6 +314,9 @@ const MIGRATIONS = [
   `ALTER TABLE ai_settings ADD COLUMN inspect_cache_minutes INTEGER DEFAULT 10`,
   `ALTER TABLE ai_settings ADD COLUMN inspect_screenshot INTEGER DEFAULT 1`,
   `CREATE INDEX IF NOT EXISTS idx_inspects_url ON agent_inspects(url_key, status, finished_at)`,
+  `ALTER TABLE agent_inspects ADD COLUMN attempt INTEGER DEFAULT 0`,
+  `ALTER TABLE agent_inspects ADD COLUMN fail_kind TEXT`,
+  `ALTER TABLE agent_inspects ADD COLUMN fail_detail TEXT`,
 ];
 
 
