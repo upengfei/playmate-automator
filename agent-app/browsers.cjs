@@ -16,6 +16,21 @@ const CLI = path.join(__dirname, "node_modules", "playwright-core", "cli.js");
 
 let mirror = null;
 
+/** 可选浏览器：内置内核 + 系统安装的 Chrome / Edge（channel 方式复用系统浏览器） */
+const OPTIONS = [
+  { id: "chromium", label: "Chromium（内置内核）", engine: "chromium", channel: "", download: true },
+  { id: "chrome", label: "Google Chrome（系统安装）", engine: "chromium", channel: "chrome", download: false },
+  { id: "msedge", label: "Microsoft Edge（系统安装）", engine: "chromium", channel: "msedge", download: false },
+  { id: "webkit", label: "Safari / WebKit 内核", engine: "webkit", channel: "", download: true },
+  { id: "firefox", label: "Firefox 内核", engine: "firefox", channel: "", download: true },
+];
+
+/** 把浏览器标识解析为启动参数，未知值回落到 Chromium */
+function resolve(id = "chromium") {
+  const key = String(id || "chromium").toLowerCase();
+  return OPTIONS.find((o) => o.id === key) || OPTIONS[0];
+}
+
 /** 从平台侧读取内核下载镜像配置（失败时回落到官方源） */
 async function loadMirror() {
   if (mirror) return mirror;
@@ -99,4 +114,4 @@ async function ensure(browser = "chromium", onLog = () => {}) {
   return true;
 }
 
-module.exports = { BROWSERS_DIR, CLI, env, ensure, isInstalled, loadMirror, download };
+module.exports = { BROWSERS_DIR, CLI, env, ensure, isInstalled, loadMirror, download, OPTIONS, resolve };
