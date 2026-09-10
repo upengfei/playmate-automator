@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { downloadCaseFile } from "@/lib/case-file";
 import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
