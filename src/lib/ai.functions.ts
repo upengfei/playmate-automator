@@ -192,13 +192,26 @@ export const testAiConnection = createServerFn({ method: "POST" })
 
     const started = Date.now();
     try {
-      const resolved = await resolveModel(settings, undefined, data.model);
+      // 连接测试直连所填接口（不做回退探测），这样能看到真实错误
+      const resolved = await resolveModel(settings, undefined, data.model, false);
       const result = streamText({
         model: resolved.model,
         prompt: "只回复两个字：可用",
         ...(resolved.providerOptions ? { providerOptions: resolved.providerOptions } : {}),
       });
-      const text = (await result.text).trim();
+      // streamText 把错误放进流里，必须逐段读出来，否则无法判断连接是否真的可用
+      let text = "";
+      let streamError = "";
+      for await (const part of result.fullStream) {
+        if (part.type === "text-delta") text += part.text;
+        if (part.type === "error") {
+          const e = part.error;
+          streamError = e instanceof Error ? e.message : String(e);
+        }
+      }
+      text = text.trim();
+      if (streamError) throw new Error(streamError);
+      if (!text) throw new Error("接口没有返回任何内容，请确认模型名称与接口是否支持流式返回");
       return {
         ok: true as const,
         label: resolved.label,
