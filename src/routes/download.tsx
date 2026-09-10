@@ -204,7 +204,7 @@ function DownloadPage() {
             </ul>
           </Panel>
 
-          <Panel title="自动更新机制">
+          <Panel title="更新检查与手动安装">
             <ul className="space-y-2.5 text-xs">
               <li className="flex gap-2">
                 <RefreshCcw className="text-primary mt-0.5 size-3.5 shrink-0" />
@@ -212,15 +212,15 @@ function DownloadPage() {
               </li>
               <li className="flex gap-2">
                 <ShieldCheck className="text-success mt-0.5 size-3.5 shrink-0" />
-                下载完成后校验 SHA256 与签名，校验失败自动丢弃并回传失败原因。
+                下载完成后校验 SHA256；校验失败时停止安装并回传失败原因。
               </li>
               <li className="flex gap-2">
                 <MonitorDown className="text-primary mt-0.5 size-3.5 shrink-0" />
-                安装前备份旧版本，安装后自动重启 Agent；异常时可回滚到上一版本。
+                点击「打开安装包」后手动解压、替换旧版应用并启动新版本。等待安装期间，当前 Agent 继续运行。
               </li>
               <li className="flex gap-2">
                 <CheckCircle2 className="text-success mt-0.5 size-3.5 shrink-0" />
-                升级结果（成功 / 失败 / 耗时 / 安装后版本）回传到平台「执行节点管理」。
+                下载后显示「等待手动安装」；新版本启动并检查版本后，才向平台确认升级成功。
               </li>
             </ul>
           </Panel>

@@ -32,7 +32,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - run: bun install --frozen-lockfile
+      - run: npm test
       - run: bun run build
 
   package:
@@ -63,6 +67,7 @@ jobs:
           --prune=false
           --ignore='^/node_modules' --ignore='^/src' --ignore='^/public'
           --ignore='^/electron-release' --ignore='^/dist' --ignore='^/\.git'
+          --ignore='^/\.data' --ignore='^/\.env' --ignore='^/\.scratch' --ignore='^/tests'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
 
@@ -203,7 +208,12 @@ jobs:
               sha=$(cut -d' ' -f1 "$f.sha256")
               size=$(du -m "$f" | cut -f1)
               name=$(basename "$f")
-              platform=linux; case "$name" in *win*) platform=win;; *darwin*) platform=darwin;; esac
+              case "$name" in
+                *-darwin-*) platform=darwin;;
+                *-win-*) platform=win;;
+                *-linux-*) platform=linux;;
+                *) echo "Unknown artifact platform: $name" >&2; exit 1;;
+              esac
               [ $first -eq 0 ] && echo ","
               first=0
               printf '    { "platform": "%s", "file": "%s", "sizeMB": %s, "sha256": "%s", "url": "%s/%s" }' \

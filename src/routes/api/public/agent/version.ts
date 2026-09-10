@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { selectArtifact } from "@/lib/agent-artifacts";
 
 /** 桌面 Agent 启动/定时拉取的版本清单（真实发布记录，公开只读） */
 export const Route = createFileRoute("/api/public/agent/version")({
@@ -7,6 +8,7 @@ export const Route = createFileRoute("/api/public/agent/version")({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const platform = url.searchParams.get("platform") ?? "win";
+        const arch = url.searchParams.get("arch");
         const origin = url.origin;
         const { readRelease } = await import("@/lib/agent-fleet.server");
         const release = await readRelease();
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/api/public/agent/version")({
           ...a,
           url: a.url.startsWith("http") ? a.url : `${origin}${a.url}`,
         }));
-        const artifact = artifacts.find((a) => a.platform === platform) ?? artifacts[0] ?? null;
+        const artifact = selectArtifact(artifacts, platform, arch);
         return Response.json({
           version: release.version,
           channel: release.channel,

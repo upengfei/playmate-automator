@@ -533,7 +533,9 @@ class Query<T = any> implements PromiseLike<Result<T>> {
         .join(",")})`;
       if (this.op === "upsert") {
         const keys = this.conflict?.length ? this.conflict : ["id"];
-        const updates = cols.filter((c) => !keys.includes(c));
+        // Defaults belong to INSERT only. A heartbeat must not reset existing
+        // counters/creation dates merely because the patch omitted them.
+        const updates = cols.filter((c) => !keys.includes(c) && raw[c] !== undefined);
         sql += ` ON CONFLICT(${keys.map(q).join(",")}) DO ${
           updates.length ? `UPDATE SET ${updates.map((c) => `${q(c)} = excluded.${q(c)}`).join(", ")}` : "NOTHING"
         }`;

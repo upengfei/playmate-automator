@@ -106,10 +106,16 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
           await import("@/lib/case-params.server");
         const bindings = await readParamBindings(db);
         const { data: taskRows } = taskIds.length
-          ? await db.from("tasks").select("id, env").in("id", taskIds)
+          ? await db.from("tasks").select("id, env, browser").in("id", taskIds)
           : { data: [] as Record<string, any>[] };
         const envOf = new Map<string, string>(
           ((taskRows ?? []) as Record<string, any>[]).map((t) => [t["id"] as string, (t["env"] as string) ?? ""]),
+        );
+        const browserOf = new Map<string, string>(
+          ((taskRows ?? []) as Record<string, unknown>[]).map((t) => [
+            t["id"] as string,
+            String(t["browser"] ?? "Chromium").toLowerCase(),
+          ]),
         );
 
         const jobs = rows.map((r) => {
@@ -138,6 +144,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
             name: r["case_name"] as string,
             caseVersion: (r["case_version"] as number) ?? (c?.["version"] as number) ?? 1,
             fromSnapshot: Boolean(snap),
+            browser: browserOf.get(r["task_id"] as string) ?? "chromium",
             dependsOnCaseId: (r["depends_on_case_id"] as string) ?? null,
             steps,
             startUrl,

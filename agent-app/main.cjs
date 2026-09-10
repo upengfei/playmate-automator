@@ -25,6 +25,7 @@ const DOWNLOAD_DIR = path.join(app.getPath("userData"), "updates");
 let win = null;
 let tray = null;
 let updating = false;
+let offeredUpdateVersion = "";
 let running = false;
 
 const cfg = () => platform.getConfig();
@@ -322,6 +323,7 @@ async function pollJobs() {
           id: job.caseId,
           name: job.name,
           steps: job.steps,
+          browser: job.browser,
           startUrl: job.startUrl,
           version: job.caseVersion,
         },
@@ -467,7 +469,7 @@ function platformKey() {
 }
 
 async function fetchManifest() {
-  const res = await fetch(`${cfg().platformUrl}/api/public/agent/version?platform=${platformKey()}`);
+  const res = await fetch(`${cfg().platformUrl}/api/public/agent/version?platform=${platformKey()}&arch=${process.arch}`);
   if (!res.ok) throw new Error(`版本清单请求失败：HTTP ${res.status}`);
   return res.json();
 }
@@ -494,16 +496,20 @@ async function reportUpgrade(payload) {
 }
 
 async function downloadArtifact(artifact) {
+  if (!/^[a-f0-9]{64}$/i.test(artifact.sha256 || "")) {
+    throw new Error("安装包缺少有效的 SHA256 校验值");
+  }
+  if (path.basename(artifact.file) !== artifact.file) throw new Error("安装包文件名不合法");
   fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
   const target = path.join(DOWNLOAD_DIR, artifact.file);
   const res = await fetch(artifact.url);
   if (!res.ok) throw new Error(`安装包下载失败：HTTP ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
-  fs.writeFileSync(target, buf);
   const sha = crypto.createHash("sha256").update(buf).digest("hex");
-  if (artifact.sha256 && artifact.sha256 !== sha) {
+  if (artifact.sha256.toLowerCase() !== sha) {
     throw new Error("安装包 SHA256 校验未通过，已丢弃");
   }
+  fs.writeFileSync(target, buf);
   return { target, sizeMB: +(buf.length / 1024 / 1024).toFixed(1), sha };
 }
 
@@ -528,25 +534,30 @@ async function checkForUpdates({ manual = false, pushedBy = null } = {}) {
       return;
     }
 
+    // Keep a pending manual installation from reopening a dialog every poll.
+    if (!manual && offeredUpdateVersion === manifest.version) return;
+
     send("agent:update-stage", { stage: "下发升级包", progress: 15, version: manifest.version });
     const artifact = manifest.artifact;
+    if (!artifact) throw new Error("当前平台没有适用于本机的安装包");
     send("agent:update-stage", { stage: "下载中", progress: 40 });
     const dl = await downloadArtifact(artifact);
-    send("agent:update-stage", { stage: "校验签名", progress: 70 });
-    send("agent:update-stage", { stage: "安装中", progress: 85 });
+    send("agent:update-stage", { stage: "SHA256 校验完成", progress: 70 });
 
     const choice = await dialog.showMessageBox(win, {
       type: "question",
-      buttons: ["立即安装并重启", "稍后"],
+      buttons: ["打开安装包", "稍后"],
       defaultId: 0,
       message: `发现新版本 v${manifest.version}`,
-      detail: `${(manifest.notes || []).join("\n")}\n\n安装包：${artifact.file}（${dl.sizeMB} MB）`,
+      detail: `${(manifest.notes || []).join("\n")}\n\n安装包：${artifact.file}（${dl.sizeMB} MB）\n请手动解压并替换旧版应用，再启动新版本。当前 Agent 会继续运行。`,
     });
 
     if (choice.response !== 0) {
+      offeredUpdateVersion = manifest.version;
       send("agent:update-stage", { stage: "已下载，待安装", progress: 90 });
       await reportUpgrade({
-        ok: false,
+        stage: "等待手动安装",
+        progress: 90,
         installedVersion: current,
         toVersion: manifest.version,
         durationMs: Date.now() - started,
@@ -555,20 +566,18 @@ async function checkForUpdates({ manual = false, pushedBy = null } = {}) {
       return;
     }
 
-    shell.openPath(dl.target);
-    send("agent:update-stage", { stage: "重启 Agent", progress: 96 });
+    const openError = await shell.openPath(dl.target);
+    if (openError) throw new Error(`无法打开安装包：${openError}`);
+    offeredUpdateVersion = manifest.version;
+    send("agent:update-stage", { stage: "等待手动安装", progress: 90 });
     await reportUpgrade({
-      ok: true,
-      installedVersion: manifest.version,
+      stage: "等待手动安装",
+      progress: 90,
+      installedVersion: current,
       toVersion: manifest.version,
       durationMs: Date.now() - started,
-      message: `已安装 v${manifest.version} 并重启 Agent`,
+      message: `已打开 v${manifest.version} 安装包，请手动安装并启动新版本；当前仍运行 v${current}`,
     });
-    send("agent:update-stage", { stage: "回传结果", progress: 100 });
-    setTimeout(() => {
-      app.isQuiting = true;
-      app.quit();
-    }, 1500);
   } catch (err) {
     send("agent:update-stage", { stage: "升级失败", progress: 100, error: String(err.message || err) });
     await reportUpgrade({

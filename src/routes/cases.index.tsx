@@ -39,6 +39,7 @@ function CasesPage() {
   const [status, setStatus] = useState("全部状态");
   const [picked, setPicked] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  const [creatingCase, setCreatingCase] = useState(false);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -88,6 +89,8 @@ function CasesPage() {
       toast.success(`已用 ${picked.length} 个用例创建任务，可在详情页确认后下发`);
       setPicked([]);
       navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "创建任务失败，请重试");
     } finally {
       setCreating(false);
     }
@@ -100,14 +103,23 @@ function CasesPage() {
         desc={`共 ${cases.length} 个用例，其中 ${cases.filter((c) => c.source === "Agent 录制").length} 个由桌面端录制上传`}
         action={
           <Button
+            disabled={creatingCase}
             onClick={async () => {
-              const c = await createCase({ name: "新建用例", module: "未分类" });
-              toast.success("已创建用例，开始积木式编排");
-              navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
+              if (creatingCase) return;
+              setCreatingCase(true);
+              try {
+                const c = await createCase({ name: "新建用例", module: "未分类" });
+                toast.success("已创建用例，开始积木式编排");
+                await navigate({ to: "/cases/$caseId", params: { caseId: c.id } });
+              } catch (error) {
+                toast.error(error instanceof Error ? error.message : "创建用例失败，请重试");
+              } finally {
+                setCreatingCase(false);
+              }
             }}
           >
             <Plus className="mr-1 size-4" />
-            新建用例
+            {creatingCase ? "创建中…" : "新建用例"}
           </Button>
         }
       />

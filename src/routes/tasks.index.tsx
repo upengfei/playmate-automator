@@ -49,6 +49,8 @@ function TasksPage() {
   const [kw, setKw] = useState("");
   const [moduleFilter, setModuleFilter] = useState("全部模块");
   const [statusFilter, setStatusFilter] = useState("全部状态");
+  const [submitting, setSubmitting] = useState(false);
+  const [dispatchingId, setDispatchingId] = useState<string | null>(null);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -78,6 +80,7 @@ function TasksPage() {
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
 
   const submit = async (dispatch: boolean) => {
+    if (submitting) return;
     if (!effectiveAgentId) {
       toast.error("还没有已注册的执行节点，请先安装并启动桌面客户端");
       return;
@@ -86,23 +89,30 @@ function TasksPage() {
       toast.error("请至少选择一个用例");
       return;
     }
-    const task = await createTask({
-      name,
-      caseIds: picked,
-      agentId: effectiveAgentId,
-      env,
-      browser,
-      concurrency: Number(concurrency),
-      retry: Number(retry),
-      serialDependency,
-    });
-    if (dispatch) {
-      const res = await dispatchTask(task.id);
-      if (res.ok) toast.success(`任务已下发到 ${selectedAgent?.name}，节点领取后开始真实执行`);
-      else toast.error(res.message ?? "下发失败");
-      navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
-    } else {
-      toast.success("任务已创建并进入队列");
+    setSubmitting(true);
+    try {
+      const task = await createTask({
+        name,
+        caseIds: picked,
+        agentId: effectiveAgentId,
+        env,
+        browser,
+        concurrency: Number(concurrency),
+        retry: Number(retry),
+        serialDependency,
+      });
+      if (dispatch) {
+        const res = await dispatchTask(task.id);
+        if (res.ok) toast.success(`任务已下发到 ${selectedAgent?.name}，节点领取后开始真实执行`);
+        else toast.error(res.message ?? "下发失败");
+        await navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+      } else {
+        toast.success("任务已创建并进入队列");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "任务操作失败，请重试");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -295,11 +305,11 @@ function TasksPage() {
               </span>
             </label>
             <div className="flex gap-2 pt-1">
-              <Button className="flex-1" onClick={() => submit(true)}>
+              <Button className="flex-1" disabled={submitting} onClick={() => submit(true)}>
                 <Rocket className="mr-1 size-4" />
                 创建并下发
               </Button>
-              <Button variant="outline" onClick={() => submit(false)}>
+              <Button variant="outline" disabled={submitting} onClick={() => submit(false)}>
                 仅入队
               </Button>
             </div>
@@ -333,9 +343,19 @@ function TasksPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          dispatchTask(t.id);
-                          toast.success(`任务 ${t.id} 已下发`);
+                        disabled={dispatchingId !== null}
+                        onClick={async () => {
+                          if (dispatchingId !== null) return;
+                          setDispatchingId(t.id);
+                          try {
+                            const result = await dispatchTask(t.id);
+                            if (result.ok) toast.success(`任务 ${t.id} 已下发`);
+                            else toast.error(result.message ?? "下发失败，请重试");
+                          } catch (error) {
+                            toast.error(error instanceof Error ? error.message : "下发失败，请重试");
+                          } finally {
+                            setDispatchingId(null);
+                          }
                         }}
                       >
                         <Send className="mr-1 size-3.5" />

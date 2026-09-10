@@ -46,21 +46,28 @@ const IF_OPEN = new Set(["ifVisible", "ifNotVisible", "ifText"]);
 const LOOP_OPEN = new Set(["repeat", "whileVisible"]);
 const CLOSERS = new Set(["endIf", "endLoop"]);
 
-function parseNodes(steps, from) {
+function parseNodes(steps, from = 0, expectedEnd = null, allowElse = false) {
   const nodes = [];
   let i = from;
   while (i < steps.length) {
     const s = steps[i] || {};
     const kw = s.keyword;
-    if (CLOSERS.has(kw)) return { nodes, next: i + 1 };
-    if (kw === "elseBranch") return { nodes, next: i, atElse: true };
+    if (CLOSERS.has(kw)) {
+      if (kw !== expectedEnd) throw new Error(`步骤 ${i + 1}：${kw} 没有匹配的开始积木`);
+      return { nodes, next: i + 1 };
+    }
+    if (kw === "elseBranch") {
+      if (!allowElse) throw new Error(`步骤 ${i + 1}：否则分支没有匹配的条件积木`);
+      return { nodes, next: i, atElse: true };
+    }
     if (IF_OPEN.has(kw) || LOOP_OPEN.has(kw)) {
-      const first = parseNodes(steps, i + 1);
-      let body = first.nodes;
+      const end = IF_OPEN.has(kw) ? "endIf" : "endLoop";
+      const first = parseNodes(steps, i + 1, end, IF_OPEN.has(kw));
+      const body = first.nodes;
       let elseBody = [];
       let next = first.next;
       if (first.atElse) {
-        const second = parseNodes(steps, first.next + 1);
+        const second = parseNodes(steps, first.next + 1, end);
         elseBody = second.nodes;
         next = second.next;
       }
@@ -77,6 +84,7 @@ function parseNodes(steps, from) {
     nodes.push({ type: "step", index: i, step: s });
     i++;
   }
+  if (expectedEnd) throw new Error(`步骤 ${from}：缺少 ${expectedEnd} 结束积木`);
   return { nodes, next: i };
 }
 
@@ -86,27 +94,30 @@ function parseNodes(steps, from) {
  * @param {(e:object)=>void} emit
  */
 async function runCase(testCase, emit = () => {}) {
-  const browserName =
-    testCase.browser === "firefox" || testCase.browser === "webkit" ? testCase.browser : "chromium";
-  emit({ type: "log", level: "info", text: `准备 ${browserName} 浏览器内核…` });
-  await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
-
-  const { chromium, firefox, webkit } = pw();
-  const engine = { chromium, firefox, webkit }[browserName];
   const startedAt = Date.now();
-  fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
-
   let browser;
   const stepResults = [];
   try {
+    const browserName = String(testCase.browser || "chromium").toLowerCase();
+    if (!["chromium", "firefox", "webkit"].includes(browserName)) {
+      throw new Error(`不支持的浏览器：${testCase.browser}`);
+    }
+    const { nodes } = parseNodes(testCase.steps || []);
+    if (!nodes.length) throw new Error("用例没有可执行步骤");
+    emit({ type: "log", level: "info", text: `准备 ${browserName} 浏览器内核…` });
+    await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
+    const engine = pw()[browserName];
+    fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
     browser = await engine.launch({ headless: testCase.headed ? false : true });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
     emit({ type: "log", level: "success", text: `已启动真实 ${browserName} 实例` });
 
-    const steps = testCase.steps || [];
-    const { nodes } = parseNodes(steps, 0);
+    // An explicit leading navigation takes precedence over the default URL.
+    if (testCase.startUrl && nodes[0]?.step.keyword !== "goto") {
+      await page.goto(testCase.startUrl, { waitUntil: "domcontentloaded" });
+    }
     await execNodes(nodes, { page, emit, stepResults, loop: null });
 
     const shot = path.join(ARTIFACT_DIR, `pass-${Date.now()}.png`);
@@ -251,7 +262,8 @@ async function execStep(page, s) {
       await locator(page, target).fill(value);
       return;
     case "press":
-      await locator(page, target).press(value || "Enter");
+      if (target.trim()) await locator(page, target).press(value || "Enter");
+      else await page.keyboard.press(value || "Enter");
       return;
     case "select":
       await locator(page, target).selectOption(value);

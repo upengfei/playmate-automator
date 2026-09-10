@@ -1,37 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { z } from "zod";
-
-const schema = z.object({
-  agentId: z.string().min(2).max(64),
-  token: z.string().min(8).max(128),
-  runId: z.string().uuid().optional(),
-  caseId: z.string().uuid().optional(),
-  caseName: z.string().max(120).default(""),
-  status: z.enum(["执行中", "通过", "失败"]),
-  durationMs: z.number().nonnegative().optional(),
-  // 真实浏览器错误堆栈可能很长：超长时截断而不是整条结果被拒绝，避免执行结果丢失
-  error: z
-    .string()
-    .optional()
-    .transform((v) => (v ? v.slice(0, 2000) : v)),
-  steps: z.array(z.record(z.unknown())).max(300).default([]),
-  logs: z
-    .array(
-      z.object({
-        level: z.string().max(16).default("info"),
-        message: z.string().transform((m) => m.slice(0, 1000)),
-      }),
-    )
-    .max(500)
-    .default([]),
-});
+import { agentReportSchema } from "@/lib/agent-report-schema";
 
 /** 客户端回传真实执行状态、步骤结果与日志 */
 export const Route = createFileRoute("/api/public/agent/run-report")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const parsed = schema.safeParse(await request.json().catch(() => null));
+        const parsed = agentReportSchema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
         const d = parsed.data;
         const { admin, verifyAgent } = await import("@/lib/agent-db.server");

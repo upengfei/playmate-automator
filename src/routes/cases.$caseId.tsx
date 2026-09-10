@@ -44,6 +44,7 @@ function CaseEditor() {
   const navigate = useNavigate();
   const found = cases.find((c) => c.id === caseId);
   const [draft, setDraft] = useState<TestCase | null>(found ?? null);
+  const [saving, setSaving] = useState(false);
 
   // 数据是异步从数据库加载的：用例出现后同步一次草稿，避免误报“未找到用例”
   useEffect(() => {
@@ -95,7 +96,7 @@ function CaseEditor() {
             <Button
               variant="outline"
               onClick={() =>
-                toast.info("已通知桌面端 Agent 进行本地调试，可在 Agent 客户端查看执行过程")
+                toast.info("请先保存用例，再在 Agent 客户端拉取并调试该用例")
               }
             >
               <Play className="mr-1 size-4" />
@@ -118,14 +119,23 @@ function CaseEditor() {
               导出脚本
             </Button>
             <Button
-              onClick={() => {
-                upsertCase({ ...draft, updatedAt: new Date().toISOString().slice(5, 16).replace("T", " ") });
-                toast.success("用例已保存");
-                navigate({ to: "/cases" });
+              disabled={saving}
+              onClick={async () => {
+                if (saving) return;
+                setSaving(true);
+                try {
+                  await upsertCase(draft);
+                  toast.success("用例已保存");
+                  await navigate({ to: "/cases" });
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "保存失败，请重试");
+                } finally {
+                  setSaving(false);
+                }
               }}
             >
               <Save className="mr-1 size-4" />
-              保存用例
+              {saving ? "保存中…" : "保存用例"}
             </Button>
           </div>
         }

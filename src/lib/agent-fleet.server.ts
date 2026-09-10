@@ -5,6 +5,7 @@
  */
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { localClient } from "./local-db.server";
+import { artifactTarget } from "./agent-artifacts";
 
 
 export interface ReleaseArtifact {
@@ -92,7 +93,7 @@ function mapRow(row: Record<string, unknown>): Release {
     artifacts: artifacts.map((a) => {
       const file = String(a["file"]);
       return {
-        platform: (a["platform"] as ReleaseArtifact["platform"]) ?? "linux",
+        platform: artifactTarget(file)?.platform ?? (a["platform"] as ReleaseArtifact["platform"]) ?? "linux",
         file,
         sizeMB: Number(a["sizeMB"] ?? 0),
         sha256: String(a["sha256"] ?? ""),

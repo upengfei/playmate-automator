@@ -152,6 +152,7 @@ export type UpgradeStage =
   | "下载中"
   | "校验签名"
   | "安装中"
+  | "等待手动安装"
   | "重启 Agent"
   | "回传结果";
 export type UpgradeStatus = "进行中" | "成功" | "失败";
