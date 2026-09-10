@@ -117,12 +117,14 @@ export async function saveAiProvider(
     const existing = await listAiProviders();
     await client.from("ai_providers").insert({ ...row, api_key: input.apiKey ?? "", is_active: !existing.length });
   }
+  invalidateAiConfigCache();
   return listAiProviders();
 }
 
 export async function deleteAiProvider(id: string): Promise<AiProvider[]> {
   const client = await db();
   await client.from("ai_providers").delete().eq("id", id);
+  invalidateAiConfigCache();
   const left = await listAiProviders();
   if (left.length && !left.some((p) => p.isActive)) return activateAiProvider(left[0]!.id);
   return left;
@@ -136,6 +138,7 @@ export async function activateAiProvider(id: string): Promise<AiProvider[]> {
     const want = p.id === id;
     if (p.isActive !== want) await client.from("ai_providers").update({ is_active: want }).eq("id", p.id);
   }
+  invalidateAiConfigCache();
   return listAiProviders();
 }
 
@@ -203,6 +206,7 @@ export async function importAiProviders(
     }
   }
 
+  invalidateAiConfigCache();
   return { providers: await listAiProviders(), addedProviders, addedModels };
 }
 
@@ -256,6 +260,7 @@ export async function writeAiSettings(patch: Partial<AiSettings>): Promise<AiSet
     row["inspect_cache_minutes"] = Math.max(0, Math.min(1440, Math.round(patch.inspectCacheMinutes)));
   if (patch.inspectScreenshot !== undefined) row["inspect_screenshot"] = patch.inspectScreenshot;
   await client.from("ai_settings").upsert({ id: 1, ...row }, { onConflict: "id" });
+  invalidateAiConfigCache();
   return readAiSettings();
 }
 
