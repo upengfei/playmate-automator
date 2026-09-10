@@ -4,6 +4,7 @@
  * 平台把用例导出成一个可离线编辑的 JSON 文件，客户端工作台可以直接导入，
  * 断网时在本机继续编排调试，联网后再「上传到平台」同步成新版本。
  */
+import { generatePlaywrightCode } from "./keywords";
 import type { TestCase } from "./store";
 
 export const CASE_FILE_KIND = "playflow-case";
