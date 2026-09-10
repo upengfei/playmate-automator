@@ -189,6 +189,8 @@
         <div class="row">
           <select id="add-keyword" style="width: 190px"></select>
           <button id="btn-add">追加步骤</button>
+          <button id="btn-clear">清空步骤</button>
+
           <select id="run-mode" style="width: 150px">
             <option value="headed">有头运行（可见）</option>
             <option value="headless">无头运行</option>
@@ -537,6 +539,14 @@
         draft.steps.push(newStep($("add-keyword").value));
         renderBlocks();
       };
+      $("btn-clear").onclick = () => {
+        if (!draft.steps.length) return;
+        if (!confirm(`确定清空当前 ${draft.steps.length} 个步骤吗？`)) return;
+        draft.steps = [];
+        renderBlocks();
+        addLog({ level: "info", text: "已清空所有步骤" });
+      };
+
       ["case-name", "case-url"].forEach((id) => ($(id).oninput = renderScript));
       $("case-browser").onchange = renderScript;
       $("btn-copy").onclick = async () => {
