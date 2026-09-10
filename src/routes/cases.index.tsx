@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
+import { Blocks, Copy, Download, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { downloadCaseFile } from "@/lib/case-file";
 import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
@@ -167,6 +168,18 @@ function CasesPage() {
             <ListChecks className="mr-1 size-4" />
             {creating ? "创建中…" : "创建任务"}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const chosen = cases.filter((c) => picked.includes(c.id));
+              downloadCaseFile(chosen);
+              toast.success(`已下载 ${chosen.length} 个用例文件，可在客户端离线编辑后同步回平台`);
+            }}
+          >
+            <Download className="mr-1 size-4" />
+            下载用例文件
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => setPicked([])}>
             <X className="mr-1 size-4" />
             清空
@@ -282,6 +295,17 @@ function CasesPage() {
                           用模板创建
                         </Button>
                       ) : null}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          downloadCaseFile([c]);
+                          toast.success("已下载用例文件，可在客户端离线编辑后同步回平台");
+                        }}
+                      >
+                        <Download className="mr-1 size-3.5" />
+                        下载
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
