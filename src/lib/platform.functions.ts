@@ -447,6 +447,8 @@ export const sendTask = createServerFn({ method: "POST" })
         taskId: z.string().uuid(),
         caseIds: z.array(z.string().uuid()).max(200).optional(),
         skipAutoUpgrade: z.boolean().default(false),
+        // 明确指定时保留任务创建时锁定的历史版本，默认下发平台最新版本
+        pinVersion: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -499,22 +501,45 @@ export const sendTask = createServerFn({ method: "POST" })
       return { ok: false as const, message: "节点版本校验未通过" };
     }
 
-    let q = client
-      .from("case_runs")
-      .update({
-        status: "排队中",
-        agent_id: agent["id"],
-        error: null,
-        duration_ms: null,
-        step_index: 0,
-        steps: [],
-        started_at: new Date().toISOString(),
-        finished_at: null,
-      })
-      .eq("task_id", data.taskId);
+    const reset = {
+      status: "排队中",
+      agent_id: agent["id"],
+      error: null,
+      duration_ms: null,
+      step_index: 0,
+      steps: [],
+      started_at: new Date().toISOString(),
+      finished_at: null,
+    };
+
+    let q = client.from("case_runs").update(reset).eq("task_id", data.taskId);
     if (data.caseIds?.length) q = q.in("case_id", data.caseIds);
     const { error } = await q;
     if (error) throw new Error(error.message);
+
+    // 重新下发时默认同步到平台最新版本，否则平台改完用例，节点仍会执行旧版本快照
+    if (!data.pinVersion) {
+      const { caseRepo } = await import("@/lib/case-repo.server");
+      const repo = await caseRepo();
+      let rowsQuery = client.from("case_runs").select("id, case_id").eq("task_id", data.taskId);
+      if (data.caseIds?.length) rowsQuery = rowsQuery.in("case_id", data.caseIds);
+      const { data: rows } = await rowsQuery;
+      for (const row of rows ?? []) {
+        const caseId = row["case_id"] as string | null;
+        if (!caseId) continue;
+        const latest = await repo.getCase(caseId);
+        if (!latest) continue;
+        await client
+          .from("case_runs")
+          .update({
+            case_version: (latest["version"] as number) ?? 1,
+            case_name: latest["name"],
+            step_total: ((latest["steps"] as unknown[]) ?? []).length,
+          })
+          .eq("id", row["id"] as string);
+      }
+      await log("info", "已同步各用例最新版本，本次执行使用平台最新步骤");
+    }
 
     await client
       .from("tasks")

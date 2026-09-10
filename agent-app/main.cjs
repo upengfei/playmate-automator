@@ -17,6 +17,7 @@ const crypto = require("crypto");
 const platform = require("./platform.cjs");
 const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
+const keywords = require("./keywords.cjs");
 const browsers = require("./browsers.cjs");
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -148,11 +149,23 @@ function createAppMenu() {
 function createTray() {
   const iconPath = path.join(__dirname, "assets", "tray.png");
   const icon = fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : nativeImage.createEmpty();
+  if (tray && !tray.isDestroyed()) tray.destroy();
   tray = new Tray(icon);
   tray.setToolTip(`PlayFlow Agent ${app.getVersion()}`);
+  const headless = cfg().headless !== false;
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: `节点：${cfg().agentId}`, enabled: false },
+      { label: `执行模式：${headless ? "无头" : "有头"}`, enabled: false },
+      {
+        label: headless ? "切换为有头执行" : "切换为无头执行",
+        click: () => {
+          platform.saveConfig({ headless: !headless });
+          createTray();
+          log("info", `执行模式已切换为${headless ? "有头" : "无头"}`);
+          send("agent:run-options", { headless: !headless, keepOpenOnFail: Boolean(cfg().keepOpenOnFail) });
+        },
+      },
       { type: "separator" },
       { label: "开始录制用例", click: () => focusWindow("record") },
       { label: "执行当前用例", click: () => focusWindow("run") },
@@ -262,16 +275,25 @@ async function registerAgent(status = "在线") {
 }
 
 
-/** 真实执行一条用例，全过程回传平台 */
-async function executeCase(testCase, runId) {
+/**
+ * 真实执行一条用例，全过程回传平台。
+ * @param {object} testCase 用例内容
+ * @param {string=} runId 平台执行记录 ID（本机调试时不传）
+ * @param {{headed?:boolean}=} options 本次运行覆盖项（有头 / 无头）
+ */
+async function executeCase(testCase, runId, options = {}) {
   if (running) throw new Error("当前节点已有用例在执行");
   running = true;
+  const headed = typeof options.headed === "boolean" ? options.headed : !cfg().headless;
+  const job = { ...testCase, headed, keepOpenOnFail: Boolean(cfg().keepOpenOnFail) };
+  testCase = job;
   const logs = [];
   const collect = (level, text) => {
     logs.push({ level, message: text });
     log(level, text);
   };
   try {
+    collect("info", `执行模式：${headed ? "有头（可见浏览器窗口）" : "无头"}`);
     await platform
       .report({
         runId,
@@ -623,8 +645,24 @@ ipcMain.handle("agent:configure", (_e, patch) => platform.saveConfig(patch || {}
 ipcMain.handle("agent:register", () => registerAgent());
 ipcMain.handle("agent:check-updates", () => checkForUpdates({ manual: true }));
 ipcMain.handle("agent:pull-cases", () => platform.pullCases());
+ipcMain.handle("agent:pull-case", (_e, caseId) => platform.pullCase(caseId));
 ipcMain.handle("agent:upload-case", (_e, testCase) => platform.uploadCase(testCase));
-ipcMain.handle("agent:run-case", (_e, testCase) => executeCase(testCase));
+ipcMain.handle("agent:run-case", (_e, testCase, options) => executeCase(testCase, undefined, options || {}));
+ipcMain.handle("agent:keywords", () => keywords.keywordMeta());
+ipcMain.handle("agent:generate-script", (_e, name, steps) => keywords.generateScript(name, steps || []));
+ipcMain.handle("agent:run-options", () => ({
+  headless: cfg().headless !== false,
+  keepOpenOnFail: Boolean(cfg().keepOpenOnFail),
+}));
+ipcMain.handle("agent:set-run-options", (_e, patch) => {
+  const next = platform.saveConfig({
+    ...(typeof patch?.headless === "boolean" ? { headless: patch.headless } : {}),
+    ...(typeof patch?.keepOpenOnFail === "boolean" ? { keepOpenOnFail: patch.keepOpenOnFail } : {}),
+  });
+  if (tray) createTray();
+  log("info", `执行设置已更新：${next.headless === false ? "有头" : "无头"}执行${next.keepOpenOnFail ? " · 失败保留窗口" : ""}`);
+  return { headless: next.headless !== false, keepOpenOnFail: Boolean(next.keepOpenOnFail) };
+});
 ipcMain.handle("agent:record-start", (_e, url) => recorder.start(url, (t) => log("info", t)));
 ipcMain.handle("agent:record-stop", () => recorder.stop());
 ipcMain.handle("agent:recording", () => recorder.isRecording());

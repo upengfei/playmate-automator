@@ -96,6 +96,8 @@ function parseNodes(steps, from = 0, expectedEnd = null, allowElse = false) {
 async function runCase(testCase, emit = () => {}) {
   const startedAt = Date.now();
   let browser;
+  let page;
+  let failedShot = "";
   const stepResults = [];
   try {
     const browserName = String(testCase.browser || "chromium").toLowerCase();
@@ -108,11 +110,16 @@ async function runCase(testCase, emit = () => {}) {
     await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
     const engine = pw()[browserName];
     fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
-    browser = await engine.launch({ headless: testCase.headed ? false : true });
+    const headless = testCase.headed ? false : true;
+    browser = await engine.launch({ headless });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    const page = await context.newPage();
+    page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
-    emit({ type: "log", level: "success", text: `已启动真实 ${browserName} 实例` });
+    emit({
+      type: "log",
+      level: "success",
+      text: `已启动真实 ${browserName} 实例（${headless ? "无头模式" : "有头模式"}）`,
+    });
 
     // An explicit leading navigation takes precedence over the default URL.
     if (testCase.startUrl && nodes[0]?.step.keyword !== "goto") {
@@ -130,14 +137,34 @@ async function runCase(testCase, emit = () => {}) {
       screenshot: shot,
     };
   } catch (err) {
+    // 失败现场：自动截图并把失败步骤、定位器、真实报错写清楚，避免「一闪而过什么都看不到」
+    if (page) {
+      failedShot = path.join(ARTIFACT_DIR, `fail-${Date.now()}.png`);
+      await page.screenshot({ path: failedShot }).catch(() => {
+        failedShot = "";
+      });
+      if (failedShot) emit({ type: "log", level: "warn", text: `已保存失败截图：${failedShot}` });
+    }
+    const failed = [...stepResults].reverse().find((s) => s && s.status === "failed");
+    const where = failed
+      ? `步骤 ${(failed.index ?? 0) + 1}「${failed.keyword || ""}${failed.target ? " " + failed.target : ""}」：`
+      : "";
+    const message = `${where}${String((err && err.message) || err)}`;
+    emit({ type: "log", level: "error", text: `执行失败 → ${message}` });
+    if (testCase.keepOpenOnFail && browser) {
+      emit({ type: "log", level: "warn", text: "已按设置保留浏览器窗口，排查完手动关闭即可" });
+    }
     return {
       status: "failed",
       durationMs: Date.now() - startedAt,
       steps: stepResults,
-      error: String((err && err.message) || err),
+      error: message,
+      screenshot: failedShot || undefined,
     };
   } finally {
-    if (browser) await browser.close().catch(() => {});
+    // 失败保留窗口时不关闭浏览器，其余情况一律回收
+    const keep = failedShot && testCase.keepOpenOnFail;
+    if (browser && !keep) await browser.close().catch(() => {});
   }
 }
 
@@ -213,6 +240,7 @@ async function runOne(node, ctx, fn) {
     ctx.stepResults.push({
       index: node.index,
       keyword: node.step.keyword,
+      target: node.step.target || "",
       status: "failed",
       durationMs,
       error,
