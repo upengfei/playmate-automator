@@ -23,7 +23,8 @@ export const Route = createFileRoute("/api/public/agent/upgrade")({
         const { compareVersion, readRelease } = await import("@/lib/agent-fleet.server");
         const { db, readSettings, pushUpgradeRow } = await import("@/lib/platform.server");
         const client = db();
-        const [settings, release] = await Promise.all([readSettings(client), readRelease(client)]);
+        const [settings, { release }] = await Promise.all([readSettings(client), readRelease()]);
+        if (!release) return Response.json({ pending: false, jobId: null, reason: "尚无有效的 Agent 发布版本", toVersion: null });
 
         const { data: job } = await client
           .from("agent_upgrades")
@@ -62,6 +63,7 @@ export const Route = createFileRoute("/api/public/agent/upgrade")({
         // 版本低于最低支持版本时自动建单推送
         if (compareVersion(version, settings.minAgentVersion) < 0) {
           const created = await pushUpgradeRow(client, agentId, "版本拦截自动推送");
+          if (!created.ok) return Response.json({ pending: false, jobId: null, reason: created.message, toVersion: null });
           return Response.json({
             pending: true,
             jobId: created.ok ? created.id : null,

@@ -21,6 +21,12 @@ export const fetchSnapshot = createServerFn({ method: "GET" }).handler(async () 
   return loadSnapshot();
 });
 
+/** Refresh the same public release metadata used by the platform snapshot. */
+export const refreshAgentRelease = createServerFn({ method: "POST" }).handler(async () => {
+  const { readRelease } = await import("@/lib/agent-fleet.server");
+  return readRelease({ force: true });
+});
+
 export const saveCase = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
@@ -477,7 +483,8 @@ export const sendTask = createServerFn({ method: "POST" })
         `版本校验未通过：节点 ${agent["name"]} 版本 v${agent["version"]} 低于最低要求 v${settings.minAgentVersion}`,
       );
       if (settings.autoUpgrade && !data.skipAutoUpgrade) {
-        await pushUpgradeRow(client, agent["id"], "版本拦截自动推送");
+        const pushed = await pushUpgradeRow(client, agent["id"], "版本拦截自动推送");
+        if (!pushed.ok) return fail("升级包不可用", pushed.message);
         await client
           .from("tasks")
           .update({ status: "下发中", stage: "自动推送升级包中" })

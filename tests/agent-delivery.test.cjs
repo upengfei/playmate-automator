@@ -5,7 +5,7 @@ const { resolve } = require("node:path");
 const { execFileSync } = require("node:child_process");
 const { loadModule } = require("./helpers.cjs");
 
-function fixture({ openError = "", choice = 0, version = "1.8.3" } = {}) {
+function fixture({ openError = "", choice = 0, version = "1.8.3", versionStatus = 200 } = {}) {
   const reports = [],
     executed = [];
   let quitCount = 0,
@@ -67,7 +67,8 @@ function fixture({ openError = "", choice = 0, version = "1.8.3" } = {}) {
       fetch: async (url, options) => {
         if (url.includes("/version?"))
           return {
-            ok: true,
+            ok: versionStatus === 200,
+            status: versionStatus,
             json: async () => ({
               version,
               artifact: {
@@ -117,6 +118,16 @@ test("version confirmation reports the actual running version", async () => {
   await f.main.checkForUpdates();
   assert.equal(f.reports.at(-1).ok, true);
   assert.equal(f.reports.at(-1).installedVersion, "1.8.2");
+});
+
+test("an unavailable published release does not download or report an installed update", async () => {
+  const f = fixture({ versionStatus: 503 });
+  await f.main.checkForUpdates();
+  assert.equal(f.reports.at(-1).ok, false);
+  assert.equal(f.reports.at(-1).installedVersion, "1.8.2");
+  assert.match(f.reports.at(-1).message, /HTTP 503/);
+  assert.equal(f.dialogCount(), 0);
+  assert.equal(f.quitCount(), 0);
 });
 
 test("the Agent forwards the assigned browser and start URL to its runner", async () => {

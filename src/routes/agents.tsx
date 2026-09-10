@@ -113,9 +113,13 @@ function AgentsPage() {
           </div>
           <Button
             size="sm"
-            onClick={() => {
-              outdated.forEach((a) => pushUpgrade(a.id));
-              toast.info(`已向 ${outdated.length} 个节点推送 v${release.version} 升级包`);
+            disabled={!release}
+            onClick={async () => {
+              const results = await Promise.allSettled(outdated.map((a) => pushUpgrade(a.id)));
+              const sent = results.filter((r) => r.status === "fulfilled").length;
+              if (sent) toast.info(`已向 ${sent} 个节点推送 v${release?.version} 升级包`);
+              const failed = results.find((r) => r.status === "rejected");
+              if (failed?.status === "rejected") toast.error(failed.reason instanceof Error ? failed.reason.message : "部分节点推送失败");
             }}
           >
             <Download className="mr-1 size-3.5" />
@@ -200,9 +204,13 @@ function AgentCard({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                pushUpgrade(agent.id);
-                toast.info(`已向 ${agent.name} 推送升级包，等待回传结果`);
+              onClick={async () => {
+                try {
+                  await pushUpgrade(agent.id);
+                  toast.info(`已向 ${agent.name} 推送升级包，等待回传结果`);
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : "推送失败");
+                }
               }}
             >
               <RefreshCw className="mr-1 size-3.5" />
@@ -356,9 +364,13 @@ function UpgradeCard({ job }: { job: UpgradeJob }) {
           size="sm"
           variant="outline"
           className="mt-2.5"
-          onClick={() => {
-            pushUpgrade(job.agentId);
-            toast.info(`已重新向 ${job.agentName} 推送升级包`);
+          onClick={async () => {
+            try {
+              await pushUpgrade(job.agentId);
+              toast.info(`已重新向 ${job.agentName} 推送升级包`);
+            } catch (error) {
+              toast.error(error instanceof Error ? error.message : "推送失败");
+            }
           }}
         >
           <RefreshCw className="mr-1 size-3.5" />

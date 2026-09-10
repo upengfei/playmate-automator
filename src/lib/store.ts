@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { CaseStep } from "./keywords";
+import type { ReleaseSync } from "./agent-fleet.server";
 import {
   abortTask,
   addTask,
@@ -198,7 +199,8 @@ export interface State {
   reports: Report[];
   settings: Settings;
   upgrades: UpgradeJob[];
-  release: AgentRelease;
+  release: AgentRelease | null;
+  releaseSync: ReleaseSync;
   trend: { date: string; passed: number; failed: number }[];
   loaded: boolean;
   /** 数据加载失败时的错误信息（成功时为空） */
@@ -232,7 +234,8 @@ const defaultState: State = {
   reports: [],
   settings: emptySettings,
   upgrades: [],
-  release: { version: "0.0.0", channel: "稳定版", publishedAt: "", notes: [], artifacts: [] },
+  release: null,
+  releaseSync: { status: "empty", lastAttemptAt: null, lastSuccessAt: null, retryAt: null, message: "尚未同步 Agent 发布版本" },
   trend: [],
   loaded: false,
 };
@@ -278,7 +281,7 @@ export function refresh(): Promise<void> {
         upgrades: s.upgrades ?? [],
         trend: s.trend ?? [],
         settings: { ...emptySettings, ...(s.settings ?? {}) },
-        release: { ...defaultState.release, ...(s.release ?? {}) },
+        release: s.release ?? null,
         loaded: true,
             };
       emit();
@@ -483,7 +486,8 @@ export function msToText(ms: number): string {
 
 /** 向真实节点推送升级包，客户端下载安装后回传结果 */
 export async function pushUpgrade(agentId: string) {
-  await pushAgentUpgrade({ data: { agentId } });
+  const result = await pushAgentUpgrade({ data: { agentId } });
+  if (!result.ok) throw new Error(result.message);
   await refresh();
 }
 

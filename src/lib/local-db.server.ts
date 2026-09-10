@@ -158,6 +158,7 @@ const SCHEMA: Record<string, TableDef> = {
       "artifacts",
       "is_current",
       "created_at",
+      "synced_at",
     ],
     { json: ["notes", "artifacts"], bool: ["is_current"], defaults: { id: uuid, created_at: now } },
   ),
@@ -308,6 +309,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_model_files_provider ON ai_model_files(provide
 
 /** 老库补列：每条单独执行，已存在时忽略错误 */
 const MIGRATIONS = [
+  `ALTER TABLE agent_releases ADD COLUMN synced_at TEXT`,
   `ALTER TABLE agent_inspects ADD COLUMN url_key TEXT`,
   `ALTER TABLE agent_inspects ADD COLUMN screenshot TEXT`,
   `ALTER TABLE agent_inspects ADD COLUMN viewport TEXT`,
@@ -363,6 +365,35 @@ async function openDb(): Promise<Db> {
 function database(): Promise<Db> {
   if (!dbPromise) dbPromise = openDb();
   return dbPromise;
+}
+
+/** Run the release switch synchronously under a SQLite write lock. No network IO belongs here. */
+export async function updateAgentRelease(
+  transform: (current: Record<string, unknown> | null) => Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const db = await database();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const current = decodeRow(SCHEMA["agent_releases"]!, db.prepare(
+      "SELECT * FROM agent_releases WHERE is_current = 1 ORDER BY created_at DESC LIMIT 1",
+    ).get());
+    const row = transform(current);
+    db.prepare("UPDATE agent_releases SET is_current = 0 WHERE is_current = 1").run();
+    db.prepare(`INSERT INTO agent_releases
+      (id, version, channel, published_at, min_supported, notes, artifacts, is_current, created_at, synced_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+      ON CONFLICT(version) DO UPDATE SET channel=excluded.channel, published_at=excluded.published_at,
+        min_supported=excluded.min_supported, notes=excluded.notes, artifacts=excluded.artifacts,
+        is_current=1, synced_at=excluded.synced_at`).run(
+      uuid(), row["version"], row["channel"], row["published_at"], row["min_supported"],
+      JSON.stringify(row["notes"]), JSON.stringify(row["artifacts"]), now(), row["synced_at"],
+    );
+    db.exec("COMMIT");
+    return row;
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 const q = (col: string) => `"${col}"`;

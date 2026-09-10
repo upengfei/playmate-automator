@@ -11,11 +11,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
-import { PageHeader, Panel, StatusChip } from "@/components/ui-bits";
+import { PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerDevice, useAppStore } from "@/lib/store";
+import { refresh, registerDevice, useAppStore } from "@/lib/store";
+import { refreshAgentRelease } from "@/lib/platform.functions";
 
 export const Route = createFileRoute("/download")({
   head: () => ({
@@ -37,8 +38,6 @@ export const Route = createFileRoute("/download")({
   }),
   component: DownloadPage,
 });
-
-const ICONS = [MonitorDown, Apple, Terminal];
 
 /** 设备注册：为一台真实设备签发节点令牌，客户端用它登录平台并回传执行 / 升级结果 */
 function DeviceRegister() {
@@ -116,18 +115,51 @@ PLAYFLOW_AGENT_TOKEN=${token}`}
 }
 
 function DownloadPage() {
-  const { release, settings } = useAppStore();
+  const { release, releaseSync, settings, loaded, loadError } = useAppStore();
+  const [refreshing, setRefreshing] = useState(false);
+  const syncing = refreshing || releaseSync.status === "syncing" || !loaded;
+  const refreshRelease = async () => {
+    setRefreshing(true);
+    try {
+      const result = await refreshAgentRelease();
+      await refresh();
+      if (result.sync.status === "failed") toast.error(result.sync.message);
+      else if (result.sync.retryAt && Date.parse(result.sync.retryAt) > Date.now() &&
+        result.sync.lastAttemptAt === releaseSync.lastAttemptAt) toast.info("刷新间隔未到，请稍后重试");
+      else if (result.release?.version === release?.version) toast.success("已检查，发布版本未变化");
+      else if (result.release) toast.success(`已同步 Agent 发布版本 v${result.release.version}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "刷新失败，请稍后重试");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <PlatformShell>
       <PageHeader
         title="下载与安装 Agent 客户端"
-        desc={`当前发布版本 v${release.version}（${release.channel}，发布于 ${release.publishedAt}）· 最低要求 v${settings.minAgentVersion}`}
+        desc={release ? `Agent 发布版本 v${release.version}（${release.channel}，发布于 ${release.publishedAt.slice(0, 10)}）· 最低要求 v${settings.minAgentVersion}` : syncing ? "正在获取 Agent 发布版本…" : "尚未同步 Agent 发布版本"}
       />
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+        <div role="status" aria-live="polite" className="space-y-1 text-sm">
+          <p>{syncing ? "正在同步 GitHub 发布信息…" : loadError ? "平台数据加载失败，请重试" : releaseSync.status === "failed"
+            ? release ? "同步失败，使用上次有效发布版本" : "尚未同步，暂时没有可下载的安装包"
+            : releaseSync.message}</p>
+          {!syncing && releaseSync.status === "failed" && <p className="text-muted-foreground text-xs">{releaseSync.message}</p>}
+          {releaseSync.lastSuccessAt && <p className="text-muted-foreground text-xs">最近成功同步：{new Date(releaseSync.lastSuccessAt).toLocaleString()}</p>}
+          {releaseSync.status === "failed" && releaseSync.retryAt && <p className="text-muted-foreground text-xs">可重试时间：{new Date(releaseSync.retryAt).toLocaleString()}</p>}
+        </div>
+        <Button variant="outline" disabled={syncing} onClick={refreshRelease}>
+          <RefreshCcw className={`mr-1.5 size-4 ${syncing ? "animate-spin" : ""}`} />
+          {syncing ? "同步中…" : "刷新发布版本"}
+        </Button>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-3">
-        {release.artifacts.map((a, i) => {
-          const Icon = ICONS[i] ?? Download;
+        {release?.artifacts.map((a) => {
+          const Icon = a.platform.startsWith("Windows") ? MonitorDown : a.platform.startsWith("macOS") ? Apple : Terminal;
           return (
             <Panel key={a.file} title={a.platform}>
               <div className="flex items-start gap-3">
@@ -196,12 +228,13 @@ function DownloadPage() {
         </Panel>
 
         <div className="space-y-4">
-          <Panel title={`更新说明 v${release.version}`} action={<StatusChip status="在线" />}>
+          <Panel title={release ? `更新说明 v${release.version}` : "更新说明"}>
             <ul className="text-muted-foreground list-disc space-y-1.5 pl-4 text-xs">
-              {release.notes.map((n) => (
-                <li key={n}>{n}</li>
+              {release?.notes.map((n) => (
+                <li key={n} className="whitespace-pre-wrap break-words">{n}</li>
               ))}
             </ul>
+            {!release?.notes.length && <p className="text-muted-foreground text-xs">{release ? "本次发布未提供更新说明。" : "同步成功后展示更新说明。"}</p>}
           </Panel>
 
           <Panel title="更新检查与手动安装">

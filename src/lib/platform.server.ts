@@ -68,6 +68,8 @@ export async function pushUpgradeRow(
 ) {
   const { data: agent } = await client.from("agents").select("*").eq("id", agentId).maybeSingle();
   if (!agent) return { ok: false as const, message: "节点不存在" };
+  const { release } = await readRelease();
+  if (!release) return { ok: false as const, message: "尚无有效的 Agent 发布版本，请先同步发布信息" };
   const { data: running } = await client
     .from("agent_upgrades")
     .select("id")
@@ -76,7 +78,6 @@ export async function pushUpgradeRow(
     .maybeSingle();
   if (running) return { ok: true as const, id: running["id"] as string };
   const settings = await readSettings(client);
-  const release = await readRelease(client);
   const { data, error } = await client
     .from("agent_upgrades")
     .insert({
@@ -145,7 +146,7 @@ async function reconcileTasks(client: SupabaseClient, tasks: Row[], runs: Row[])
 export async function loadSnapshot() {
   const client = db();
   const settings = await readSettings(client);
-  const release = await readRelease(client);
+  const { release, sync: releaseSync } = await readRelease();
 
 
   const { caseRepo } = await import("./case-repo.server");
@@ -369,7 +370,8 @@ export async function loadSnapshot() {
     settings,
     upgrades,
     trend,
-    release: {
+    releaseSync,
+    release: release ? {
       version: release.version,
       channel: release.channel || settings.updateChannel,
       publishedAt: release.publishedAt,
@@ -386,8 +388,7 @@ export async function loadSnapshot() {
         sha256: a.sha256,
         url: a.url,
       })),
-    },
-
+    } : null,
   };
 }
 
