@@ -340,24 +340,45 @@
       };
 
       function setDrawer(open) {
-        $("run-drawer").classList.toggle("expanded", open);
+        const drawer = $("run-drawer");
+        if (drawer.classList.contains("inline")) return;
+        drawer.classList.toggle("expanded", open);
         $("drawer-toggle").textContent = open ? "收起" : "展开";
         $("drawer-toggle").setAttribute("aria-label", open ? "收起执行与日志" : "展开执行与日志");
       }
 
+      /** 执行与日志页把同一个日志面板整体移入主区域，保证两处数据一致 */
+      function setRunLayout(inline) {
+        const drawer = $("run-drawer");
+        const logs = $("logs");
+        const atBottom = true;
+        if (inline) {
+          drawer.classList.remove("expanded");
+          drawer.classList.add("inline");
+          $("run-host").appendChild(drawer);
+        } else {
+          drawer.classList.remove("inline");
+          $("content").appendChild(drawer);
+        }
+        if (atBottom) logs.scrollTop = logs.scrollHeight;
+        $("run-mode-text").textContent = $("run-mode").value === "headless" ? "无头运行" : "有头运行";
+        $("run-case-name").textContent = (lastRun && lastRun.name) || draft.name || "暂无";
+      }
+
       function switchView(name) {
-        const target = name === "run" ? "editor" : name;
         document.querySelectorAll(".nav-item[data-view]").forEach((el) =>
           el.classList.toggle("active", el.dataset.view === name),
         );
         document.querySelectorAll("[data-view-panel]").forEach((el) =>
-          el.classList.toggle("active", el.dataset.viewPanel === target),
+          el.classList.toggle("active", el.dataset.viewPanel === name),
         );
         const copy = viewCopy[name] || viewCopy.editor;
         $("view-title").textContent = copy[0];
         $("view-subtitle").textContent = copy[1];
-        setDrawer(name === "run");
+        setRunLayout(name === "run");
+        if (name !== "run") setDrawer(false);
       }
+
 
       document.querySelectorAll(".nav-item[data-view]").forEach((el) => {
         el.onclick = () => switchView(el.dataset.view);
