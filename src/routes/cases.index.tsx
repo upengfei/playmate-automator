@@ -192,6 +192,17 @@ function CasesPage() {
             <tbody className="divide-y">
               {list.map((c) => (
                 <tr key={c.id} className="hover:bg-accent/50 [&>td]:px-4 [&>td]:py-2.5">
+                  <td>
+                    <Checkbox
+                      aria-label={`选择用例 ${c.name}`}
+                      checked={picked.includes(c.id)}
+                      onCheckedChange={() =>
+                        setPicked((p) =>
+                          p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id],
+                        )
+                      }
+                    />
+                  </td>
                   <td className="text-muted-foreground font-mono text-xs">{c.id}</td>
                   <td>
                     <Link
