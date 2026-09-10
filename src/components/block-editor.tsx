@@ -42,7 +42,7 @@ function ValueSelect({
   return (
     <div className="flex min-w-40 flex-1 items-center gap-2">
       <Select
-        disabled={readOnly}
+        disabled={readOnly === true}
         value={showCustom ? CUSTOM : value}
         onValueChange={(v) => {
           if (v === CUSTOM) {
