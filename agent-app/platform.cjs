@@ -21,6 +21,10 @@ function defaultConfig() {
     agentName: "",
     // 在平台「客户端下载更新」页注册设备后复制，支持环境变量预置
     token: process.env.PLAYFLOW_AGENT_TOKEN || "",
+    // 平台下发任务默认无头执行；本地调试默认有头，便于观察
+    headless: process.env.PLAYFLOW_HEADLESS === "0" ? false : true,
+    // 执行失败后是否保留浏览器窗口，便于现场排查
+    keepOpenOnFail: false,
   };
 }
 
@@ -176,6 +180,13 @@ async function pullCases() {
   return data.cases || [];
 }
 
+/** 按用例 ID 重新拉取平台上的最新内容（执行前刷新，避免本机拿的是旧步骤） */
+async function pullCase(caseId) {
+  if (!caseId) return null;
+  const list = await pullCases();
+  return list.find((c) => c.id === caseId) || null;
+}
+
 async function uploadCase(testCase) {
   return api("cases", {
     method: "POST",
@@ -231,6 +242,7 @@ module.exports = {
   saveConfig,
   register,
   pullCases,
+  pullCase,
   uploadCase,
   claimJobs,
   claimInspects,
