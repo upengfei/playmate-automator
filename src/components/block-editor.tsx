@@ -88,8 +88,9 @@ export function newStep(keyword: CaseStep["keyword"]): CaseStep {
   return {
     id: `bs-${++blockSeq}-${keyword}-${Date.now().toString(36)}`,
     keyword,
-    target: kw.needsTarget ? "" : "",
-    value: kw.needsValue ? "" : "",
+    target: "",
+    value: kw.valueOptions?.[0] ?? "",
+
   };
 }
 
