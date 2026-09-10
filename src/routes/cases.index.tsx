@@ -164,6 +164,8 @@ function CasesPage() {
           </span>
         </div>
       )}
+
+      <div className="md-elevation-1 bg-card overflow-hidden rounded-xl border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/60 text-muted-foreground">
