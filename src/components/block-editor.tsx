@@ -195,15 +195,25 @@ export function StepBlocks({
                   className="h-8 min-w-40 flex-1 font-mono text-xs"
                 />
               )}
-              {kw.needsValue && (
-                <Input
-                  value={s.value}
-                  readOnly={readOnly}
-                  onChange={(e) => update(i, { value: e.target.value })}
-                  placeholder={kw.valueLabel}
-                  className="h-8 min-w-32 flex-1 text-xs"
-                />
-              )}
+              {kw.needsValue &&
+                (kw.valueOptions ? (
+                  <ValueSelect
+                    value={s.value}
+                    options={kw.valueOptions}
+                    label={kw.valueLabel}
+                    readOnly={readOnly}
+                    onChange={(v) => update(i, { value: v })}
+                  />
+                ) : (
+                  <Input
+                    value={s.value}
+                    readOnly={readOnly}
+                    onChange={(e) => update(i, { value: e.target.value })}
+                    placeholder={kw.valueLabel}
+                    className="h-8 min-w-32 flex-1 text-xs"
+                  />
+                ))}
+
               {st === "failed" && (
                 <span className="text-destructive text-xs whitespace-nowrap">执行失败</span>
               )}
