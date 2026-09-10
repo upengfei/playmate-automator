@@ -21,7 +21,7 @@ export type CaseFilePayload = {
     priority: string;
     status: string;
     startUrl: string;
-    version: number;
+    module_tags: string[];
     isTemplate: boolean;
     params: unknown[];
     steps: unknown[];
