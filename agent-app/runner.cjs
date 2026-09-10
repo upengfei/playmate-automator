@@ -11,10 +11,12 @@ function pw() {
   return require("playwright-core");
 }
 
-function locator(page, target) {
+function locator(page, target, framePath = []) {
   const t = String(target || "").trim();
   if (!t) throw new Error("缺少元素定位器");
-  return page.locator(t);
+  let scope = page;
+  for (const frameSelector of framePath) scope = scope.frameLocator(frameSelector);
+  return scope.locator(t);
 }
 
 /* ---------- 循环变量 ---------- */
@@ -125,7 +127,7 @@ async function runCase(testCase, emit = () => {}) {
     if (testCase.startUrl && nodes[0]?.step.keyword !== "goto") {
       await page.goto(testCase.startUrl, { waitUntil: "domcontentloaded" });
     }
-    await execNodes(nodes, { page, emit, stepResults, loop: null });
+    await execNodes(nodes, { page, emit, stepResults, loop: null, framePath: [] });
 
     const shot = path.join(ARTIFACT_DIR, `pass-${Date.now()}.png`);
     await page.screenshot({ path: shot }).catch(() => {});
@@ -171,13 +173,13 @@ async function runCase(testCase, emit = () => {}) {
 async function execNodes(nodes, ctx) {
   for (const node of nodes) {
     if (node.type === "step") {
-      await runOne(node, ctx, () => execStep(ctx.page, resolveStep(node.step, ctx.loop)));
+      await runOne(node, ctx, () => execStep(ctx.page, resolveStep(node.step, ctx.loop), ctx.framePath));
       continue;
     }
     if (node.type === "if") {
       let taken = false;
       await runOne(node, ctx, async () => {
-        taken = await evalCondition(ctx.page, resolveStep(node.step, ctx.loop));
+        taken = await evalCondition(ctx.page, resolveStep(node.step, ctx.loop), ctx.framePath);
         ctx.emit({
           type: "log",
           level: "info",
@@ -195,7 +197,7 @@ async function execNodes(nodes, ctx) {
     });
     for (let i = 0; i < max; i++) {
       if (node.step.keyword === "whileVisible") {
-        const visible = await locator(ctx.page, s.target)
+        const visible = await locator(ctx.page, s.target, ctx.framePath)
           .first()
           .isVisible()
           .catch(() => false);
@@ -221,17 +223,18 @@ function resolveStep(step, loop) {
 /** 统一的单步执行包装：负责发出步骤事件、记录耗时与失败截图 */
 async function runOne(node, ctx, fn) {
   const t0 = Date.now();
-  ctx.emit({ type: "step-start", index: node.index, step: node.step });
+  ctx.emit({ type: "step-start", index: node.index, step: node.step, framePath: [...ctx.framePath] });
   try {
     await fn();
     const durationMs = Date.now() - t0;
     ctx.stepResults.push({
       index: node.index,
       keyword: node.step.keyword,
+      framePath: [...ctx.framePath],
       status: "passed",
       durationMs,
     });
-    ctx.emit({ type: "step-end", index: node.index, status: "passed", durationMs });
+    ctx.emit({ type: "step-end", index: node.index, status: "passed", durationMs, framePath: [...ctx.framePath] });
   } catch (err) {
     const durationMs = Date.now() - t0;
     const shot = path.join(ARTIFACT_DIR, `fail-${Date.now()}.png`);
@@ -241,31 +244,32 @@ async function runOne(node, ctx, fn) {
       index: node.index,
       keyword: node.step.keyword,
       target: node.step.target || "",
+      framePath: [...ctx.framePath],
       status: "failed",
       durationMs,
       error,
     });
-    ctx.emit({ type: "step-end", index: node.index, status: "failed", durationMs, error, shot });
+    ctx.emit({ type: "step-end", index: node.index, status: "failed", durationMs, error, shot, framePath: [...ctx.framePath] });
     throw err;
   }
 }
 
-async function evalCondition(page, s) {
+async function evalCondition(page, s, framePath) {
   const target = s.target || "";
   const value = s.value || "";
   switch (s.keyword) {
     case "ifVisible":
-      return await locator(page, target)
+      return await locator(page, target, framePath)
         .first()
         .isVisible()
         .catch(() => false);
     case "ifNotVisible":
-      return !(await locator(page, target)
+      return !(await locator(page, target, framePath)
         .first()
         .isVisible()
         .catch(() => false));
     case "ifText": {
-      const text = await locator(page, target)
+      const text = await locator(page, target, framePath)
         .first()
         .textContent()
         .catch(() => "");
@@ -276,37 +280,70 @@ async function evalCondition(page, s) {
   }
 }
 
-async function execStep(page, s) {
+async function execStep(page, s, framePath) {
   const target = s.target || "";
   const value = s.value || "";
   switch (s.keyword) {
     case "goto":
       await page.goto(value || target, { waitUntil: "domcontentloaded" });
+      framePath.length = 0;
+      return;
+    case "switchFrame":
+      await locator(page, target, framePath).first().waitFor({ state: "attached" });
+      framePath.push(target);
+      return;
+    case "parentFrame":
+      if (!framePath.length) throw new Error("当前已在主文档，不能返回上层 Frame");
+      framePath.pop();
+      return;
+    case "mainFrame":
+      framePath.length = 0;
       return;
     case "click":
-      await locator(page, target).click();
+      await locator(page, target, framePath).click();
+      return;
+    case "dblclick":
+      await locator(page, target, framePath).dblclick();
+      return;
+    case "check":
+      await locator(page, target, framePath).check();
+      return;
+    case "uncheck":
+      await locator(page, target, framePath).uncheck();
       return;
     case "fill":
-      await locator(page, target).fill(value);
+      await locator(page, target, framePath).fill(value);
       return;
     case "press":
-      if (target.trim()) await locator(page, target).press(value || "Enter");
+      if (target.trim()) await locator(page, target, framePath).press(value || "Enter");
       else await page.keyboard.press(value || "Enter");
       return;
     case "select":
-      await locator(page, target).selectOption(value);
+      await locator(page, target, framePath).selectOption(value);
       return;
     case "hover":
-      await locator(page, target).hover();
+      await locator(page, target, framePath).hover();
+      return;
+    case "focus":
+      await locator(page, target, framePath).focus();
+      return;
+    case "scrollIntoView":
+      await locator(page, target, framePath).scrollIntoViewIfNeeded();
+      return;
+    case "setInputFiles":
+      await locator(page, target, framePath).setInputFiles(value.split(/\r?\n/).filter(Boolean));
+      return;
+    case "dragTo":
+      await locator(page, target, framePath).dragTo(locator(page, value, framePath));
       return;
     case "waitFor":
-      await locator(page, target).waitFor({ state: "visible" });
+      await locator(page, target, framePath).waitFor({ state: "visible" });
       return;
     case "wait":
       await page.waitForTimeout(Number(value || 1000));
       return;
     case "expectText": {
-      const text = (await locator(page, target).first().innerText()).trim();
+      const text = (await locator(page, target, framePath).first().innerText()).trim();
       if (!text.includes(value)) throw new Error(`断言失败：期望包含「${value}」，实际「${text}」`);
       return;
     }
@@ -316,15 +353,35 @@ async function execStep(page, s) {
       return;
     }
     case "expectVisible":
-      if (!(await locator(page, target).first().isVisible())) {
+      if (!(await locator(page, target, framePath).first().isVisible())) {
         throw new Error(`断言失败：元素 ${target} 不可见`);
       }
       return;
+    case "waitForUrl":
+      await page.waitForURL(value);
+      return;
+    case "expectChecked":
+      if (!(await locator(page, target, framePath).first().isChecked())) {
+        throw new Error(`断言失败：元素 ${target} 未勾选`);
+      }
+      return;
+    case "expectEnabled":
+      if (!(await locator(page, target, framePath).first().isEnabled())) {
+        throw new Error(`断言失败：元素 ${target} 不可用`);
+      }
+      return;
+    case "expectValue": {
+      const actual = await locator(page, target, framePath).first().inputValue();
+      if (actual !== value) throw new Error(`断言失败：期望值「${value}」，实际「${actual}」`);
+      return;
+    }
     case "screenshot": {
       const p = path.join(ARTIFACT_DIR, value ? `${Date.now()}-${path.basename(value)}` : `shot-${Date.now()}.png`);
       await page.screenshot({ path: p });
       return;
     }
+    case "unsupported":
+      throw new Error(`待转换步骤不能执行：${value}`);
     default:
       throw new Error(`暂不支持的关键字：${s.keyword}`);
   }

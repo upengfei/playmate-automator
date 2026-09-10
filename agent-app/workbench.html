@@ -413,7 +413,9 @@
           row.appendChild(del);
           host.appendChild(row);
         });
-        $("btn-upload").disabled = draft.steps.length === 0;
+        const hasPendingConversion = draft.steps.some((s) => s.keyword === "unsupported");
+        $("btn-upload").disabled = draft.steps.length === 0 || hasPendingConversion;
+        $("btn-upload").title = hasPendingConversion ? "请先转换或删除待转换步骤" : "";
         renderScript();
       }
 
@@ -550,6 +552,10 @@
           addLog({ level: "warn", text: "编排区还没有步骤，无法运行" });
           return;
         }
+        if (draft.steps.some((s) => s.keyword === "unsupported")) {
+          addLog({ level: "warn", text: "存在待转换步骤，转换或删除后才能运行" });
+          return;
+        }
         // 每次运行都用编排区当前内容，避免改完还在跑上一版
         renderScript();
         const headed = $("run-mode").value === "headed";
@@ -579,6 +585,10 @@
       $("btn-rerun").onclick = runDraft;
 
       $("btn-upload").onclick = async () => {
+        if (draft.steps.some((s) => s.keyword === "unsupported")) {
+          addLog({ level: "warn", text: "存在待转换步骤，转换或删除后才能上传" });
+          return;
+        }
         try {
           renderScript();
           const res = await api.uploadCase({
@@ -608,6 +618,17 @@
           const data = JSON.parse(await file.text());
           const one = Array.isArray(data.cases) ? data.cases[0] : data;
           if (!one || !Array.isArray(one.steps)) throw new Error("文件里没有用例步骤");
+          const invalid = one.steps.find((s) => !keywordMeta.some((k) => k.id === s.keyword));
+          if (invalid) throw new Error(`文件包含不支持的关键字：${invalid.keyword}`);
+          const incomplete = one.steps.find((s, i) => {
+            const kw = kwOf(s.keyword);
+            return (
+              s.keyword === "unsupported" ||
+              (kw.needsTarget && !kw.optionalTarget && !String(s.target || "").trim()) ||
+              (kw.needsValue && !["press", "wait", "screenshot", "repeat", "whileVisible"].includes(kw.id) && !String(s.value || "").trim())
+            ) && i >= 0;
+          });
+          if (incomplete) throw new Error(`文件包含未完成步骤：${kwOf(incomplete.keyword).label}`);
           loadDraft(one);
           const more = Array.isArray(data.cases) && data.cases.length > 1;
           addLog({
@@ -673,8 +694,11 @@
             steps,
             script: recorded && recorded.script,
           });
-          $("record-hint").textContent = `已解析 ${steps.length} 个步骤并载入编排区，可直接调试或上传。`;
-          addLog({ level: "success", text: `录制解析完成：${steps.length} 步已进入编排区` });
+          const pending = steps.filter((s) => s.keyword === "unsupported").length;
+          $("record-hint").textContent = pending
+            ? `已解析 ${steps.length} 个步骤，其中 ${pending} 个待转换步骤需处理后才能调试或上传。`
+            : `已解析 ${steps.length} 个步骤并载入编排区，可直接调试或上传。`;
+          addLog({ level: pending ? "warn" : "success", text: pending ? `录制包含 ${pending} 个待转换步骤` : `录制解析完成：${steps.length} 步已进入编排区` });
         } catch (e) {
           addLog({ level: "error", text: "解析录制失败：" + (e.message || e) });
         } finally {

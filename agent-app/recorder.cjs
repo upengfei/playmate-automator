@@ -45,41 +45,141 @@ function parse(script) {
   let seq = 0;
   const id = () => `rec-${++seq}`;
   const lines = String(script).split("\n").map((l) => l.trim());
+  let activeFrames = [];
+
+  const add = (keyword, target = "", value = "") => steps.push({ id: id(), keyword, target, value });
+  const syncFrames = (nextFrames) => {
+    let shared = 0;
+    while (shared < activeFrames.length && activeFrames[shared] === nextFrames[shared]) shared++;
+    while (activeFrames.length > shared) {
+      add("parentFrame");
+      activeFrames.pop();
+    }
+    for (const selector of nextFrames.slice(shared)) add("switchFrame", selector);
+    activeFrames = [...nextFrames];
+  };
 
   for (const line of lines) {
     let m;
     if ((m = line.match(/^await page\.goto\(['"`](.+?)['"`]\)/))) {
-      steps.push({ id: id(), keyword: "goto", target: "", value: m[1] });
+      syncFrames([]);
+      add("goto", "", m[1]);
       continue;
     }
-    const locMatch = line.match(/^await page\.(.*?)\.(click|fill|press|selectOption|hover|check)\((.*)\)/);
-    if (locMatch) {
-      const target = toSelector(locMatch[1]);
-      const action = locMatch[2];
-      const argRaw = locMatch[3] || "";
-      const arg = (argRaw.match(/['"`](.*)['"`]/) || [])[1] || "";
-      if (action === "click" || action === "check") {
-        steps.push({ id: id(), keyword: "click", target, value: "" });
-      } else if (action === "fill") {
-        steps.push({ id: id(), keyword: "fill", target, value: arg });
-      } else if (action === "press") {
-        steps.push({ id: id(), keyword: "press", target, value: arg || "Enter" });
-      } else if (action === "selectOption") {
-        steps.push({ id: id(), keyword: "select", target, value: arg });
-      } else if (action === "hover") {
-        steps.push({ id: id(), keyword: "hover", target, value: "" });
-      }
+    if ((m = line.match(/^await page\.waitForURL\((.*)\);?$/))) {
+      syncFrames([]);
+      add("waitForUrl", "", literalValue(m[1]));
       continue;
     }
-    if ((m = line.match(/^await expect\(page\.(.*?)\)\.toContainText\(['"`](.*?)['"`]\)/))) {
-      steps.push({ id: id(), keyword: "expectText", target: toSelector(m[1]), value: m[2] });
+    const action = parseAction(line);
+    if (action) {
+      syncFrames(action.frames);
+      add(action.keyword, action.target, action.value);
       continue;
     }
-    if ((m = line.match(/^await expect\(page\.(.*?)\)\.toBeVisible\(\)/))) {
-      steps.push({ id: id(), keyword: "expectVisible", target: toSelector(m[1]), value: "" });
+    const expectation = parseExpectation(line);
+    if (expectation) {
+      syncFrames(expectation.frames);
+      add(expectation.keyword, expectation.target, expectation.value);
+      continue;
+    }
+    if (line && !line.startsWith("//") && (/\bpage\.|\bexpect\(/.test(line))) {
+      add("unsupported", "", line);
     }
   }
   return steps;
+}
+
+const FRAME_SCOPE = "page(?:\\.frameLocator\\((?:'[^']*'|\"[^\"]*\"|`[^`]*`)\\))*";
+const ACTION_RE = new RegExp(
+  `^await (${FRAME_SCOPE})\\.(.+)\\.(click|dblclick|fill|press|selectOption|hover|check|uncheck|setInputFiles|focus|scrollIntoViewIfNeeded|dragTo)\\((.*)\\);?$`,
+);
+const EXPECT_RE = new RegExp(
+  `^await expect\\((${FRAME_SCOPE})\\.(.+)\\)\\.(toContainText|toBeVisible|toBeChecked|toBeEnabled|toHaveValue)\\((.*)\\);?$`,
+);
+
+function frameSelectors(scope) {
+  const selectors = [];
+  const re = /\.frameLocator\((['"`])((?:\\.|(?!\1)[\s\S])*)\1\)/g;
+  let m;
+  while ((m = re.exec(scope))) selectors.push(m[2]);
+  return selectors;
+}
+
+function literalValue(raw) {
+  const m = String(raw || "").trim().match(/^(['"`])([\s\S]*)\1$/);
+  return m ? m[2] : "";
+}
+
+function inputFileValue(raw) {
+  const single = literalValue(raw);
+  if (single) return single;
+  const files = [];
+  const re = /(['"`])((?:\\.|(?!\1)[\s\S])*)\1/g;
+  let m;
+  while ((m = re.exec(String(raw || "")))) files.push(m[2]);
+  return files.join("\n");
+}
+
+function parseAction(line) {
+  const m = line.match(ACTION_RE);
+  if (!m) return null;
+  const [, scope, expression, action, rawValue] = m;
+  const keyword = {
+    click: "click",
+    dblclick: "dblclick",
+    fill: "fill",
+    press: "press",
+    selectOption: "select",
+    hover: "hover",
+    check: "check",
+    uncheck: "uncheck",
+    setInputFiles: "setInputFiles",
+    focus: "focus",
+    scrollIntoViewIfNeeded: "scrollIntoView",
+    dragTo: "dragTo",
+  }[action];
+  const target = toSelector(expression);
+  if (action === "dragTo") {
+    const destination = parseScopedLocator(rawValue);
+    if (!destination || !sameFrames(frameSelectors(scope), destination.frames)) {
+      return { frames: frameSelectors(scope), keyword: "unsupported", target: "", value: line };
+    }
+    return { frames: frameSelectors(scope), keyword, target, value: destination.target };
+  }
+  const value = action === "setInputFiles"
+        ? inputFileValue(rawValue)
+        : literalValue(rawValue) || (action === "press" ? "Enter" : "");
+  return { frames: frameSelectors(scope), keyword, target, value };
+}
+
+function parseScopedLocator(raw) {
+  const match = String(raw || "").trim().match(new RegExp(`^(${FRAME_SCOPE})\\.(.+)$`));
+  if (!match) return null;
+  return { frames: frameSelectors(match[1]), target: toSelector(match[2]) };
+}
+
+function sameFrames(a, b) {
+  return a.length === b.length && a.every((selector, index) => selector === b[index]);
+}
+
+function parseExpectation(line) {
+  const m = line.match(EXPECT_RE);
+  if (!m) return null;
+  const [, scope, expression, assertion, rawValue] = m;
+  const keyword = {
+    toContainText: "expectText",
+    toBeVisible: "expectVisible",
+    toBeChecked: "expectChecked",
+    toBeEnabled: "expectEnabled",
+    toHaveValue: "expectValue",
+  }[assertion];
+  return {
+    frames: frameSelectors(scope),
+    keyword,
+    target: toSelector(expression),
+    value: literalValue(rawValue),
+  };
 }
 
 /** page.getByRole('button', { name: '登录' }) → role/文本定位器；page.locator('#id') → 原样 */

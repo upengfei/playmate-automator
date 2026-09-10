@@ -68,7 +68,7 @@ const KEYWORDS = [
     needsValue: true,
     targetLabel: "",
     valueLabel: "地址",
-    template: (_t, v) => `await page.goto(${lit(v)});`,
+    template: (_t, v) => `await page.goto(${lit(v)});\nframePath.length = 0;`,
   },
   {
     id: "click",
@@ -78,7 +78,7 @@ const KEYWORDS = [
     needsValue: false,
     targetLabel: "定位器",
     valueLabel: "",
-    template: (t) => `await page.locator(${lit(t)}).click();`,
+    template: (t) => `await activeLocator(${lit(t)}).click();`,
   },
   {
     id: "fill",
@@ -88,7 +88,7 @@ const KEYWORDS = [
     needsValue: true,
     targetLabel: "定位器",
     valueLabel: "文本",
-    template: (t, v) => `await page.locator(${lit(t)}).fill(${lit(v)});`,
+    template: (t, v) => `await activeLocator(${lit(t)}).fill(${lit(v)});`,
   },
   {
     id: "press",
@@ -102,7 +102,7 @@ const KEYWORDS = [
     valueOptions: PRESS_KEYS,
     template: (t, v) =>
       String(t).trim()
-        ? `await page.locator(${lit(t)}).press(${lit(v || "Enter")});`
+        ? `await activeLocator(${lit(t)}).press(${lit(v || "Enter")});`
         : `await page.keyboard.press(${lit(v || "Enter")});`,
   },
   {
@@ -113,7 +113,7 @@ const KEYWORDS = [
     needsValue: true,
     targetLabel: "定位器",
     valueLabel: "选项值",
-    template: (t, v) => `await page.locator(${lit(t)}).selectOption(${lit(v)});`,
+    template: (t, v) => `await activeLocator(${lit(t)}).selectOption(${lit(v)});`,
   },
   {
     id: "hover",
@@ -123,7 +123,7 @@ const KEYWORDS = [
     needsValue: false,
     targetLabel: "定位器",
     valueLabel: "",
-    template: (t) => `await page.locator(${lit(t)}).hover();`,
+    template: (t) => `await activeLocator(${lit(t)}).hover();`,
   },
   {
     id: "waitFor",
@@ -133,7 +133,7 @@ const KEYWORDS = [
     needsValue: false,
     targetLabel: "定位器",
     valueLabel: "",
-    template: (t) => `await page.locator(${lit(t)}).waitFor({ state: 'visible' });`,
+    template: (t) => `await activeLocator(${lit(t)}).waitFor({ state: 'visible' });`,
   },
   {
     id: "wait",
@@ -153,7 +153,7 @@ const KEYWORDS = [
     needsValue: true,
     targetLabel: "定位器",
     valueLabel: "期望文本",
-    template: (t, v) => `await expect(page.locator(${lit(t)})).toContainText(${lit(v)});`,
+    template: (t, v) => `await expect(activeLocator(${lit(t)})).toContainText(${lit(v)});`,
   },
   {
     id: "expectUrl",
@@ -173,7 +173,7 @@ const KEYWORDS = [
     needsValue: false,
     targetLabel: "定位器",
     valueLabel: "",
-    template: (t) => `await expect(page.locator(${lit(t)})).toBeVisible();`,
+    template: (t) => `await expect(activeLocator(${lit(t)})).toBeVisible();`,
   },
   {
     id: "screenshot",
@@ -194,7 +194,7 @@ const KEYWORDS = [
     targetLabel: "定位器",
     valueLabel: "",
     opensBlock: true,
-    template: (t) => `if (await page.locator(${lit(t)}).isVisible()) {`,
+    template: (t) => `if (await activeLocator(${lit(t)}).isVisible()) {`,
   },
   {
     id: "ifNotVisible",
@@ -205,7 +205,7 @@ const KEYWORDS = [
     targetLabel: "定位器",
     valueLabel: "",
     opensBlock: true,
-    template: (t) => `if (!(await page.locator(${lit(t)}).isVisible())) {`,
+    template: (t) => `if (!(await activeLocator(${lit(t)}).isVisible())) {`,
   },
   {
     id: "ifText",
@@ -217,7 +217,7 @@ const KEYWORDS = [
     valueLabel: "包含文本",
     opensBlock: true,
     template: (t, v) =>
-      `if (((await page.locator(${lit(t)}).textContent()) ?? '').includes(${lit(v)})) {`,
+      `if (((await activeLocator(${lit(t)}).textContent()) ?? '').includes(${lit(v)})) {`,
   },
   {
     id: "elseBranch",
@@ -262,7 +262,7 @@ const KEYWORDS = [
     valueLabel: "最大次数",
     opensBlock: true,
     template: (t, v) =>
-      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 10}; i < __loopCount && (await page.locator(${lit(t)}).isVisible()); i++) {`,
+      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 10}; i < __loopCount && (await activeLocator(${lit(t)}).isVisible()); i++) {`,
   },
   {
     id: "endLoop",
@@ -276,6 +276,26 @@ const KEYWORDS = [
     template: () => `}`,
   },
 ];
+
+const EXTENDED_KEYWORDS = [
+  { id: "switchFrame", label: "进入 Frame", category: "导航", needsTarget: true, needsValue: false, targetLabel: "iframe 定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).waitFor({ state: 'attached' });\nframePath.push(${lit(t)});` },
+  { id: "parentFrame", label: "返回上层 Frame", category: "导航", needsTarget: false, needsValue: false, targetLabel: "", valueLabel: "", template: () => `if (!framePath.length) throw new Error('当前已在主文档');\nframePath.pop();` },
+  { id: "mainFrame", label: "返回主文档", category: "导航", needsTarget: false, needsValue: false, targetLabel: "", valueLabel: "", template: () => "framePath.length = 0;" },
+  { id: "dblclick", label: "双击元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).dblclick();` },
+  { id: "check", label: "勾选", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).check();` },
+  { id: "uncheck", label: "取消勾选", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).uncheck();` },
+  { id: "setInputFiles", label: "上传文件", category: "交互", needsTarget: true, needsValue: true, targetLabel: "文件输入框定位器", valueLabel: "文件路径（多文件每行一个）", template: (t, v) => `await activeLocator(${lit(t)}).setInputFiles(${lit(v)}.split('\\n').filter(Boolean));` },
+  { id: "dragTo", label: "拖拽到元素", category: "交互", needsTarget: true, needsValue: true, targetLabel: "源元素定位器", valueLabel: "目标元素定位器", template: (t, v) => `await activeLocator(${lit(t)}).dragTo(activeLocator(${lit(v)}));` },
+  { id: "focus", label: "聚焦元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).focus();` },
+  { id: "scrollIntoView", label: "滚动到元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await activeLocator(${lit(t)}).scrollIntoViewIfNeeded();` },
+  { id: "waitForUrl", label: "等待地址", category: "等待", needsTarget: false, needsValue: true, targetLabel: "", valueLabel: "地址或模式", template: (_t, v) => `await page.waitForURL(${lit(v)});` },
+  { id: "expectChecked", label: "断言已勾选", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeChecked();` },
+  { id: "expectEnabled", label: "断言可用", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeEnabled();` },
+  { id: "expectValue", label: "断言输入值", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "期望值", template: (t, v) => `await expect(activeLocator(${lit(t)})).toHaveValue(${lit(v)});` },
+  { id: "unsupported", label: "待转换步骤", category: "其他", needsTarget: false, needsValue: true, targetLabel: "", valueLabel: "原始 Playwright 语句", template: (_t, v) => `throw new Error(${lit(`待转换步骤不能执行：${v}`)});` },
+];
+
+KEYWORDS.push(...EXTENDED_KEYWORDS);
 
 function getKeyword(id) {
   return KEYWORDS.find((k) => k.id === id) || KEYWORDS[0];
@@ -318,6 +338,12 @@ function generateScript(caseName, steps) {
   return `import { test, expect } from '@playwright/test';
 
 test('${String(caseName || "本机用例").replace(/'/g, "\\'")}', async ({ page }) => {
+  const framePath = [];
+  const activeLocator = (selector) => {
+    let scope = page;
+    for (const frameSelector of framePath) scope = scope.frameLocator(frameSelector);
+    return scope.locator(selector);
+  };
 ${body || "  // 暂无步骤"}
 });
 `;

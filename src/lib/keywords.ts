@@ -18,7 +18,22 @@ export type KeywordId =
   | "endIf"
   | "repeat"
   | "whileVisible"
-  | "endLoop";
+  | "endLoop"
+  | "switchFrame"
+  | "parentFrame"
+  | "mainFrame"
+  | "dblclick"
+  | "check"
+  | "uncheck"
+  | "setInputFiles"
+  | "dragTo"
+  | "focus"
+  | "scrollIntoView"
+  | "waitForUrl"
+  | "expectChecked"
+  | "expectEnabled"
+  | "expectValue"
+  | "unsupported";
 
 export type KeywordCategory = "导航" | "交互" | "等待" | "断言" | "逻辑" | "其他";
 
@@ -115,7 +130,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "",
     valueLabel: "地址",
     color: "chart-1",
-    template: (_t, v) => `await page.goto(${lit(v)});`,
+    template: (_t, v) => `await page.goto(${lit(v)});\nframePath.length = 0;`,
   },
   {
     id: "click",
@@ -126,7 +141,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-1",
-    template: (t) => `await page.locator(${lit(t)}).click();`,
+    template: (t) => `await activeLocator(${lit(t)}).click();`,
   },
   {
     id: "fill",
@@ -137,7 +152,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "文本",
     color: "chart-1",
-    template: (t, v) => `await page.locator(${lit(t)}).fill(${lit(v)});`,
+    template: (t, v) => `await activeLocator(${lit(t)}).fill(${lit(v)});`,
   },
   {
     id: "press",
@@ -152,7 +167,7 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-1",
     template: (t, v) =>
       t.trim()
-        ? `await page.locator(${lit(t)}).press(${lit(v || "Enter")});`
+        ? `await activeLocator(${lit(t)}).press(${lit(v || "Enter")});`
         : `await page.keyboard.press(${lit(v || "Enter")});`,
 
   },
@@ -165,7 +180,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "选项值",
     color: "chart-1",
-    template: (t, v) => `await page.locator(${lit(t)}).selectOption(${lit(v)});`,
+    template: (t, v) => `await activeLocator(${lit(t)}).selectOption(${lit(v)});`,
   },
   {
     id: "hover",
@@ -176,7 +191,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-1",
-    template: (t) => `await page.locator(${lit(t)}).hover();`,
+    template: (t) => `await activeLocator(${lit(t)}).hover();`,
   },
   {
     id: "waitFor",
@@ -187,7 +202,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-3",
-    template: (t) => `await page.locator(${lit(t)}).waitFor({ state: 'visible' });`,
+    template: (t) => `await activeLocator(${lit(t)}).waitFor({ state: 'visible' });`,
   },
   {
     id: "wait",
@@ -209,7 +224,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "期望文本",
     color: "chart-2",
-    template: (t, v) => `await expect(page.locator(${lit(t)})).toContainText(${lit(v)});`,
+    template: (t, v) => `await expect(activeLocator(${lit(t)})).toContainText(${lit(v)});`,
   },
   {
     id: "expectUrl",
@@ -231,7 +246,7 @@ export const KEYWORDS: KeywordDef[] = [
     targetLabel: "定位器",
     valueLabel: "",
     color: "chart-2",
-    template: (t) => `await expect(page.locator(${lit(t)})).toBeVisible();`,
+    template: (t) => `await expect(activeLocator(${lit(t)})).toBeVisible();`,
   },
   {
     id: "screenshot",
@@ -254,7 +269,7 @@ export const KEYWORDS: KeywordDef[] = [
     valueLabel: "",
     color: "chart-4",
     opensBlock: true,
-    template: (t) => `if (await page.locator(${lit(t)}).isVisible()) {`,
+    template: (t) => `if (await activeLocator(${lit(t)}).isVisible()) {`,
   },
   {
     id: "ifNotVisible",
@@ -266,7 +281,7 @@ export const KEYWORDS: KeywordDef[] = [
     valueLabel: "",
     color: "chart-4",
     opensBlock: true,
-    template: (t) => `if (!(await page.locator(${lit(t)}).isVisible())) {`,
+    template: (t) => `if (!(await activeLocator(${lit(t)}).isVisible())) {`,
   },
   {
     id: "ifText",
@@ -279,7 +294,7 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-4",
     opensBlock: true,
     template: (t, v) =>
-      `if (((await page.locator(${lit(t)}).textContent()) ?? '').includes(${lit(v)})) {`,
+      `if (((await activeLocator(${lit(t)}).textContent()) ?? '').includes(${lit(v)})) {`,
   },
   {
     id: "elseBranch",
@@ -328,7 +343,7 @@ export const KEYWORDS: KeywordDef[] = [
     color: "chart-4",
     opensBlock: true,
     template: (t, v) =>
-      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 10}; i < __loopCount && (await page.locator(${lit(t)}).isVisible()); i++) {`,
+      `for (let i = 0, __loopCount = ${Number(v) > 0 ? Number(v) : 10}; i < __loopCount && (await activeLocator(${lit(t)}).isVisible()); i++) {`,
   },
   {
     id: "endLoop",
@@ -344,8 +359,48 @@ export const KEYWORDS: KeywordDef[] = [
   },
 ];
 
+const EXTENDED_KEYWORDS: KeywordDef[] = [
+  { id: "switchFrame", label: "进入 Frame", category: "导航", needsTarget: true, needsValue: false, targetLabel: "iframe 定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).waitFor({ state: 'attached' });\nframePath.push(${lit(t)});` },
+  { id: "parentFrame", label: "返回上层 Frame", category: "导航", needsTarget: false, needsValue: false, targetLabel: "", valueLabel: "", color: "chart-1", template: () => `if (!framePath.length) throw new Error('当前已在主文档');\nframePath.pop();` },
+  { id: "mainFrame", label: "返回主文档", category: "导航", needsTarget: false, needsValue: false, targetLabel: "", valueLabel: "", color: "chart-1", template: () => "framePath.length = 0;" },
+  { id: "dblclick", label: "双击元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).dblclick();` },
+  { id: "check", label: "勾选", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).check();` },
+  { id: "uncheck", label: "取消勾选", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).uncheck();` },
+  { id: "setInputFiles", label: "上传文件", category: "交互", needsTarget: true, needsValue: true, targetLabel: "文件输入框定位器", valueLabel: "文件路径（多文件每行一个）", color: "chart-1", template: (t, v) => `await activeLocator(${lit(t)}).setInputFiles(${lit(v)}.split('\\n').filter(Boolean));` },
+  { id: "dragTo", label: "拖拽到元素", category: "交互", needsTarget: true, needsValue: true, targetLabel: "源元素定位器", valueLabel: "目标元素定位器", color: "chart-1", template: (t, v) => `await activeLocator(${lit(t)}).dragTo(activeLocator(${lit(v)}));` },
+  { id: "focus", label: "聚焦元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).focus();` },
+  { id: "scrollIntoView", label: "滚动到元素", category: "交互", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-1", template: (t) => `await activeLocator(${lit(t)}).scrollIntoViewIfNeeded();` },
+  { id: "waitForUrl", label: "等待地址", category: "等待", needsTarget: false, needsValue: true, targetLabel: "", valueLabel: "地址或模式", color: "chart-3", template: (_t, v) => `await page.waitForURL(${lit(v)});` },
+  { id: "expectChecked", label: "断言已勾选", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-2", template: (t) => `await expect(activeLocator(${lit(t)})).toBeChecked();` },
+  { id: "expectEnabled", label: "断言可用", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", color: "chart-2", template: (t) => `await expect(activeLocator(${lit(t)})).toBeEnabled();` },
+  { id: "expectValue", label: "断言输入值", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "期望值", color: "chart-2", template: (t, v) => `await expect(activeLocator(${lit(t)})).toHaveValue(${lit(v)});` },
+  { id: "unsupported", label: "待转换步骤", category: "其他", needsTarget: false, needsValue: true, targetLabel: "", valueLabel: "原始 Playwright 语句", color: "chart-5", template: (_t, v) => `throw new Error(${lit(`待转换步骤不能执行：${v}`)});` },
+];
+
+KEYWORDS.push(...EXTENDED_KEYWORDS);
+
 export function getKeyword(id: KeywordId): KeywordDef {
   return KEYWORDS.find((k) => k.id === id) ?? KEYWORDS[0]!;
+}
+
+const DEFAULT_VALUE_KEYWORDS = new Set(["press", "wait", "screenshot", "repeat", "whileVisible"]);
+
+/** 校验可持久化用例的关键字和必填参数，防止把无法执行的草稿下发给 Agent。 */
+export function validateCaseSteps(
+  steps: Array<{ keyword: string; target?: string | null; value?: string | null }>,
+): string | null {
+  for (const [index, step] of steps.entries()) {
+    const keyword = KEYWORDS.find((item) => item.id === step.keyword);
+    if (!keyword) return `步骤 ${index + 1} 使用了不支持的关键字：${step.keyword}`;
+    if (keyword.id === "unsupported") return `步骤 ${index + 1} 是待转换步骤，转换或删除后才能继续`;
+    if (keyword.needsTarget && !keyword.optionalTarget && !String(step.target ?? "").trim()) {
+      return `步骤 ${index + 1}「${keyword.label}」缺少${keyword.targetLabel || "定位器"}`;
+    }
+    if (keyword.needsValue && !DEFAULT_VALUE_KEYWORDS.has(keyword.id) && !String(step.value ?? "").trim()) {
+      return `步骤 ${index + 1}「${keyword.label}」缺少${keyword.valueLabel || "取值"}`;
+    }
+  }
+  return null;
 }
 
 export interface CaseStep {
@@ -387,6 +442,12 @@ export function generatePlaywrightCode(caseName: string, steps: CaseStep[]): str
   return `import { test, expect } from '@playwright/test';
 
 test('${caseName}', async ({ page }) => {
+  const framePath = [];
+  const activeLocator = (selector) => {
+    let scope = page;
+    for (const frameSelector of framePath) scope = scope.frameLocator(frameSelector);
+    return scope.locator(selector);
+  };
 ${body || "  // 暂无步骤"}
 });
 `;

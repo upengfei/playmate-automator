@@ -56,6 +56,9 @@ export const Route = createFileRoute("/api/public/agent/cases")({
         const parsed = uploadSchema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
         const { agentId, token, case: c } = parsed.data;
+        const { validateCaseSteps } = await import("@/lib/keywords");
+        const stepError = validateCaseSteps(c.steps);
+        if (stepError) return Response.json({ error: stepError }, { status: 400 });
         const { verifyAgent } = await import("@/lib/agent-db.server");
         if (!(await verifyAgent(agentId, token))) {
           return Response.json({ error: "节点令牌校验失败" }, { status: 401 });

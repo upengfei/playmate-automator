@@ -9,7 +9,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { KEYWORDS, generatePlaywrightCode, type CaseStep } from "@/lib/keywords";
 
-const KEYWORD_IDS = KEYWORDS.map((k) => k.id);
+const KEYWORD_IDS = KEYWORDS.filter((k) => k.id !== "unsupported").map((k) => k.id);
 
 export const KEYWORD_REFERENCE = KEYWORDS.map(
   (k) =>
@@ -320,4 +320,3 @@ function normalizeUrl(raw: string): string {
     return raw.trim().toLowerCase();
   }
 }
-

@@ -48,7 +48,9 @@ export const saveCase = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { caseRepo } = await import("@/lib/case-repo.server");
-    const { generatePlaywrightCode } = await import("@/lib/keywords");
+    const { generatePlaywrightCode, validateCaseSteps } = await import("@/lib/keywords");
+    const stepError = validateCaseSteps(data.steps);
+    if (stepError) throw new Error(stepError);
     const repo = await caseRepo();
     const script = generatePlaywrightCode(data.name, data.steps as any);
     const row = {
