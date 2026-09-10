@@ -41,11 +41,11 @@ export function buildCaseFile(cases: TestCase[]): CaseFilePayload {
       priority: c.priority,
       status: c.status,
       startUrl: c.startUrl ?? "",
-      version: c.version ?? 1,
+      module_tags: c.tags ?? [],
       isTemplate: c.isTemplate ?? false,
       params: c.params ?? [],
       steps: c.steps ?? [],
-      script: c.script ?? "",
+      script: generatePlaywrightCode(c.name, c.steps ?? []),
     })),
   };
 }
