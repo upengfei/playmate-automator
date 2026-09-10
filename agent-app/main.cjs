@@ -17,6 +17,7 @@ const crypto = require("crypto");
 const platform = require("./platform.cjs");
 const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
+const keywords = require("./keywords.cjs");
 const browsers = require("./browsers.cjs");
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
