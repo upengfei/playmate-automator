@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, Plus, Search, Trash2 } from "lucide-react";
+import { Blocks, Copy, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createCase, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
+import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
