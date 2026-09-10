@@ -96,6 +96,8 @@ function parseNodes(steps, from = 0, expectedEnd = null, allowElse = false) {
 async function runCase(testCase, emit = () => {}) {
   const startedAt = Date.now();
   let browser;
+  let page;
+  let failedShot = "";
   const stepResults = [];
   try {
     const browserName = String(testCase.browser || "chromium").toLowerCase();
