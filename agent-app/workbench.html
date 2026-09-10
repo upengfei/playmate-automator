@@ -152,6 +152,10 @@
       .bar > i { display: block; height: 100%; background: var(--primary); width: 0; transition: width 250ms ease; }
       .run-drawer { flex: none; height: 42px; background: var(--console); color: var(--console-text); border-top: 1px solid #293430; transition: height 160ms ease; overflow: hidden; }
       .run-drawer.expanded { height: min(330px, 42vh); }
+      .run-drawer.inline { height: min(620px, 66vh); border: 1px solid #293430; border-radius: 10px; }
+      .run-drawer.inline #drawer-toggle { display: none; }
+      .run-summary { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 14px; color: var(--muted); font-size: 12px; }
+      .run-summary b { color: var(--text); font-weight: 600; }
       .drawer-head { height: 42px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2b3733; }
       .drawer-head button { min-height: 28px; color: #bac7c2; border-color: transparent; background: transparent; padding: 3px 7px; }
       .drawer-head button:hover:not(:disabled) { background: #293531; color: #ffffff; border-color: transparent; }
@@ -185,6 +189,8 @@
         .system-grid { grid-template-columns: 1fr; }
         .drawer-body { grid-template-columns: 1fr; }
         #panel-queue { display: none; }
+        .run-drawer.inline #panel-queue { display: block; border-right: none; border-bottom: 1px solid #2b3733; }
+        .run-drawer.inline .drawer-body { grid-template-columns: 1fr; grid-template-rows: minmax(120px, 34%) 1fr; }
         .block { flex-wrap: wrap; }
         .block select.kw { width: calc(100% - 34px); }
       }
@@ -211,15 +217,15 @@
           <button class="nav-item" data-view="run" title="执行与日志">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 7 7 5-7 5V7Z"/><circle cx="12" cy="12" r="9"/></svg><span>执行与日志</span><b class="nav-badge" id="pending">0</b>
           </button>
+          <button class="nav-item" data-view="system" title="内核与维护">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg><span>内核与维护</span>
+          </button>
         </nav>
         <div class="sidebar-spacer"></div>
         <div class="node-card">
           <div class="node-line"><i class="node-dot" id="node-dot"></i><div class="node-copy"><strong id="agentId">-</strong><small id="platformUrl">正在读取节点信息</small></div></div>
           <div class="side-meta"><span>版本<b id="version">-</b></span><span>待补传<b id="pending-side">0</b></span></div>
         </div>
-        <button class="nav-item maintenance-link" data-view="system" title="内核与维护">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg><span>内核与维护</span>
-        </button>
       </aside>
 
       <main class="workspace">
@@ -227,7 +233,7 @@
           <div><h1 id="view-title">录制用例</h1><p id="view-subtitle">在真实浏览器中捕获操作并生成关键字步骤</p></div>
           <div class="topbar-status"><span class="pill" id="status">检测中…</span></div>
         </header>
-        <div class="content">
+        <div class="content" id="content">
           <div class="view-stack">
             <section class="view active" id="panel-record" data-view-panel="record">
               <div class="view-heading"><div><h2>录制新用例</h2><p>输入起始页面，在打开的浏览器中完成操作。</p></div></div>
@@ -280,6 +286,17 @@
               </div>
             </section>
 
+            <section class="view" id="panel-run" data-view-panel="run">
+              <div class="view-heading"><div><h2>执行与日志</h2><p>查看当前执行的用例、逐步状态与实时日志。</p></div></div>
+              <div class="run-summary">
+                <span>当前用例：<b id="run-case-name">暂无</b></span>
+                <span>执行模式：<b id="run-mode-text">-</b></span>
+                <span>待补传：<b id="run-pending">0</b></span>
+              </div>
+              <div id="run-host"></div>
+            </section>
+
+
             <section class="view" id="panel-updates" data-view-panel="system">
               <div class="view-heading"><div><h2>内核与维护</h2><p>管理节点连接、离线补传、浏览器内核和客户端版本。</p></div></div>
               <div class="system-grid">
@@ -323,24 +340,45 @@
       };
 
       function setDrawer(open) {
-        $("run-drawer").classList.toggle("expanded", open);
+        const drawer = $("run-drawer");
+        if (drawer.classList.contains("inline")) return;
+        drawer.classList.toggle("expanded", open);
         $("drawer-toggle").textContent = open ? "收起" : "展开";
         $("drawer-toggle").setAttribute("aria-label", open ? "收起执行与日志" : "展开执行与日志");
       }
 
+      /** 执行与日志页把同一个日志面板整体移入主区域，保证两处数据一致 */
+      function setRunLayout(inline) {
+        const drawer = $("run-drawer");
+        const logs = $("logs");
+        const atBottom = true;
+        if (inline) {
+          drawer.classList.remove("expanded");
+          drawer.classList.add("inline");
+          $("run-host").appendChild(drawer);
+        } else {
+          drawer.classList.remove("inline");
+          $("content").appendChild(drawer);
+        }
+        if (atBottom) logs.scrollTop = logs.scrollHeight;
+        $("run-mode-text").textContent = $("run-mode").value === "headless" ? "无头运行" : "有头运行";
+        $("run-case-name").textContent = (lastRun && lastRun.name) || draft.name || "暂无";
+      }
+
       function switchView(name) {
-        const target = name === "run" ? "editor" : name;
         document.querySelectorAll(".nav-item[data-view]").forEach((el) =>
           el.classList.toggle("active", el.dataset.view === name),
         );
         document.querySelectorAll("[data-view-panel]").forEach((el) =>
-          el.classList.toggle("active", el.dataset.viewPanel === target),
+          el.classList.toggle("active", el.dataset.viewPanel === name),
         );
         const copy = viewCopy[name] || viewCopy.editor;
         $("view-title").textContent = copy[0];
         $("view-subtitle").textContent = copy[1];
-        setDrawer(name === "run");
+        setRunLayout(name === "run");
+        if (name !== "run") setDrawer(false);
       }
+
 
       document.querySelectorAll(".nav-item[data-view]").forEach((el) => {
         el.onclick = () => switchView(el.dataset.view);
@@ -379,6 +417,7 @@
         const box = await api.getOutbox();
         $("pending").textContent = box.pending || 0;
         $("pending-side").textContent = box.pending || 0;
+        $("run-pending").textContent = box.pending || 0;
       }
 
       /* ------------------------------ 步骤编排区 ------------------------------ */
@@ -697,7 +736,7 @@
           steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
         };
         $("btn-run").disabled = $("btn-rerun").disabled = true;
-        setDrawer(true);
+        switchView("run");
         $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
         $("run-bar").style.width = "10%";
         renderRunSteps(lastRun.steps);
@@ -713,6 +752,9 @@
         }
       }
       $("btn-run").onclick = runDraft;
+      $("run-mode").onchange = () => {
+        $("run-mode-text").textContent = $("run-mode").value === "headless" ? "无头运行" : "有头运行";
+      };
       $("btn-rerun").onclick = runDraft;
 
       $("btn-upload").onclick = async () => {
@@ -845,6 +887,7 @@
       api.onOutbox((d) => {
         $("pending").textContent = d.pending || 0;
         $("pending-side").textContent = d.pending || 0;
+        $("run-pending").textContent = d.pending || 0;
       });
       api.onRunOptions((d) => {
         $("opt-headless").checked = d.headless !== false;
