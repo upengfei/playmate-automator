@@ -202,6 +202,11 @@ function TasksPage() {
                 </label>
               );
             })}
+            {filtered.length === 0 && (
+              <div className="text-muted-foreground px-4 py-10 text-center text-sm">
+                没有符合条件的用例
+              </div>
+            )}
           </div>
         </Panel>
 
