@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Rocket, Send } from "lucide-react";
+import { Rocket, Search, Send } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, ProgressBar, StatusChip } from "@/components/ui-bits";
