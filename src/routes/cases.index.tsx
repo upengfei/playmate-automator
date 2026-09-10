@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
+import { Blocks, Copy, Download, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
