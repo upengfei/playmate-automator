@@ -3,6 +3,13 @@ import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   KEYWORDS,
   getKeyword,
   stepDepths,
@@ -11,6 +18,68 @@ import {
   type KeywordId,
 } from "@/lib/keywords";
 import { cn } from "@/lib/utils";
+
+const CUSTOM = "__custom__";
+
+/** 关键字取值下拉：提供常用候选，选「自定义」后可手填任意内容 */
+function ValueSelect({
+  value,
+  options,
+  label,
+  readOnly,
+  onChange,
+}: {
+  value: string;
+  options: string[];
+  label: string;
+  readOnly?: boolean | undefined;
+  onChange: (v: string) => void;
+}) {
+  const known = value === "" || options.includes(value);
+  const [custom, setCustom] = useState(!known);
+  const showCustom = custom || !known;
+
+  return (
+    <div className="flex min-w-40 flex-1 items-center gap-2">
+      <Select
+        disabled={readOnly}
+        value={showCustom ? CUSTOM : value}
+        onValueChange={(v) => {
+          if (v === CUSTOM) {
+            setCustom(true);
+            return;
+          }
+          setCustom(false);
+          onChange(v);
+        }}
+      >
+        <SelectTrigger className="h-8 flex-1 text-xs">
+          <SelectValue placeholder={label} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o} className="text-xs">
+              {o}
+            </SelectItem>
+          ))}
+          <SelectItem value={CUSTOM} className="text-xs">
+            自定义…
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      {showCustom && (
+        <Input
+          value={value}
+          readOnly={readOnly}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={`自定义${label}`}
+          className="h-8 min-w-28 flex-1 font-mono text-xs"
+        />
+      )}
+    </div>
+  );
+}
+
 
 let blockSeq = 0;
 
