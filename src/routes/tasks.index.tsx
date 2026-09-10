@@ -46,6 +46,33 @@ function TasksPage() {
   const [concurrency, setConcurrency] = useState(String(settings.defaultConcurrency));
   const [retry, setRetry] = useState(String(settings.defaultRetry));
   const [serialDependency, setSerialDependency] = useState(false);
+  const [kw, setKw] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("全部模块");
+  const [statusFilter, setStatusFilter] = useState("全部状态");
+
+  const modules = useMemo(
+    () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
+    [cases],
+  );
+
+  const filtered = cases.filter(
+    (c) =>
+      (moduleFilter === "全部模块" || c.module === moduleFilter) &&
+      (statusFilter === "全部状态" || c.status === statusFilter) &&
+      (kw === "" || c.name.includes(kw) || c.id.toLowerCase().includes(kw.toLowerCase())),
+  );
+
+  const filteredIds = filtered.map((c) => c.id);
+  const allFilteredChecked =
+    filteredIds.length > 0 && filteredIds.every((id) => picked.includes(id));
+  const someFilteredChecked =
+    !allFilteredChecked && filteredIds.some((id) => picked.includes(id));
+
+  const toggleAllFiltered = () => {
+    setPicked((p) =>
+      allFilteredChecked ? p.filter((id) => !filteredIds.includes(id)) : [...new Set([...p, ...filteredIds])],
+    );
+  };
 
   const selectedAgent = agents.find((a) => a.id === effectiveAgentId);
   const blocked = !selectedAgent || selectedAgent.status === "离线" || versionOutdated(selectedAgent);
