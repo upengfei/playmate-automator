@@ -81,7 +81,31 @@ export function lit(text: string): string {
   return "`" + out + "`";
 }
 
+/** 常用按键（Playwright 键名），下拉可选，也允许自定义组合键 */
+export const PRESS_KEYS = [
+  "Enter",
+  "Tab",
+  "Escape",
+  "Space",
+  "Backspace",
+  "Delete",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Control+A",
+  "Control+C",
+  "Control+V",
+  "Meta+A",
+  "Shift+Tab",
+];
+
 export const KEYWORDS: KeywordDef[] = [
+
   {
     id: "goto",
     label: "打开页面",
