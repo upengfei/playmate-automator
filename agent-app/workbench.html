@@ -59,15 +59,20 @@
         cursor: pointer;
       }
       button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+      button.mini { padding: 2px 7px; border-radius: 6px; font-size: 12px; }
       button:disabled { opacity: 0.5; cursor: not-allowed; }
-      input {
+      input, select {
         font: inherit;
         border: 1px solid var(--border);
         border-radius: 8px;
         padding: 6px 10px;
+        background: #fff;
         width: 100%;
       }
+      label.inline { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+      label.inline input { width: auto; }
       .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+      .row > .grow { flex: 1; min-width: 160px; }
       .list { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
       .list div {
         padding: 7px 10px;
@@ -81,6 +86,33 @@
       .steps li { margin-bottom: 4px; }
       .steps .passed { color: var(--ok); }
       .steps .failed { color: var(--err); }
+      #blocks { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow: auto; }
+      .block {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 8px;
+        background: #fbfcfe;
+      }
+      .block .idx { color: var(--muted); font-size: 12px; width: 22px; text-align: right; }
+      .block select.kw { width: 150px; }
+      .block .target { flex: 1.4; min-width: 120px; }
+      .block .value { flex: 1; min-width: 100px; }
+      .block .value.pair { display: flex; gap: 4px; }
+      .block.logic { background: #f4f0ff; }
+      #script {
+        background: #10161f;
+        color: #d8e2f0;
+        border-radius: 8px;
+        padding: 10px 12px;
+        max-height: 400px;
+        overflow: auto;
+        font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-wrap;
+        margin: 0;
+      }
       #logs {
         background: #10161f;
         color: #d8e2f0;
@@ -126,22 +158,57 @@
         </div>
         <div class="row">
           <button class="primary" id="btn-record-start">开始录制</button>
-          <button id="btn-record-stop" disabled>停止并解析</button>
-          <button id="btn-upload" disabled>上传到平台</button>
+          <button id="btn-record-stop" disabled>停止并进入编排</button>
         </div>
-        <div class="hint" id="record-hint">录制会打开真实浏览器，操作完成后点“停止并解析”生成步骤。</div>
-        <ol class="steps" id="record-steps"></ol>
+        <div class="hint" id="record-hint">
+          录制会打开真实浏览器，操作完成后点“停止并进入编排”，解析出的步骤会直接进入下方编排区，可继续编辑、本地调试，再上传平台。
+        </div>
       </section>
 
       <section id="panel-cases">
         <h2>平台用例</h2>
         <div class="row">
           <button id="btn-pull">拉取平台用例</button>
-          <button class="primary" id="btn-run" disabled>本机执行</button>
-          <button id="btn-debug" disabled>调试执行</button>
+          <button id="btn-load" disabled>载入编排区</button>
         </div>
         <div class="list" id="case-list"></div>
-        <div class="hint" id="case-hint">选择一条用例后可在本机用真实浏览器执行。</div>
+        <div class="hint" id="case-hint">选择一条用例载入编排区，改完可先本地调试，再上传成新版本。</div>
+      </section>
+
+      <section class="full" id="panel-editor">
+        <h2>步骤编排（关键字积木）</h2>
+        <div class="row">
+          <div class="grow"><input id="case-name" placeholder="用例名称" /></div>
+          <div class="grow"><input id="case-url" placeholder="起始地址（选填）" /></div>
+          <select id="case-browser" style="width: 130px">
+            <option value="chromium">Chromium</option>
+            <option value="firefox">Firefox</option>
+            <option value="webkit">WebKit</option>
+          </select>
+        </div>
+        <div class="row">
+          <select id="add-keyword" style="width: 190px"></select>
+          <button id="btn-add">追加步骤</button>
+          <select id="run-mode" style="width: 150px">
+            <option value="headed">有头运行（可见）</option>
+            <option value="headless">无头运行</option>
+          </select>
+          <label class="inline"><input type="checkbox" id="opt-keep" /> 失败后保留浏览器窗口</label>
+          <label class="inline"><input type="checkbox" id="opt-headless" /> 平台任务默认无头执行</label>
+          <button class="primary" id="btn-run">本地调试运行</button>
+          <button id="btn-rerun" disabled>重新运行</button>
+          <button id="btn-upload" disabled>上传到平台</button>
+        </div>
+        <div id="blocks"></div>
+        <div class="hint" id="editor-hint" style="margin-top: 8px">
+          关键字可下拉切换，定位框支持 ${变量}；条件与循环积木要成对使用（条件结束 / 循环结束）。
+        </div>
+      </section>
+
+      <section id="panel-script">
+        <h2>生成的 Playwright 脚本</h2>
+        <pre id="script">// 暂无步骤</pre>
+        <div class="row" style="margin-top: 10px"><button id="btn-copy">复制脚本</button></div>
       </section>
 
       <section id="panel-queue">
@@ -168,9 +235,16 @@
     <script>
       const api = window.playflowAgent;
       const $ = (id) => document.getElementById(id);
+
       let cases = [];
       let selected = null;
-      let recorded = null;
+      let keywordMeta = [];
+      /** 编排区当前草稿：录制结果与平台用例都载入到这里 */
+      let draft = { id: null, name: "", startUrl: "", browser: "chromium", steps: [], script: "" };
+      let lastRun = null;
+      let seq = 0;
+
+      const kwOf = (id) => keywordMeta.find((k) => k.id === id) || keywordMeta[0] || {};
 
       function addLog(entry) {
         const el = document.createElement("div");
@@ -193,6 +267,188 @@
         $("pending").textContent = box.pending || 0;
       }
 
+      /* ------------------------------ 步骤编排区 ------------------------------ */
+
+      function stepDepths(steps) {
+        let depth = 0;
+        return steps.map((s) => {
+          const kw = kwOf(s.keyword);
+          if (kw.closesBlock || kw.id === "elseBranch") depth = Math.max(0, depth - 1);
+          const own = depth;
+          if (kw.opensBlock || kw.id === "elseBranch") depth += 1;
+          return own;
+        });
+      }
+
+      function newStep(keyword) {
+        return { id: `local-${++seq}`, keyword, target: "", value: "" };
+      }
+
+      function move(i, delta) {
+        const j = i + delta;
+        if (j < 0 || j >= draft.steps.length) return;
+        const [s] = draft.steps.splice(i, 1);
+        draft.steps.splice(j, 0, s);
+        renderBlocks();
+      }
+
+      function renderBlocks() {
+        const host = $("blocks");
+        host.innerHTML = "";
+        const depths = stepDepths(draft.steps);
+        if (!draft.steps.length) {
+          const empty = document.createElement("div");
+          empty.className = "hint";
+          empty.textContent = "还没有步骤：可以先录制，或用上方“追加步骤”开始编排。";
+          host.appendChild(empty);
+        }
+        draft.steps.forEach((s, i) => {
+          const kw = kwOf(s.keyword);
+          const row = document.createElement("div");
+          row.className = "block" + (kw.category === "逻辑" ? " logic" : "");
+          row.style.marginLeft = (depths[i] || 0) * 18 + "px";
+
+          const idx = document.createElement("span");
+          idx.className = "idx";
+          idx.textContent = i + 1;
+          row.appendChild(idx);
+
+          const sel = document.createElement("select");
+          sel.className = "kw";
+          keywordMeta.forEach((k) => {
+            const o = document.createElement("option");
+            o.value = k.id;
+            o.textContent = `${k.label}（${k.category}）`;
+            sel.appendChild(o);
+          });
+          sel.value = s.keyword;
+          sel.onchange = () => {
+            s.keyword = sel.value;
+            renderBlocks();
+          };
+          row.appendChild(sel);
+
+          const target = document.createElement("input");
+          target.className = "target";
+          target.value = s.target || "";
+          target.placeholder = kw.needsTarget ? kw.targetLabel || "定位器" : "该关键字无需定位";
+          target.disabled = !kw.needsTarget;
+          target.oninput = () => {
+            s.target = target.value;
+            renderScript();
+          };
+          row.appendChild(target);
+
+          if (kw.needsValue && Array.isArray(kw.valueOptions) && kw.valueOptions.length) {
+            const box = document.createElement("div");
+            box.className = "value pair";
+            const vs = document.createElement("select");
+            const known = !s.value || kw.valueOptions.includes(s.value);
+            kw.valueOptions.forEach((v) => {
+              const o = document.createElement("option");
+              o.value = v;
+              o.textContent = v;
+              vs.appendChild(o);
+            });
+            const custom = document.createElement("option");
+            custom.value = "__custom__";
+            custom.textContent = "自定义…";
+            vs.appendChild(custom);
+            vs.value = known ? s.value || kw.valueOptions[0] : "__custom__";
+            if (known && !s.value) s.value = kw.valueOptions[0];
+            const ci = document.createElement("input");
+            ci.value = s.value || "";
+            ci.placeholder = "自定义" + (kw.valueLabel || "取值");
+            ci.style.display = known ? "none" : "block";
+            ci.oninput = () => {
+              s.value = ci.value;
+              renderScript();
+            };
+            vs.onchange = () => {
+              if (vs.value === "__custom__") {
+                ci.style.display = "block";
+                ci.focus();
+                return;
+              }
+              ci.style.display = "none";
+              s.value = vs.value;
+              renderScript();
+            };
+            box.appendChild(vs);
+            box.appendChild(ci);
+            row.appendChild(box);
+          } else {
+            const value = document.createElement("input");
+            value.className = "value";
+            value.value = s.value || "";
+            value.placeholder = kw.needsValue ? kw.valueLabel || "取值" : "该关键字无需取值";
+            value.disabled = !kw.needsValue;
+            value.oninput = () => {
+              s.value = value.value;
+              renderScript();
+            };
+            row.appendChild(value);
+          }
+
+          const up = document.createElement("button");
+          up.className = "mini";
+          up.textContent = "↑";
+          up.onclick = () => move(i, -1);
+          const down = document.createElement("button");
+          down.className = "mini";
+          down.textContent = "↓";
+          down.onclick = () => move(i, 1);
+          const del = document.createElement("button");
+          del.className = "mini";
+          del.textContent = "删除";
+          del.onclick = () => {
+            draft.steps.splice(i, 1);
+            renderBlocks();
+          };
+          row.appendChild(up);
+          row.appendChild(down);
+          row.appendChild(del);
+          host.appendChild(row);
+        });
+        $("btn-upload").disabled = draft.steps.length === 0;
+        renderScript();
+      }
+
+      async function renderScript() {
+        draft.name = $("case-name").value.trim();
+        draft.startUrl = $("case-url").value.trim();
+        draft.browser = $("case-browser").value;
+        try {
+          const code = await api.generateScript(draft.name || "本机用例", draft.steps);
+          draft.script = code;
+          $("script").textContent = draft.steps.length ? code : "// 暂无步骤";
+        } catch (e) {
+          $("script").textContent = "// 生成脚本失败：" + (e.message || e);
+        }
+      }
+
+      function loadDraft(next) {
+        draft = {
+          id: next.id || null,
+          name: next.name || "",
+          startUrl: next.startUrl || next.start_url || "",
+          browser: (next.browser || "chromium").toLowerCase(),
+          steps: (next.steps || []).map((s) => ({
+            id: s.id || `local-${++seq}`,
+            keyword: s.keyword,
+            target: s.target || "",
+            value: s.value || "",
+          })),
+          script: next.script || "",
+        };
+        $("case-name").value = draft.name;
+        $("case-url").value = draft.startUrl;
+        $("case-browser").value = ["chromium", "firefox", "webkit"].includes(draft.browser)
+          ? draft.browser
+          : "chromium";
+        renderBlocks();
+      }
+
       function renderCases() {
         const list = $("case-list");
         list.innerHTML = "";
@@ -200,20 +456,18 @@
           $("case-hint").textContent = "平台暂无用例，或尚未拉取。";
           return;
         }
-        cases.forEach((c, i) => {
+        cases.forEach((c) => {
           const el = document.createElement("div");
           el.textContent = `${c.name}${c.version ? " · v" + c.version : ""}（${(c.steps || []).length} 步）`;
           el.onclick = () => {
             selected = c;
             [...list.children].forEach((n) => n.classList.remove("sel"));
             el.classList.add("sel");
-            $("btn-run").disabled = false;
-            $("btn-debug").disabled = false;
-            $("case-hint").textContent = `已选中：${c.name}`;
+            $("btn-load").disabled = false;
+            $("case-hint").textContent = `已选中：${c.name}，点“载入编排区”开始编辑`;
           };
           if (selected && selected.id === c.id) el.classList.add("sel");
           list.appendChild(el);
-          if (i === 0 && !selected) el.click();
         });
       }
 
@@ -221,13 +475,12 @@
         $("run-steps").innerHTML = "";
         (steps || []).forEach((s, i) => {
           const li = document.createElement("li");
-          li.className = s.status || "";
-          li.textContent = `${i + 1}. ${s.keyword || ""} ${s.target || s.value || ""} ${
-            s.status ? "· " + (s.status === "passed" ? "通过" : "失败") : ""
-          }`;
+          li.textContent = `${i + 1}. ${kwOf(s.keyword).label || s.keyword} ${s.target || s.value || ""}`;
           $("run-steps").appendChild(li);
         });
       }
+
+      /* -------------------------------- 顶部操作 ------------------------------- */
 
       $("btn-register").onclick = async () => {
         try {
@@ -256,31 +509,98 @@
         }
       };
 
-      async function runSelected(debug) {
+      $("btn-load").onclick = async () => {
         if (!selected) return;
-        $("btn-run").disabled = $("btn-debug").disabled = true;
-        $("run-stage").textContent = `${debug ? "调试" : "执行"}中：${selected.name}`;
-        $("run-bar").style.width = "10%";
-        renderRunSteps(selected.steps);
+        // 载入前按用例 ID 再取一次最新内容，避免编排的是列表里的旧步骤
+        let fresh = selected;
         try {
-          await api.runCase(selected);
+          const latest = await api.pullCase(selected.id);
+          if (latest) fresh = latest;
+        } catch {
+          /* 平台不可达时用本地缓存内容 */
+        }
+        loadDraft(fresh);
+        addLog({
+          level: "info",
+          text: `已载入用例「${fresh.name}」${fresh.version ? " v" + fresh.version : ""}，共 ${(fresh.steps || []).length} 步`,
+        });
+      };
+
+      /* ------------------------------ 编排区操作 ------------------------------ */
+
+      $("btn-add").onclick = () => {
+        draft.steps.push(newStep($("add-keyword").value));
+        renderBlocks();
+      };
+      ["case-name", "case-url"].forEach((id) => ($(id).oninput = renderScript));
+      $("case-browser").onchange = renderScript;
+      $("btn-copy").onclick = async () => {
+        await navigator.clipboard.writeText(draft.script || "");
+        addLog({ level: "success", text: "脚本已复制到剪贴板" });
+      };
+
+      $("opt-keep").onchange = () => api.setRunOptions({ keepOpenOnFail: $("opt-keep").checked });
+      $("opt-headless").onchange = () => api.setRunOptions({ headless: $("opt-headless").checked });
+
+      async function runDraft() {
+        if (!draft.steps.length) {
+          addLog({ level: "warn", text: "编排区还没有步骤，无法运行" });
+          return;
+        }
+        // 每次运行都用编排区当前内容，避免改完还在跑上一版
+        renderScript();
+        const headed = $("run-mode").value === "headed";
+        lastRun = {
+          id: draft.id || undefined,
+          name: draft.name || "本机调试用例",
+          startUrl: draft.startUrl,
+          browser: draft.browser,
+          steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
+        };
+        $("btn-run").disabled = $("btn-rerun").disabled = true;
+        $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
+        $("run-bar").style.width = "10%";
+        renderRunSteps(lastRun.steps);
+        try {
+          await api.runCase(lastRun, { headed });
         } catch (e) {
           addLog({ level: "error", text: "执行失败：" + (e.message || e) });
-          $("run-stage").textContent = "执行失败";
+          $("run-stage").textContent = "执行失败：" + (e.message || e);
         } finally {
-          $("btn-run").disabled = $("btn-debug").disabled = false;
+          $("btn-run").disabled = false;
+          $("btn-rerun").disabled = false;
           refreshInfo();
         }
       }
-      $("btn-run").onclick = () => runSelected(false);
-      $("btn-debug").onclick = () => runSelected(true);
+      $("btn-run").onclick = runDraft;
+      $("btn-rerun").onclick = runDraft;
+
+      $("btn-upload").onclick = async () => {
+        try {
+          renderScript();
+          const res = await api.uploadCase({
+            name: draft.name || `本机录制 ${new Date().toLocaleString("zh-CN")}`,
+            steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
+            startUrl: draft.startUrl,
+            script: draft.script,
+          });
+          addLog({
+            level: "success",
+            text: `已上传到平台${res && res.version ? "（v" + res.version + "）" : ""}`,
+          });
+        } catch (e) {
+          addLog({ level: "error", text: "上传失败：" + (e.message || e) });
+        }
+      };
+
+      /* -------------------------------- 录制流程 ------------------------------- */
 
       $("btn-record-start").onclick = async () => {
         try {
           await api.startRecording($("record-url").value.trim());
           $("btn-record-start").disabled = true;
           $("btn-record-stop").disabled = false;
-          $("record-hint").textContent = "录制中：请在弹出的浏览器里操作。";
+          $("record-hint").textContent = "录制中：请在弹出的浏览器里操作，完成后回来点“停止并进入编排”。";
         } catch (e) {
           addLog({ level: "error", text: "启动录制失败：" + (e.message || e) });
         }
@@ -288,55 +608,51 @@
       $("btn-record-stop").onclick = async () => {
         $("btn-record-stop").disabled = true;
         try {
-          recorded = await api.stopRecording();
+          const recorded = await api.stopRecording();
           const steps = (recorded && recorded.steps) || [];
-          $("record-steps").innerHTML = "";
-          steps.forEach((s, i) => {
-            const li = document.createElement("li");
-            li.textContent = `${i + 1}. ${s.keyword} ${s.target || s.value || ""}`;
-            $("record-steps").appendChild(li);
+          loadDraft({
+            name: `本机录制 ${new Date().toLocaleString("zh-CN")}`,
+            startUrl: $("record-url").value.trim(),
+            steps,
+            script: recorded && recorded.script,
           });
-          $("record-hint").textContent = `已解析 ${steps.length} 个步骤，可上传到平台。`;
-          $("btn-upload").disabled = steps.length === 0;
+          $("record-hint").textContent = `已解析 ${steps.length} 个步骤并载入编排区，可直接调试或上传。`;
+          addLog({ level: "success", text: `录制解析完成：${steps.length} 步已进入编排区` });
         } catch (e) {
           addLog({ level: "error", text: "解析录制失败：" + (e.message || e) });
         } finally {
           $("btn-record-start").disabled = false;
         }
       };
-      $("btn-upload").onclick = async () => {
-        try {
-          const res = await api.uploadCase({
-            name: (recorded && recorded.name) || `本机录制 ${new Date().toLocaleString("zh-CN")}`,
-            steps: (recorded && recorded.steps) || [],
-            startUrl: $("record-url").value.trim(),
-            script: recorded && recorded.script,
-          });
-          addLog({ level: "success", text: `已上传到平台${res && res.caseId ? "：" + res.caseId : ""}` });
-        } catch (e) {
-          addLog({ level: "error", text: "上传失败：" + (e.message || e) });
-        }
-      };
+
+      /* --------------------------------- 事件 --------------------------------- */
 
       api.onLog(addLog);
       api.onRegistered(refreshInfo);
       api.onOutbox((d) => ($("pending").textContent = d.pending || 0));
+      api.onRunOptions((d) => {
+        $("opt-headless").checked = d.headless !== false;
+        $("opt-keep").checked = Boolean(d.keepOpenOnFail);
+      });
       api.onRunEvent((e) => {
         if (e.type === "step-start") {
-          $("run-stage").textContent = `步骤 ${e.index + 1}：${e.step.keyword}`;
+          $("run-stage").textContent = `步骤 ${e.index + 1}：${kwOf(e.step.keyword).label || e.step.keyword}`;
           $("run-bar").style.width = Math.min(95, 10 + e.index * 8) + "%";
         }
         if (e.type === "step-end") {
           const li = $("run-steps").children[e.index];
           if (li) {
             li.className = e.status === "passed" ? "passed" : "failed";
-            li.textContent += e.status === "passed" ? " · 通过" : " · 失败";
+            li.textContent += e.status === "passed" ? " · 通过" : " · 失败：" + (e.error || "");
           }
         }
       });
       api.onRunDone((r) => {
         $("run-bar").style.width = "100%";
-        $("run-stage").textContent = `执行结束：${r.status === "passed" ? "通过" : "失败"}（${r.durationMs || 0}ms）`;
+        $("run-stage").textContent =
+          r.status === "passed"
+            ? `执行结束：通过（${r.durationMs || 0}ms）`
+            : `执行结束：失败（${r.durationMs || 0}ms）— ${r.error || ""}`;
       });
       api.onBrowserStage((d) => {
         $("browser-stage").textContent = "浏览器内核：" + d.stage + (d.error ? "（" + d.error + "）" : "");
@@ -347,14 +663,36 @@
         $("update-bar").style.width = (d.progress || 0) + "%";
       });
       api.onTrayAction((d) => {
-        const map = { record: "panel-record", run: "panel-cases", debug: "panel-cases", upload: "panel-record", queue: "panel-queue" };
+        const map = {
+          record: "panel-record",
+          run: "panel-editor",
+          debug: "panel-editor",
+          upload: "panel-editor",
+          queue: "panel-queue",
+        };
         const el = document.getElementById(map[d.tab] || "panel-logs");
         if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       });
 
-      refreshInfo();
+      async function boot() {
+        keywordMeta = await api.getKeywords();
+        const addSel = $("add-keyword");
+        keywordMeta.forEach((k) => {
+          const o = document.createElement("option");
+          o.value = k.id;
+          o.textContent = `${k.label}（${k.category}）`;
+          addSel.appendChild(o);
+        });
+        const opts = await api.getRunOptions();
+        $("opt-headless").checked = opts.headless !== false;
+        $("opt-keep").checked = Boolean(opts.keepOpenOnFail);
+        renderBlocks();
+        await refreshInfo();
+        addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
+      }
+
+      boot();
       setInterval(refreshInfo, 15000);
-      addLog({ level: "info", text: "本机工作台已就绪（无需登录平台）" });
     </script>
   </body>
 </html>
