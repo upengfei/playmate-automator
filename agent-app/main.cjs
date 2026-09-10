@@ -289,7 +289,12 @@ async function executeCase(testCase, runId, options = {}) {
   if (running) throw new Error("当前节点已有用例在执行");
   running = true;
   const headed = typeof options.headed === "boolean" ? options.headed : !cfg().headless;
-  const job = { ...testCase, headed, keepOpenOnFail: Boolean(cfg().keepOpenOnFail) };
+  const job = {
+    ...testCase,
+    browser: options.browser || testCase.browser || cfg().browser || "chromium",
+    headed,
+    keepOpenOnFail: Boolean(cfg().keepOpenOnFail),
+  };
   testCase = job;
   const logs = [];
   const collect = (level, text) => {
@@ -445,12 +450,17 @@ async function prepareBrowsers(manual = false) {
   if (preparing) return { ok: false, message: "内核下载进行中" };
   preparing = true;
   try {
-    if (!manual && browsers.isInstalled("chromium")) {
+    const target = browsers.resolve(cfg().browser);
+    if (!target.download) {
+      send("agent:browser-stage", { stage: `${target.label} 使用系统浏览器，无需下载内核`, progress: 100 });
+      return { ok: true, cached: true };
+    }
+    if (!manual && browsers.isInstalled(target.engine)) {
       send("agent:browser-stage", { stage: "内核已就绪", progress: 100 });
       return { ok: true, cached: true };
     }
     send("agent:browser-stage", { stage: "从平台下载浏览器内核", progress: 10 });
-    await browsers.ensure("chromium", (t) => {
+    await browsers.ensure(target.engine, (t) => {
       log("info", t);
       send("agent:browser-stage", { stage: t, progress: 60 });
     });
@@ -657,17 +667,30 @@ ipcMain.handle("agent:generate-script", (_e, name, steps) => keywords.generateSc
 ipcMain.handle("agent:run-options", () => ({
   headless: cfg().headless !== false,
   keepOpenOnFail: Boolean(cfg().keepOpenOnFail),
+  browser: cfg().browser || "chromium",
+  browsers: browsers.OPTIONS.map((o) => ({ id: o.id, label: o.label })),
 }));
 ipcMain.handle("agent:set-run-options", (_e, patch) => {
   const next = platform.saveConfig({
     ...(typeof patch?.headless === "boolean" ? { headless: patch.headless } : {}),
     ...(typeof patch?.keepOpenOnFail === "boolean" ? { keepOpenOnFail: patch.keepOpenOnFail } : {}),
+    ...(patch?.browser ? { browser: browsers.resolve(patch.browser).id } : {}),
   });
   if (tray) createTray();
-  log("info", `执行设置已更新：${next.headless === false ? "有头" : "无头"}执行${next.keepOpenOnFail ? " · 失败保留窗口" : ""}`);
-  return { headless: next.headless !== false, keepOpenOnFail: Boolean(next.keepOpenOnFail) };
+  log(
+    "info",
+    `执行设置已更新：${browsers.resolve(next.browser).label} · ${next.headless === false ? "有头" : "无头"}执行${next.keepOpenOnFail ? " · 失败保留窗口" : ""}（下次录制与执行生效）`,
+  );
+  return {
+    headless: next.headless !== false,
+    keepOpenOnFail: Boolean(next.keepOpenOnFail),
+    browser: browsers.resolve(next.browser).id,
+    browsers: browsers.OPTIONS.map((o) => ({ id: o.id, label: o.label })),
+  };
 });
-ipcMain.handle("agent:record-start", (_e, url) => recorder.start(url, (t) => log("info", t)));
+ipcMain.handle("agent:record-start", (_e, url, browserId) =>
+  recorder.start(url, (t) => log("info", t), browserId || cfg().browser || "chromium"),
+);
 ipcMain.handle("agent:record-stop", () => recorder.stop());
 ipcMain.handle("agent:recording", () => recorder.isRecording());
 ipcMain.handle("agent:outbox", () => ({

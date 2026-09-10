@@ -102,25 +102,27 @@ async function runCase(testCase, emit = () => {}) {
   let failedShot = "";
   const stepResults = [];
   try {
-    const browserName = String(testCase.browser || "chromium").toLowerCase();
-    if (!["chromium", "firefox", "webkit"].includes(browserName)) {
-      throw new Error(`不支持的浏览器：${testCase.browser}`);
-    }
+    const target = browsers.resolve(testCase.browser);
+    const browserName = target.engine;
     const { nodes } = parseNodes(testCase.steps || []);
     if (!nodes.length) throw new Error("用例没有可执行步骤");
-    emit({ type: "log", level: "info", text: `准备 ${browserName} 浏览器内核…` });
-    await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
+    if (target.download) {
+      emit({ type: "log", level: "info", text: `准备 ${target.label} 浏览器内核…` });
+      await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
+    } else {
+      emit({ type: "log", level: "info", text: `使用系统安装的 ${target.label}` });
+    }
     const engine = pw()[browserName];
     fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
     const headless = testCase.headed ? false : true;
-    browser = await engine.launch({ headless });
+    browser = await engine.launch({ headless, ...(target.channel ? { channel: target.channel } : {}) });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
     emit({
       type: "log",
       level: "success",
-      text: `已启动真实 ${browserName} 实例（${headless ? "无头模式" : "有头模式"}）`,
+      text: `已启动真实 ${target.label} 实例（${headless ? "无头模式" : "有头模式"}）`,
     });
 
     // An explicit leading navigation takes precedence over the default URL.

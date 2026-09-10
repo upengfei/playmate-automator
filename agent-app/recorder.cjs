@@ -13,18 +13,21 @@ function isRecording() {
 }
 
 /** 启动真实浏览器录制窗口 */
-async function start(url, onLog = () => {}) {
+async function start(url, onLog = () => {}, browserId = "chromium") {
   if (child) throw new Error("已有录制会话在进行中");
-  await browsers.ensure("chromium", onLog);
+  const target = browsers.resolve(browserId);
+  if (target.download) await browsers.ensure(target.engine, onLog);
+  else onLog(`使用系统安装的 ${target.label} 录制`);
   outFile = path.join(os.tmpdir(), `playflow-record-${Date.now()}.js`);
-  const args = [browsers.CLI, "codegen", "--target=javascript", "-o", outFile];
+  const args = [browsers.CLI, "codegen", "--target=javascript", `--browser=${target.engine}`, "-o", outFile];
+  if (target.channel) args.push(`--channel=${target.channel}`);
   if (url) args.push(url);
   child = spawn(process.execPath, args, { env: browsers.env() });
   child.stderr.on("data", (b) => onLog(String(b).trim()));
   child.on("close", () => {
     child = null;
   });
-  onLog("已打开真实录制浏览器窗口，你的每一步操作都会被记录");
+  onLog(`已用 ${target.label} 打开真实录制浏览器窗口，你的每一步操作都会被记录`);
   return { outFile };
 }
 

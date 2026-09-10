@@ -301,7 +301,7 @@
               <div class="view-heading"><div><h2>内核与维护</h2><p>管理节点连接、离线补传、浏览器内核和客户端版本。</p></div></div>
               <div class="system-grid">
                 <div class="panel system-card"><h3>节点连接</h3><div class="hint">当前节点：<b id="system-agent-id">-</b></div><div class="system-actions"><button id="btn-register">重新注册</button><button id="btn-flush">立即补传</button></div></div>
-                <div class="panel system-card"><h3>浏览器内核</h3><div class="hint" id="browser-stage">浏览器内核状态未知。</div><div class="bar"><i id="browser-bar"></i></div><div class="system-actions"><button id="btn-browsers">下载浏览器内核</button></div></div>
+                <div class="panel system-card"><h3>浏览器内核</h3><div class="hint" id="browser-stage">浏览器内核状态未知。</div><div class="bar"><i id="browser-bar"></i></div><div class="system-actions"><label class="inline">浏览器<select id="opt-browser" style="width: 200px; margin-left: 8px"></select></label><button id="btn-browsers">下载浏览器内核</button></div><div class="hint" id="browser-hint" style="margin-top: 8px">切换后，新的录制与执行都会使用所选浏览器。</div></div>
                 <div class="panel system-card"><h3>客户端升级</h3><div class="hint" id="update-stage">升级状态：空闲。</div><div class="bar"><i id="update-bar"></i></div><div class="system-actions"><button id="btn-update">检查更新</button></div></div>
                 <div class="panel system-card"><h3>运行偏好</h3><div class="hint">执行模式也可在步骤编排或系统托盘中调整。</div><div class="system-actions"><label class="inline"><input type="checkbox" id="opt-keep-mirror" /> 失败后保留浏览器</label><label class="inline"><input type="checkbox" id="opt-headless-mirror" /> 平台任务默认无头</label></div></div>
               </div>
@@ -649,6 +649,14 @@
         refreshInfo();
       };
       $("btn-browsers").onclick = () => api.prepareBrowsers();
+      $("opt-browser").onchange = async () => {
+        const opts = await api.setRunOptions({ browser: $("opt-browser").value });
+        applyBrowserOptions(opts);
+        addLog({
+          level: "info",
+          text: "已切换浏览器：" + browserLabel(opts.browser) + "，下次录制与执行生效",
+        });
+      };
       $("btn-update").onclick = () => api.checkForUpdates();
       $("btn-flush").onclick = async () => {
         const r = await api.flushOutbox();
@@ -741,7 +749,7 @@
         $("run-bar").style.width = "10%";
         renderRunSteps(lastRun.steps);
         try {
-          await api.runCase(lastRun, { headed });
+          await api.runCase(lastRun, { headed, browser: $("opt-browser").value || undefined });
         } catch (e) {
           addLog({ level: "error", text: "执行失败：" + (e.message || e) });
           $("run-stage").textContent = "执行失败：" + (e.message || e);
@@ -848,7 +856,7 @@
 
       $("btn-record-start").onclick = async () => {
         try {
-          await api.startRecording($("record-url").value.trim());
+          await api.startRecording($("record-url").value.trim(), $("opt-browser").value || undefined);
           $("btn-record-start").disabled = true;
           $("btn-record-stop").disabled = false;
           $("record-hint").textContent = "录制中：请在弹出的浏览器里操作，完成后回来点“停止并进入编排”。";
@@ -889,7 +897,31 @@
         $("pending-side").textContent = d.pending || 0;
         $("run-pending").textContent = d.pending || 0;
       });
+      let browserOptions = [];
+      function browserLabel(id) {
+        const hit = browserOptions.find((o) => o.id === id);
+        return hit ? hit.label : id || "Chromium";
+      }
+      /** 同步浏览器下拉框与提示文案 */
+      function applyBrowserOptions(d) {
+        if (Array.isArray(d.browsers) && d.browsers.length) browserOptions = d.browsers;
+        const sel = $("opt-browser");
+        if (sel.options.length !== browserOptions.length) {
+          sel.innerHTML = "";
+          browserOptions.forEach((o) => {
+            const el = document.createElement("option");
+            el.value = o.id;
+            el.textContent = o.label;
+            sel.appendChild(el);
+          });
+        }
+        sel.value = d.browser || "chromium";
+        $("browser-hint").textContent =
+          "当前浏览器：" + browserLabel(sel.value) + "，切换后新的录制与执行都会使用它。";
+      }
+
       api.onRunOptions((d) => {
+        applyBrowserOptions(d);
         $("opt-headless").checked = d.headless !== false;
         $("opt-keep").checked = Boolean(d.keepOpenOnFail);
         $("opt-headless-mirror").checked = d.headless !== false;
@@ -944,6 +976,7 @@
           addSel.appendChild(o);
         });
         const opts = await api.getRunOptions();
+        applyBrowserOptions(opts);
         $("opt-headless").checked = opts.headless !== false;
         $("opt-keep").checked = Boolean(opts.keepOpenOnFail);
         $("opt-headless-mirror").checked = opts.headless !== false;
