@@ -35,7 +35,12 @@ export interface KeywordDef {
   opensBlock?: boolean;
   /** 结构积木：关闭一个代码块（结束） */
   closesBlock?: boolean;
+  /** 定位器选填：留空时也能执行 */
+  optionalTarget?: boolean;
+  /** 取值提供下拉候选（仍可自定义输入） */
+  valueOptions?: string[];
   template: (target: string, value: string) => string;
+
 }
 
 /**
