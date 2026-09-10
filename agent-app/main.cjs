@@ -73,11 +73,15 @@ function log(level, text) {
 }
 
 function focusWindow(tab) {
-  if (!win) createWindow();
+  // 窗口可能已被销毁（托盘常驻时再次点击图标），此时重建，避免「点了没反应」
+  if (!win || win.isDestroyed()) createWindow();
+  if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
+  if (process.platform === "darwin") app.dock?.show?.();
   if (tab) send("agent:tray-action", { tab });
 }
+
 
 /* ------------------------------- 应用菜单 -------------------------------- */
 
