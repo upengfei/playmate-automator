@@ -35,7 +35,12 @@ export interface KeywordDef {
   opensBlock?: boolean;
   /** 结构积木：关闭一个代码块（结束） */
   closesBlock?: boolean;
+  /** 定位器选填：留空时也能执行 */
+  optionalTarget?: boolean;
+  /** 取值提供下拉候选（仍可自定义输入） */
+  valueOptions?: string[];
   template: (target: string, value: string) => string;
+
 }
 
 /**
@@ -76,7 +81,31 @@ export function lit(text: string): string {
   return "`" + out + "`";
 }
 
+/** 常用按键（Playwright 键名），下拉可选，也允许自定义组合键 */
+export const PRESS_KEYS = [
+  "Enter",
+  "Tab",
+  "Escape",
+  "Space",
+  "Backspace",
+  "Delete",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Control+A",
+  "Control+C",
+  "Control+V",
+  "Meta+A",
+  "Shift+Tab",
+];
+
 export const KEYWORDS: KeywordDef[] = [
+
   {
     id: "goto",
     label: "打开页面",
@@ -116,10 +145,16 @@ export const KEYWORDS: KeywordDef[] = [
     category: "交互",
     needsTarget: true,
     needsValue: true,
-    targetLabel: "定位器",
+    optionalTarget: true,
+    targetLabel: "定位器（选填，可用 ${变量}）",
     valueLabel: "按键",
+    valueOptions: PRESS_KEYS,
     color: "chart-1",
-    template: (t, v) => `await page.locator(${lit(t)}).press(${lit(v)});`,
+    template: (t, v) =>
+      t.trim()
+        ? `await page.locator(${lit(t)}).press(${lit(v || "Enter")});`
+        : `await page.keyboard.press(${lit(v || "Enter")});`,
+
   },
   {
     id: "select",
