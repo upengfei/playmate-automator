@@ -137,14 +137,34 @@ async function runCase(testCase, emit = () => {}) {
       screenshot: shot,
     };
   } catch (err) {
+    // 失败现场：自动截图并把失败步骤、定位器、真实报错写清楚，避免「一闪而过什么都看不到」
+    if (page) {
+      failedShot = path.join(ARTIFACT_DIR, `fail-${Date.now()}.png`);
+      await page.screenshot({ path: failedShot }).catch(() => {
+        failedShot = "";
+      });
+      if (failedShot) emit({ type: "log", level: "warn", text: `已保存失败截图：${failedShot}` });
+    }
+    const failed = [...stepResults].reverse().find((s) => s && s.status === "failed");
+    const where = failed
+      ? `步骤 ${(failed.index ?? 0) + 1}「${failed.keyword || ""}${failed.target ? " " + failed.target : ""}」：`
+      : "";
+    const message = `${where}${String((err && err.message) || err)}`;
+    emit({ type: "log", level: "error", text: `执行失败 → ${message}` });
+    if (testCase.keepOpenOnFail && browser) {
+      emit({ type: "log", level: "warn", text: "已按设置保留浏览器窗口，排查完手动关闭即可" });
+    }
     return {
       status: "failed",
       durationMs: Date.now() - startedAt,
       steps: stepResults,
-      error: String((err && err.message) || err),
+      error: message,
+      screenshot: failedShot || undefined,
     };
   } finally {
-    if (browser) await browser.close().catch(() => {});
+    // 失败保留窗口时不关闭浏览器，其余情况一律回收
+    const keep = failedShot && testCase.keepOpenOnFail;
+    if (browser && !keep) await browser.close().catch(() => {});
   }
 }
 
