@@ -168,6 +168,18 @@ function CasesPage() {
             <ListChecks className="mr-1 size-4" />
             {creating ? "创建中…" : "创建任务"}
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const chosen = cases.filter((c) => picked.includes(c.id));
+              downloadCaseFile(chosen);
+              toast.success(`已下载 ${chosen.length} 个用例文件，可在客户端离线编辑后同步回平台`);
+            }}
+          >
+            <Download className="mr-1 size-4" />
+            下载用例文件
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => setPicked([])}>
             <X className="mr-1 size-4" />
             清空
