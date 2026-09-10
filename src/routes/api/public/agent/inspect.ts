@@ -24,7 +24,10 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
           .limit(1);
         const job = ((data ?? []) as Record<string, any>[])[0];
         if (!job) return Response.json({ jobs: [] });
-        await client.from("agent_inspects").update({ status: "抓取中" }).eq("id", job["id"]);
+        await client
+          .from("agent_inspects")
+          .update({ status: "抓取中", attempt: 0, fail_kind: "", fail_detail: "" })
+          .eq("id", job["id"]);
         const { readAiSettings } = await import("@/lib/ai-settings.server");
         const settings = await readAiSettings();
         return Response.json({
@@ -34,6 +37,8 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
               url: job["url"],
               description: job["description"] ?? "",
               screenshot: settings.inspectScreenshot,
+              /** 抓取失败时的重试策略，由平台统一下发 */
+              retry: { maxAttempts: 3, delaysMs: [2000, 5000, 10_000] },
             },
           ],
         });
@@ -84,10 +89,15 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
             screenshot: z.string().max(900_000).optional(),
             viewport: z.object({ width: z.number(), height: z.number() }).optional(),
             error: z.string().max(2000).optional(),
+            /** 已尝试次数与失败原因分类 */
+            attempt: z.number().min(0).max(20).optional(),
+            failKind: z.string().max(40).optional(),
+            failDetail: z.string().max(2000).optional(),
           })
           .safeParse(await request.json().catch(() => null));
         if (!parsed.success) return Response.json({ error: "参数不合法" }, { status: 400 });
-        const { agentId, token, jobId, elements, screenshot, viewport, error } = parsed.data;
+        const { agentId, token, jobId, elements, screenshot, viewport, error, attempt, failKind, failDetail } =
+          parsed.data;
 
         const { verifyAgent } = await import("@/lib/agent-db.server");
         if (!(await verifyAgent(agentId, token))) {
@@ -102,6 +112,9 @@ export const Route = createFileRoute("/api/public/agent/inspect")({
             screenshot: screenshot ?? "",
             viewport: viewport ?? null,
             error: error ?? "",
+            attempt: attempt ?? 1,
+            fail_kind: error ? (failKind ?? "unknown") : "",
+            fail_detail: error ? (failDetail ?? error) : "",
             finished_at: new Date().toISOString(),
           })
           .eq("id", jobId)
