@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, Plus, Search, Trash2 } from "lucide-react";
+import { Blocks, Copy, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createCase, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
+import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -31,11 +32,13 @@ export const Route = createFileRoute("/cases/")({
 });
 
 function CasesPage() {
-  const { cases } = useAppStore();
+  const { cases, agents, settings } = useAppStore();
   const navigate = useNavigate();
   const [kw, setKw] = useState("");
   const [module, setModule] = useState("全部模块");
   const [status, setStatus] = useState("全部状态");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -48,6 +51,47 @@ function CasesPage() {
       (status === "全部状态" || c.status === status) &&
       (kw === "" || c.name.includes(kw) || c.id.toLowerCase().includes(kw.toLowerCase())),
   );
+
+  // 筛选或数据变化后，剔除已不在当前筛选结果里的勾选
+  useEffect(() => {
+    const visible = new Set(list.map((c) => c.id));
+    setPicked((p) => (p.every((id) => visible.has(id)) ? p : p.filter((id) => visible.has(id))));
+  }, [list]);
+
+  const listIds = useMemo(() => list.map((c) => c.id), [list]);
+  const allChecked = listIds.length > 0 && listIds.every((id) => picked.includes(id));
+  const someChecked = !allChecked && listIds.some((id) => picked.includes(id));
+
+  const toggleAll = () => {
+    setPicked(allChecked ? [] : listIds);
+  };
+
+  const quickCreateTask = async () => {
+    if (picked.length === 0 || creating) return;
+    const target = agents.find((a) => a.status !== "离线") ?? agents[0];
+    if (!target) {
+      toast.error("还没有已注册的执行节点，请先安装并启动桌面客户端");
+      return;
+    }
+    setCreating(true);
+    try {
+      const scope = module !== "全部模块" ? module : "筛选";
+      const task = await createTask({
+        name: `批量任务（${scope}）${new Date().toLocaleDateString("zh-CN")}`,
+        caseIds: picked,
+        agentId: target.id,
+        env: "测试环境",
+        browser: "Chromium",
+        concurrency: settings.defaultConcurrency,
+        retry: settings.defaultRetry,
+      });
+      toast.success(`已用 ${picked.length} 个用例创建任务，可在详情页确认后下发`);
+      setPicked([]);
+      navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <PlatformShell>
@@ -104,11 +148,35 @@ function CasesPage() {
         </Select>
       </div>
 
+      {picked.length > 0 && (
+        <div className="bg-primary-soft/60 border-primary/20 mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-sm">
+          <span className="font-medium">已选 {picked.length} 个用例</span>
+          <Button size="sm" disabled={creating} onClick={quickCreateTask}>
+            <ListChecks className="mr-1 size-4" />
+            {creating ? "创建中…" : "创建任务"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setPicked([])}>
+            <X className="mr-1 size-4" />
+            清空
+          </Button>
+          <span className="text-muted-foreground text-xs">
+            创建后跳到任务详情页，确认节点与参数后再下发
+          </span>
+        </div>
+      )}
+
       <div className="md-elevation-1 bg-card overflow-hidden rounded-xl border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/60 text-muted-foreground">
               <tr className="[&>th]:px-4 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
+                <th className="w-10">
+                  <Checkbox
+                    aria-label="全选当前筛选结果"
+                    checked={allChecked ? true : someChecked ? "indeterminate" : false}
+                    onCheckedChange={toggleAll}
+                  />
+                </th>
                 <th>编号</th>
                 <th>用例名称</th>
                 <th>模块</th>
@@ -124,6 +192,17 @@ function CasesPage() {
             <tbody className="divide-y">
               {list.map((c) => (
                 <tr key={c.id} className="hover:bg-accent/50 [&>td]:px-4 [&>td]:py-2.5">
+                  <td>
+                    <Checkbox
+                      aria-label={`选择用例 ${c.name}`}
+                      checked={picked.includes(c.id)}
+                      onCheckedChange={() =>
+                        setPicked((p) =>
+                          p.includes(c.id) ? p.filter((x) => x !== c.id) : [...p, c.id],
+                        )
+                      }
+                    />
+                  </td>
                   <td className="text-muted-foreground font-mono text-xs">{c.id}</td>
                   <td>
                     <Link
@@ -208,7 +287,7 @@ function CasesPage() {
               ))}
               {list.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-muted-foreground px-4 py-10 text-center text-sm">
+                  <td colSpan={11} className="text-muted-foreground px-4 py-10 text-center text-sm">
                     没有符合条件的用例
                   </td>
                 </tr>
