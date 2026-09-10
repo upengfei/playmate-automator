@@ -296,6 +296,17 @@ function CasesPage() {
                         </Button>
                       ) : null}
                       <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          downloadCaseFile([c]);
+                          toast.success("已下载用例文件，可在客户端离线编辑后同步回平台");
+                        }}
+                      >
+                        <Download className="mr-1 size-3.5" />
+                        下载
+                      </Button>
+                      <Button
                         size="icon"
                         variant="ghost"
                         aria-label="删除用例"
