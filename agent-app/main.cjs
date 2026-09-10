@@ -679,36 +679,55 @@ ipcMain.handle("agent:prepare-browsers", () => prepareBrowsers(true));
 
 /* -------------------------------- 生命周期 -------------------------------- */
 
+/** 启动异常写入用户目录，便于排查「打不开 / 一闪而过」 */
+function reportStartupError(err) {
+  const text = `[${new Date().toISOString()}] ${(err && err.stack) || err}\n`;
+  try {
+    fs.appendFileSync(path.join(app.getPath("userData"), "startup-error.log"), text);
+  } catch {}
+  try {
+    dialog.showErrorBox("PlayFlow Agent 启动失败", String((err && err.message) || err));
+  } catch {}
+}
+
+process.on("uncaughtException", reportStartupError);
+process.on("unhandledRejection", reportStartupError);
+
 const single = app.requestSingleInstanceLock();
 if (!single) {
+  // 已有一个实例在托盘常驻：把它唤到前台即可，不再重复启动
   app.quit();
 } else {
   app.on("second-instance", () => focusWindow());
   app.whenReady().then(async () => {
-    // 首次使用：本机还没有节点令牌时，先完成配置向导；未完成则直接退出，不进入工作台
-    if (!cfg().token) {
-      const ok = await openSetup();
-      if (!ok) {
-        app.isQuiting = true;
-        app.quit();
-        return;
+    try {
+      // 首次使用：本机还没有节点令牌时，先完成配置向导；未完成则直接退出，不进入工作台
+      if (!cfg().token) {
+        const ok = await openSetup();
+        if (!ok) {
+          app.isQuiting = true;
+          app.quit();
+          return;
+        }
       }
+      createWindow();
+
+      createTray();
+      createAppMenu();
+      registerAgent().catch(() => {});
+      loadAiConfig().catch(() => {});
+      setTimeout(() => prepareBrowsers(), 3000);
+      setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
+      setInterval(() => pollJobs(), 10 * 1000);
+      scheduleInspectPoll();
+
+      setInterval(() => flushPending(), 15 * 1000);
+      setTimeout(() => checkForUpdates(), 8000);
+      setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
+      setInterval(() => pollPushedUpgrade(), 30 * 1000);
+    } catch (err) {
+      reportStartupError(err);
     }
-    createWindow();
-
-    createTray();
-    createAppMenu();
-    registerAgent().catch(() => {});
-    loadAiConfig().catch(() => {});
-    setTimeout(() => prepareBrowsers(), 3000);
-    setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
-    setInterval(() => pollJobs(), 10 * 1000);
-    scheduleInspectPoll();
-
-    setInterval(() => flushPending(), 15 * 1000);
-    setTimeout(() => checkForUpdates(), 8000);
-    setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
-    setInterval(() => pollPushedUpgrade(), 30 * 1000);
   });
   app.on("before-quit", () => {
     // 统一置退出标记：Cmd+Q、应用菜单、托盘退出、升级重启都能真正结束进程
@@ -718,6 +737,7 @@ if (!single) {
       require("./inspect.cjs").closeInspectBrowser();
     } catch {}
   });
+
 
   app.on("window-all-closed", () => {
     /* 常驻托盘 */
