@@ -417,6 +417,7 @@
         const box = await api.getOutbox();
         $("pending").textContent = box.pending || 0;
         $("pending-side").textContent = box.pending || 0;
+        $("run-pending").textContent = box.pending || 0;
       }
 
       /* ------------------------------ 步骤编排区 ------------------------------ */
