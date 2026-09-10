@@ -314,6 +314,47 @@
       let lastRun = null;
       let seq = 0;
 
+      const viewCopy = {
+        record: ["录制用例", "在真实浏览器中捕获操作并生成关键字步骤"],
+        cases: ["平台用例", "拉取、选择并载入平台中的最新用例"],
+        editor: ["步骤编排", "编辑关键字步骤并实时生成 Playwright 脚本"],
+        run: ["执行与日志", "查看本地调试进度、逐步状态与实时日志"],
+        system: ["内核与维护", "管理节点连接、离线补传、浏览器内核与客户端升级"],
+      };
+
+      function setDrawer(open) {
+        $("run-drawer").classList.toggle("expanded", open);
+        $("drawer-toggle").textContent = open ? "收起" : "展开";
+        $("drawer-toggle").setAttribute("aria-label", open ? "收起执行与日志" : "展开执行与日志");
+      }
+
+      function switchView(name) {
+        const target = name === "run" ? "editor" : name;
+        document.querySelectorAll(".nav-item[data-view]").forEach((el) =>
+          el.classList.toggle("active", el.dataset.view === name),
+        );
+        document.querySelectorAll("[data-view-panel]").forEach((el) =>
+          el.classList.toggle("active", el.dataset.viewPanel === target),
+        );
+        const copy = viewCopy[name] || viewCopy.editor;
+        $("view-title").textContent = copy[0];
+        $("view-subtitle").textContent = copy[1];
+        setDrawer(name === "run");
+      }
+
+      document.querySelectorAll(".nav-item[data-view]").forEach((el) => {
+        el.onclick = () => switchView(el.dataset.view);
+      });
+      document.querySelectorAll(".editor-tab").forEach((el) => {
+        el.onclick = () => {
+          document.querySelectorAll(".editor-tab").forEach((tab) => tab.classList.toggle("active", tab === el));
+          document.querySelectorAll("[data-editor-pane]").forEach((pane) =>
+            pane.classList.toggle("active", pane.dataset.editorPane === el.dataset.editorTab),
+          );
+        };
+      });
+      $("drawer-toggle").onclick = () => setDrawer(!$("run-drawer").classList.contains("expanded"));
+
       const kwOf = (id) => keywordMeta.find((k) => k.id === id) || keywordMeta[0] || {};
 
       function addLog(entry) {
@@ -328,13 +369,16 @@
       async function refreshInfo() {
         const info = await api.getInfo();
         $("agentId").textContent = info.agentId;
+        $("system-agent-id").textContent = info.agentId;
         $("version").textContent = "v" + info.version;
         $("platformUrl").textContent = info.platformUrl;
         const ok = info.registered;
         $("status").textContent = ok ? "已注册 · 在线" : "未注册";
         $("status").className = "pill" + (ok ? "" : " off");
+        $("node-dot").className = "node-dot" + (ok ? "" : " off");
         const box = await api.getOutbox();
         $("pending").textContent = box.pending || 0;
+        $("pending-side").textContent = box.pending || 0;
       }
 
       /* ------------------------------ 步骤编排区 ------------------------------ */
@@ -594,6 +638,7 @@
           /* 平台不可达时用本地缓存内容 */
         }
         loadDraft(fresh);
+        switchView("editor");
         addLog({
           level: "info",
           text: `已载入用例「${fresh.name}」${fresh.version ? " v" + fresh.version : ""}，共 ${(fresh.steps || []).length} 步`,
@@ -623,6 +668,14 @@
 
       $("opt-keep").onchange = () => api.setRunOptions({ keepOpenOnFail: $("opt-keep").checked });
       $("opt-headless").onchange = () => api.setRunOptions({ headless: $("opt-headless").checked });
+      $("opt-keep-mirror").onchange = () => {
+        $("opt-keep").checked = $("opt-keep-mirror").checked;
+        api.setRunOptions({ keepOpenOnFail: $("opt-keep-mirror").checked });
+      };
+      $("opt-headless-mirror").onchange = () => {
+        $("opt-headless").checked = $("opt-headless-mirror").checked;
+        api.setRunOptions({ headless: $("opt-headless-mirror").checked });
+      };
 
       async function runDraft() {
         if (!draft.steps.length) {
@@ -644,6 +697,7 @@
           steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
         };
         $("btn-run").disabled = $("btn-rerun").disabled = true;
+        setDrawer(true);
         $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
         $("run-bar").style.width = "10%";
         renderRunSteps(lastRun.steps);
@@ -771,6 +825,7 @@
             steps,
             script: recorded && recorded.script,
           });
+          switchView("editor");
           const pending = steps.filter((s) => s.keyword === "unsupported").length;
           $("record-hint").textContent = pending
             ? `已解析 ${steps.length} 个步骤，其中 ${pending} 个待转换步骤需处理后才能调试或上传。`
@@ -787,10 +842,15 @@
 
       api.onLog(addLog);
       api.onRegistered(refreshInfo);
-      api.onOutbox((d) => ($("pending").textContent = d.pending || 0));
+      api.onOutbox((d) => {
+        $("pending").textContent = d.pending || 0;
+        $("pending-side").textContent = d.pending || 0;
+      });
       api.onRunOptions((d) => {
         $("opt-headless").checked = d.headless !== false;
         $("opt-keep").checked = Boolean(d.keepOpenOnFail);
+        $("opt-headless-mirror").checked = d.headless !== false;
+        $("opt-keep-mirror").checked = Boolean(d.keepOpenOnFail);
       });
       api.onRunEvent((e) => {
         if (e.type === "step-start") {
@@ -822,14 +882,13 @@
       });
       api.onTrayAction((d) => {
         const map = {
-          record: "panel-record",
-          run: "panel-editor",
-          debug: "panel-editor",
-          upload: "panel-editor",
-          queue: "panel-queue",
+          record: "record",
+          run: "editor",
+          debug: "editor",
+          upload: "editor",
+          queue: "run",
         };
-        const el = document.getElementById(map[d.tab] || "panel-logs");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        switchView(map[d.tab] || "run");
       });
 
       async function boot() {
@@ -844,6 +903,8 @@
         const opts = await api.getRunOptions();
         $("opt-headless").checked = opts.headless !== false;
         $("opt-keep").checked = Boolean(opts.keepOpenOnFail);
+        $("opt-headless-mirror").checked = opts.headless !== false;
+        $("opt-keep-mirror").checked = Boolean(opts.keepOpenOnFail);
         renderBlocks();
         await refreshInfo();
         addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
