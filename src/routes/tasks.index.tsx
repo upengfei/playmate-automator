@@ -123,8 +123,57 @@ function TasksPage() {
           title={`选择用例（已选 ${picked.length} 个${serialDependency ? "，按勾选顺序串行" : ""}）`}
           bodyClassName="p-0"
         >
+          <div className="flex flex-wrap items-center gap-2 border-b p-3">
+            <div className="relative min-w-44 flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+              <Input
+                value={kw}
+                onChange={(e) => setKw(e.target.value)}
+                placeholder="搜索用例名称或编号"
+                className="pl-9"
+              />
+            </div>
+            <Select value={moduleFilter} onValueChange={setModuleFilter}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {modules.map((m) => (
+                  <SelectItem key={m} value={m}>
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {["全部状态", "就绪", "草稿", "维护中"].map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="bg-muted/40 hover:bg-accent/50 flex cursor-pointer items-center gap-3 border-b px-4 py-2 text-sm">
+            <Checkbox
+              aria-label="全选当前筛选结果"
+              checked={allFilteredChecked ? true : someFilteredChecked ? "indeterminate" : false}
+              onCheckedChange={toggleAllFiltered}
+            />
+            <span className="font-medium">全选当前筛选结果</span>
+            <span className="text-muted-foreground text-xs">
+              {filtered.length} 个用例
+              {someFilteredChecked || allFilteredChecked
+                ? `，已选 ${filteredIds.filter((id) => picked.includes(id)).length} 个`
+                : ""}
+            </span>
+          </label>
           <div className="max-h-[28rem] divide-y overflow-y-auto">
-            {cases.map((c) => {
+            {filtered.map((c) => {
               const on = picked.includes(c.id);
               const order = picked.indexOf(c.id) + 1;
               return (
