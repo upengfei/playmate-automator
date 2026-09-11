@@ -832,6 +832,32 @@
         refreshInfo();
       };
 
+      $("btn-local-save").onclick = () => saveDraftToLocal(false);
+      $("btn-local-load").onclick = async () => {
+        if (!localSelected) return;
+        const fresh = (await api.localCase(localSelected.id)) || localSelected;
+        loadDraft({ ...fresh, localId: fresh.id, id: fresh.caseId || null });
+        switchView("editor");
+        addLog({ level: "info", text: `已载入本地用例「${fresh.name}」，共 ${(fresh.steps || []).length} 步` });
+      };
+      $("btn-local-rename").onclick = async () => {
+        if (!localSelected) return;
+        const name = prompt("新的用例名称", localSelected.name);
+        if (!name || !name.trim()) return;
+        await api.renameLocalCase(localSelected.id, name.trim());
+        await refreshLocalCases();
+        addLog({ level: "success", text: "本地用例已重命名" });
+      };
+      $("btn-local-delete").onclick = async () => {
+        if (!localSelected) return;
+        if (!confirm(`确定删除本地用例「${localSelected.name}」吗？`)) return;
+        await api.deleteLocalCase(localSelected.id);
+        if (draft.localId === localSelected.id) draft.localId = null;
+        localSelected = null;
+        await refreshLocalCases();
+        addLog({ level: "info", text: "本地用例已删除" });
+      };
+
       $("btn-pull").onclick = async () => {
         try {
           cases = await api.pullCases();
@@ -1159,6 +1185,7 @@
         $("opt-keep-mirror").checked = Boolean(opts.keepOpenOnFail);
         renderBlocks();
         await refreshInfo();
+        await refreshLocalCases();
         addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
         await loadAiSettings();
       }
