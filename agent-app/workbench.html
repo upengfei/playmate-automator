@@ -475,6 +475,12 @@
         $("logs").scrollTop = $("logs").scrollHeight;
       }
 
+      /** 只清屏，不影响已回传平台的执行记录 */
+      $("btn-log-clear").onclick = () => {
+        $("logs").textContent = "";
+        addLog({ level: "info", text: "日志已清空（仅本地显示）" });
+      };
+
       async function refreshInfo() {
         const info = await api.getInfo();
         $("agentId").textContent = info.agentId;
@@ -1143,7 +1149,7 @@
         setAiBusy(true);
         $("ai-hint").textContent = "正在用本机浏览器抓取页面元素…";
         try {
-          const r = await api.aiInspect(url);
+          const r = await api.aiInspect(url, { headless: $("ai-inspect-mode").value !== "headed" });
           if (!r || !r.ok) {
             $("ai-hint").textContent = "抓取失败：" + ((r && r.error) || "未知原因");
             return;
@@ -1179,6 +1185,8 @@
         $("ai-key").value = s.aiApiKey || "";
         $("ai-model").value = s.aiModel || "";
         $("ai-shot").checked = s.inspectScreenshot !== false;
+        $("ai-headless").value = s.inspectHeadless === false ? "headed" : "headless";
+        $("ai-inspect-mode").value = s.inspectHeadless === false ? "headed" : "headless";
         $("ai-cache").value = s.inspectCacheMinutes;
         $("ai-retry").value = s.inspectRetries;
         const route = s.route === "local" ? "本机模型" : "平台模型";
@@ -1202,6 +1210,7 @@
           aiApiKey: $("ai-key").value,
           aiModel: $("ai-model").value.trim(),
           inspectScreenshot: $("ai-shot").checked,
+          inspectHeadless: $("ai-headless").value !== "headed",
           inspectCacheMinutes: Number($("ai-cache").value) || 0,
           inspectRetries: Number($("ai-retry").value) || 3,
         });
