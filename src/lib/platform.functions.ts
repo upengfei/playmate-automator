@@ -411,6 +411,7 @@ export const addTask = createServerFn({ method: "POST" })
         status: "排队中",
         stage: "等待下发",
         trigger: data.trigger,
+        headless: data.headless,
       })
       .select("id")
       .single();
@@ -440,6 +441,13 @@ export const addTask = createServerFn({ method: "POST" })
         ? `任务「${data.name}」已创建，包含 ${rows.length} 个用例，已启用串行依赖（前置用例通过后才执行下一个）`
         : `任务「${data.name}」已创建，包含 ${rows.length} 个用例`,
     });
+    if (data.headless) {
+      await client.from("task_logs").insert({
+        task_id: task["id"],
+        level: "info",
+        message: "平台发起，使用无头浏览器执行（有头调试请在桌面客户端进行）",
+      });
+    }
     return { id: task["id"] as string };
   });
 
