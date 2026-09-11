@@ -204,7 +204,15 @@ function CasesPage() {
       {picked.length > 0 && (
         <div className="bg-primary-soft/60 border-primary/20 mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-sm">
           <span className="font-medium">已选 {picked.length} 个用例</span>
-          <Button size="sm" disabled={creating} onClick={quickCreateTask}>
+          <Button
+            size="sm"
+            disabled={runningKey !== null}
+            onClick={() => runCases(picked, `${picked.length} 个用例`, "bulk")}
+          >
+            <Play className="mr-1 size-4" />
+            {runningKey === "bulk" ? "运行中…" : "运行选中"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={creating} onClick={quickCreateTask}>
             <ListChecks className="mr-1 size-4" />
             {creating ? "创建中…" : "创建任务"}
           </Button>
@@ -225,7 +233,7 @@ function CasesPage() {
             清空
           </Button>
           <span className="text-muted-foreground text-xs">
-            创建后跳到任务详情页，确认节点与参数后再下发
+            平台运行只使用无头浏览器，有头调试请在桌面客户端进行
           </span>
         </div>
       )}
@@ -313,6 +321,15 @@ function CasesPage() {
                   <td className="text-muted-foreground text-xs">{c.updatedAt}</td>
                   <td className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={runningKey !== null}
+                        onClick={() => runCases([c.id], c.name, c.id)}
+                      >
+                        <Play className="mr-1 size-3.5" />
+                        {runningKey === c.id ? "运行中…" : "运行"}
+                      </Button>
                       <Button size="sm" variant="ghost" asChild>
                         <Link to="/cases/$caseId" params={{ caseId: c.id }}>
                           <Blocks className="mr-1 size-3.5" />
