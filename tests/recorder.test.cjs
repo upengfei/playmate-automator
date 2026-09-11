@@ -164,3 +164,27 @@ test("recording ignores normal JavaScript codegen scaffolding", () => {
   `);
   assert.deepEqual(JSON.parse(JSON.stringify(steps.map(({ keyword }) => keyword))), ["goto", "click"]);
 });
+
+test("recording keeps toolbar assertions from a playwright-test target script", () => {
+  const steps = recorder().parse(`
+    import { test, expect } from '@playwright/test';
+
+    test('test', async ({ page }) => {
+      await page.goto('https://example.com/');
+      await page.getByRole('link', { name: 'More information' }).click();
+      await expect(page.getByRole('heading', { name: 'Example Domain' })).toBeVisible();
+      await expect(page.getByText('illustrative examples')).toBeVisible();
+      await expect(page.locator('body')).toContainText('Example');
+    });
+  `);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(steps.map(({ keyword, target, value }) => ({ keyword, target, value })))),
+    [
+      { keyword: "goto", target: "", value: "https://example.com/" },
+      { keyword: "click", target: 'role=link[name="More information"]', value: "" },
+      { keyword: "expectVisible", target: 'role=heading[name="Example Domain"]', value: "" },
+      { keyword: "expectVisible", target: "text=illustrative examples", value: "" },
+      { keyword: "expectText", target: "body", value: "Example" },
+    ],
+  );
+});
