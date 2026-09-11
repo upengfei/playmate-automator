@@ -18,6 +18,7 @@ const platform = require("./platform.cjs");
 const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
 const keywords = require("./keywords.cjs");
+const localCases = require("./local-cases.cjs");
 const browsers = require("./browsers.cjs");
 const ai = require("./ai.cjs");
 
@@ -624,6 +625,11 @@ ipcMain.handle("agent:check-updates", () => checkForUpdates({ manual: true }));
 ipcMain.handle("agent:pull-cases", () => platform.pullCases());
 ipcMain.handle("agent:pull-case", (_e, caseId) => platform.pullCase(caseId));
 ipcMain.handle("agent:upload-case", (_e, testCase) => platform.uploadCase(testCase));
+ipcMain.handle("agent:local-cases", () => localCases.list());
+ipcMain.handle("agent:local-case", (_e, id) => localCases.get(id));
+ipcMain.handle("agent:local-case-save", (_e, testCase) => localCases.save(testCase || {}));
+ipcMain.handle("agent:local-case-rename", (_e, id, name) => localCases.rename(id, name));
+ipcMain.handle("agent:local-case-delete", (_e, id) => localCases.remove(id));
 ipcMain.handle("agent:run-case", (_e, testCase, options) => executeCase(testCase, undefined, options || {}));
 ipcMain.handle("agent:keywords", () => keywords.keywordMeta());
 

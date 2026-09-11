@@ -276,6 +276,15 @@
                     <div class="case-toolbar"><div class="hint" id="case-hint">选择一条用例载入编排区，改完可上传成新版本。</div><div class="row"><button id="btn-pull">拉取平台用例</button><button class="primary" id="btn-load" disabled>载入编排区</button></div></div>
                     <div class="list" id="case-list"></div>
                   </div>
+
+                  <div class="panel" id="section-local">
+                    <div class="panel-title">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5h16v11H4z"/><path d="M4 7.5 7 4h10l3 3.5"/></svg>
+                      本地用例仓库
+                    </div>
+                    <div class="case-toolbar"><div class="hint" id="local-hint">录制完成会自动存到本机，离线也能继续编辑。</div><div class="row"><button class="primary" id="btn-local-save">保存到本地</button><button id="btn-local-load" disabled>载入编排区</button><button id="btn-local-rename" disabled>重命名</button><button id="btn-local-delete" disabled>删除</button></div></div>
+                    <div class="list" id="local-list"></div>
+                  </div>
                   </div>
 
 
@@ -402,7 +411,9 @@
       let selected = null;
       let keywordMeta = [];
       /** 编排区当前草稿：录制结果与平台用例都载入到这里 */
-      let draft = { id: null, name: "", startUrl: "", browser: "chromium", steps: [], script: "" };
+      let draft = { id: null, localId: null, name: "", startUrl: "", browser: "chromium", steps: [], script: "" };
+      let localList = [];
+      let localSelected = null;
       let lastRun = null;
       let seq = 0;
 
@@ -676,6 +687,7 @@
       function loadDraft(next) {
         draft = {
           id: next.id || null,
+          localId: next.localId || null,
           name: next.name || "",
           startUrl: next.startUrl || next.start_url || "",
           browser: (next.browser || "chromium").toLowerCase(),
@@ -717,6 +729,73 @@
         });
       }
 
+      /* ----------------------------- 本地用例仓库 ----------------------------- */
+
+      function localTitle(c) {
+        const when = c.updatedAt ? new Date(c.updatedAt).toLocaleString("zh-CN") : "";
+        return `${c.name}（${(c.steps || []).length} 步）${when ? " · " + when : ""}`;
+      }
+
+      function renderLocalCases() {
+        const list = $("local-list");
+        list.innerHTML = "";
+        const has = Boolean(localSelected && localList.some((c) => c.id === localSelected.id));
+        if (!has) localSelected = null;
+        ["btn-local-load", "btn-local-rename", "btn-local-delete"].forEach((id) => ($(id).disabled = !localSelected));
+        if (!localList.length) {
+          $("local-hint").textContent = "本机仓库还没有用例，录制或点“保存到本地”后出现在这里。";
+          return;
+        }
+        $("local-hint").textContent = localSelected
+          ? `已选中本地用例：${localSelected.name}`
+          : `本机共 ${localList.length} 条用例，选择一条可载入编排区。`;
+        localList.forEach((c) => {
+          const el = document.createElement("div");
+          el.textContent = localTitle(c);
+          if (localSelected && localSelected.id === c.id) el.classList.add("sel");
+          el.onclick = () => {
+            localSelected = c;
+            renderLocalCases();
+          };
+          list.appendChild(el);
+        });
+      }
+
+      async function refreshLocalCases() {
+        try {
+          localList = (await api.localCases()) || [];
+        } catch (e) {
+          localList = [];
+          addLog({ level: "error", text: "读取本地用例仓库失败：" + (e.message || e) });
+        }
+        renderLocalCases();
+      }
+
+      /** 把当前编排草稿写入本机仓库（录制结束时自动调用，也可手动点按钮） */
+      async function saveDraftToLocal(silent) {
+        const name = ($("case-name").value || "").trim() || `本机录制 ${new Date().toLocaleString("zh-CN")}`;
+        try {
+          const saved = await api.saveLocalCase({
+            id: draft.localId || undefined,
+            caseId: draft.id || "",
+            name,
+            startUrl: ($("case-url").value || "").trim(),
+            browser: $("case-browser").value,
+            steps: draft.steps,
+            script: $("script").textContent || "",
+            source: draft.id ? "平台用例副本" : "本地录制",
+          });
+          draft.localId = saved.id;
+          localSelected = saved;
+          await refreshLocalCases();
+          if (!silent) addLog({ level: "success", text: `已保存到本地仓库：${saved.name}` });
+          return saved;
+        } catch (e) {
+          addLog({ level: "error", text: "保存本地用例失败：" + (e.message || e) });
+          return null;
+        }
+      }
+
       function renderRunSteps(steps) {
         $("run-steps").innerHTML = "";
         (steps || []).forEach((s, i) => {
@@ -751,6 +830,32 @@
         const r = await api.flushOutbox();
         addLog({ level: "info", text: `补传完成：已发送 ${r.sent || 0} 条，剩余 ${r.pending || 0} 条` });
         refreshInfo();
+      };
+
+      $("btn-local-save").onclick = () => saveDraftToLocal(false);
+      $("btn-local-load").onclick = async () => {
+        if (!localSelected) return;
+        const fresh = (await api.localCase(localSelected.id)) || localSelected;
+        loadDraft({ ...fresh, localId: fresh.id, id: fresh.caseId || null });
+        switchView("editor");
+        addLog({ level: "info", text: `已载入本地用例「${fresh.name}」，共 ${(fresh.steps || []).length} 步` });
+      };
+      $("btn-local-rename").onclick = async () => {
+        if (!localSelected) return;
+        const name = prompt("新的用例名称", localSelected.name);
+        if (!name || !name.trim()) return;
+        await api.renameLocalCase(localSelected.id, name.trim());
+        await refreshLocalCases();
+        addLog({ level: "success", text: "本地用例已重命名" });
+      };
+      $("btn-local-delete").onclick = async () => {
+        if (!localSelected) return;
+        if (!confirm(`确定删除本地用例「${localSelected.name}」吗？`)) return;
+        await api.deleteLocalCase(localSelected.id);
+        if (draft.localId === localSelected.id) draft.localId = null;
+        localSelected = null;
+        await refreshLocalCases();
+        addLog({ level: "info", text: "本地用例已删除" });
       };
 
       $("btn-pull").onclick = async () => {
@@ -985,6 +1090,10 @@
             ? `已解析 ${steps.length} 个步骤，其中 ${pending} 个待转换步骤需处理后才能调试或上传。`
             : `已解析 ${steps.length} 个步骤并载入编排区，可直接调试或上传。`;
           addLog({ level: pending ? "warn" : "success", text: pending ? `录制包含 ${pending} 个待转换步骤` : `录制解析完成：${steps.length} 步已进入编排区` });
+          if (steps.length) {
+            const saved = await saveDraftToLocal(true);
+            if (saved) addLog({ level: "info", text: `录制结果已存入本地用例仓库：${saved.name}` });
+          }
         } catch (e) {
           addLog({ level: "error", text: "解析录制失败：" + (e.message || e) });
         } finally {
@@ -1080,6 +1189,7 @@
         $("opt-keep-mirror").checked = Boolean(opts.keepOpenOnFail);
         renderBlocks();
         await refreshInfo();
+        await refreshLocalCases();
         addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
         await loadAiSettings();
       }
