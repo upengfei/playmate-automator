@@ -6,7 +6,8 @@
  *
  * 生成结果只写本地草稿，仍由用户点「上传到平台」才入库。
  */
-const platform = require("./platform.cjs");
+// 延迟加载：platform.cjs 依赖 Electron 运行时，测试替身里不能在模块加载时求值
+const platform = () => require("./platform.cjs");
 const keywords = require("./keywords.cjs");
 
 /** 本机 AI 设置默认值（存在 config.json 里，不上传平台） */
@@ -24,7 +25,7 @@ function defaults() {
 }
 
 function settings() {
-  const c = platform.getConfig();
+  const c = platform().getConfig();
   const d = defaults();
   const out = {};
   for (const k of Object.keys(d)) out[k] = c[k] === undefined ? d[k] : c[k];
@@ -40,7 +41,7 @@ function save(patch = {}) {
     clean.inspectCacheMinutes = Math.max(0, Math.min(1440, Number(clean.inspectCacheMinutes) || 0));
   if (clean.inspectRetries !== undefined)
     clean.inspectRetries = Math.max(1, Math.min(5, Number(clean.inspectRetries) || 1));
-  platform.saveConfig(clean);
+  platform().saveConfig(clean);
   return settings();
 }
 
@@ -48,7 +49,7 @@ function save(patch = {}) {
 function route() {
   const s = settings();
   const localReady = Boolean(s.aiBaseUrl && s.aiModel);
-  const platformReady = Boolean(platform.getConfig().token);
+  const platformReady = Boolean(platform().getConfig().token);
   if (s.aiMode === "local") return { kind: "local", ready: localReady };
   if (s.aiMode === "platform") return { kind: "platform", ready: platformReady };
   if (localReady) return { kind: "local", ready: true };
@@ -185,9 +186,9 @@ async function callLocal(messages, timeoutMs = 180_000) {
 
 /** 转发给平台代理（用节点令牌鉴权） */
 async function callPlatform(messages) {
-  const c = platform.getConfig();
+  const c = platform().getConfig();
   if (!c.token) throw new Error("未配置节点令牌，无法使用平台模型；可在 AI 助手设置里填写本机模型");
-  const data = await platform.aiChat({ messages });
+  const data = await platform().aiChat({ messages });
   return { text: data.reply || "", label: data.label ? `平台模型 ${data.label}` : "平台模型", draft: data.draft };
 }
 
