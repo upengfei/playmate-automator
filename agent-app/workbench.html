@@ -122,7 +122,7 @@
       .hint { color: var(--muted); font-size: 12px; }
       .hint.warn-hint { color: #b45309; font-weight: 600; }
       .case-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-      .list { min-height: 96px; max-height: 210px; overflow: auto; border: 1px solid var(--border); border-radius: 7px; }
+      .list { min-height: 84px; max-height: 210px; overflow: auto; border: 1px solid var(--border); border-radius: 7px; }
       .list:empty::before { content: "尚未拉取平台用例，点击右上「拉取平台用例」。"; display: block; padding: 14px 12px; color: var(--muted); font-size: 12px; }
       .list div { padding: 11px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; transition: background 120ms ease; }
       .list div:last-child { border-bottom: 0; }
@@ -156,7 +156,9 @@
       .bar > i { display: block; height: 100%; background: var(--primary); width: 0; transition: width 250ms ease; }
       .work-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 16px; align-items: start; }
       .work-main { min-width: 0; display: grid; gap: 14px; }
-      .work-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+      .work-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+      #section-cases { display: flex; flex-direction: column; }
+      #section-cases .list { flex: 1; }
       .work-top .panel { padding: 14px 16px; }
       .record-bar { display: grid; gap: 9px; align-content: start; }
       .record-bar .row { margin-bottom: 0; }
