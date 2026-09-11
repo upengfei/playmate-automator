@@ -1203,8 +1203,8 @@
         }
       }
 
-      $("btn-ai-save").onclick = async () => {
-        const next = await api.aiSaveSettings({
+      function currentAiSettings() {
+        return {
           aiMode: $("ai-mode").value,
           aiBaseUrl: $("ai-base").value.trim(),
           aiApiKey: $("ai-key").value,
@@ -1213,14 +1213,19 @@
           inspectHeadless: $("ai-headless").value !== "headed",
           inspectCacheMinutes: Number($("ai-cache").value) || 0,
           inspectRetries: Number($("ai-retry").value) || 3,
-        });
+        };
+      }
+
+      $("btn-ai-save").onclick = async () => {
+        const next = await api.aiSaveSettings(currentAiSettings());
         applyAiSettings(next);
         $("ai-test-hint").textContent = "AI 设置已保存（只保存在本机）。";
       };
 
       $("btn-ai-test").onclick = async () => {
         $("ai-test-hint").textContent = "正在测试…";
-        const r = await api.aiTest();
+        const r = await api.aiTest(currentAiSettings());
+        applyAiSettings(await api.aiSettings());
         $("ai-test-hint").textContent = (r.ok ? "✔ " : "✘ ") + r.message;
       };
 

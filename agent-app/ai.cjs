@@ -182,6 +182,9 @@ async function callLocal(messages, timeoutMs = 180_000) {
     });
     const text = await res.text();
     if (!res.ok) throw new Error(explain(res.status, text));
+    if (res.headers.get("content-type")?.includes("text/html") || /^\s*</.test(text)) {
+      throw new Error("模型接口返回 HTML 页面，请检查 Base URL 是否填写为 OpenAI 兼容 API 根地址，而不是网页入口");
+    }
     let data;
     try {
       data = JSON.parse(text);
@@ -243,7 +246,8 @@ async function chat(messages = []) {
 }
 
 /** 连接测试：真发一次请求 */
-async function test() {
+async function test(patch) {
+  if (patch && typeof patch === "object") save(patch);
   const target = route();
   if (!target.ready) return { ok: false, message: "当前链路不可用：本机模型未填完整，且没有平台节点令牌" };
   try {

@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld("playflowAgent", {
   aiSettings: () => ipcRenderer.invoke("agent:ai-settings"),
   aiSaveSettings: (patch) => ipcRenderer.invoke("agent:ai-save-settings", patch),
   aiChat: (messages) => ipcRenderer.invoke("agent:ai-chat", messages),
-  aiTest: () => ipcRenderer.invoke("agent:ai-test"),
+  aiTest: (patch) => ipcRenderer.invoke("agent:ai-test", patch),
   aiInspect: (url, options) => ipcRenderer.invoke("agent:ai-inspect", url, options),
   generateScript: (name, steps) => ipcRenderer.invoke("agent:generate-script", name, steps),
   getRunOptions: () => ipcRenderer.invoke("agent:run-options"),

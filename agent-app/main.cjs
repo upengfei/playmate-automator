@@ -652,7 +652,7 @@ ipcMain.handle("agent:ai-chat", async (_e, messages) => {
     return { ok: false, error: message };
   }
 });
-ipcMain.handle("agent:ai-test", () => ai.test());
+ipcMain.handle("agent:ai-test", (_e, patch) => ai.test(patch));
 ipcMain.handle("agent:ai-inspect", async (_e, url, options) => {
   if (!url) return { ok: false, error: "请先填写要抓取的页面地址" };
   try {
