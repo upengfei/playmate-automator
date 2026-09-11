@@ -139,7 +139,14 @@ function sanitizeDraft(parsed) {
       if (keyword) rejected.push(keyword);
       return;
     }
-    steps.push({ keyword, target: String((s && s.target) || ""), value: String((s && s.value) || "") });
+    const meta = keywords.keywordMeta().find((item) => item.id === keyword);
+    const target = String((s && s.target) || "").trim();
+    const value = String((s && s.value) || "").trim();
+    if ((meta && meta.needsTarget && !meta.optionalTarget && !target) || (meta && meta.needsValue && !value)) {
+      rejected.push(`${keyword}（缺少必填参数）`);
+      return;
+    }
+    steps.push({ keyword, target, value });
   });
   if (!steps.length) return null;
   return {

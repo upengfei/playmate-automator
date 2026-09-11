@@ -6,6 +6,7 @@
  */
 import { tool } from "ai";
 import { z } from "zod";
+import { analyzeStepResults, findSimilarCases } from "@/lib/ai-analysis";
 
 const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
 
@@ -144,6 +145,56 @@ export function buildAnalysisTools() {
           };
         });
         return { agents: input.onlineOnly ? list.filter((a) => a.online) : list };
+      },
+    }),
+
+    query_step_failures: tool({
+      description: "按失败步骤关键字、定位器和归一化错误原因聚合，识别高频失败节点与重复失败模式。",
+      inputSchema: z.object({
+        caseId: z.string().nullable().describe("只分析指定用例 id；分析全部时填 null"),
+        limit: z.number().nullable().describe("返回条数，默认 20"),
+      }),
+      execute: async (input) => {
+        const { localClient } = await import("@/lib/local-db.server");
+        let query = localClient().from("case_runs").select("*").eq("status", "失败");
+        if (input.caseId) query = query.eq("case_id", input.caseId);
+        const { data } = await query.order("started_at", { ascending: false }).limit(3000);
+        const result = analyzeStepResults((data ?? []) as Record<string, unknown>[], num(input.limit, 20));
+        return { totalFailedRuns: data?.length ?? 0, failures: result.failures };
+      },
+    }),
+
+    query_slow_steps: tool({
+      description: "统计步骤关键字的总耗时、平均耗时和最大耗时，定位真实执行中的慢节点。",
+      inputSchema: z.object({
+        caseId: z.string().nullable().describe("只分析指定用例 id；分析全部时填 null"),
+        limit: z.number().nullable().describe("返回条数，默认 20"),
+      }),
+      execute: async (input) => {
+        const { localClient } = await import("@/lib/local-db.server");
+        let query = localClient().from("case_runs").select("*");
+        if (input.caseId) query = query.eq("case_id", input.caseId);
+        const { data } = await query.order("started_at", { ascending: false }).limit(3000);
+        const result = analyzeStepResults((data ?? []) as Record<string, unknown>[], num(input.limit, 20));
+        return { totalRuns: data?.length ?? 0, slowSteps: result.slowSteps };
+      },
+    }),
+
+    query_similar_cases: tool({
+      description: "按当前用例的关键字、定位器和值计算步骤相似度，识别可合并或参数化的重复用例。",
+      inputSchema: z.object({
+        threshold: z.number().nullable().describe("相似度阈值 0 到 1，默认 0.8"),
+        limit: z.number().nullable().describe("返回分组数，默认 20"),
+      }),
+      execute: async (input) => {
+        const { caseRepo } = await import("@/lib/case-repo.server");
+        const cases = await (await caseRepo()).listCases(1000);
+        const threshold = Math.max(0.5, Math.min(1, num(input.threshold, 0.8)));
+        return {
+          totalCases: cases.length,
+          threshold,
+          groups: findSimilarCases(cases as unknown as Record<string, unknown>[], threshold, num(input.limit, 20)),
+        };
       },
     }),
   };
