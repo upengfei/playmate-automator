@@ -568,6 +568,18 @@
         $("btn-clear").disabled = draft.steps.length === 0;
 
         $("btn-upload").title = hasPendingConversion ? "请先转换或删除待转换步骤" : "";
+        $("btn-run").title = $("btn-rerun").title = hasPendingConversion
+          ? "请先转换或删除待转换步骤"
+          : draft.steps.length === 0
+            ? "编排区还没有步骤"
+            : "";
+        if (hasPendingConversion) {
+          $("editor-hint").textContent = "存在待转换步骤（红色标记），转换或删除后才能本地调试和上传。";
+          $("editor-hint").classList.add("warn-hint");
+        } else {
+          $("editor-hint").textContent = "定位支持 ${变量}；条件和循环积木需成对使用。";
+          $("editor-hint").classList.remove("warn-hint");
+        }
         renderScript();
       }
 
