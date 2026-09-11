@@ -32,15 +32,16 @@ export const Route = createFileRoute("/api/chat")({
           const messages = body.messages ?? [];
 
           const { readAiSettings, resolveModel } = await import("@/lib/ai-settings.server");
-          const { buildAiTools, KEYWORD_REFERENCE } = await import("@/lib/ai-tools.server");
+          const { buildAnalysisTools } = await import("@/lib/ai-tools.server");
           const settings = await readAiSettings();
           const resolved = await resolveModel(settings, request, body.model);
 
           const result = streamText({
             model: resolved.model,
-            system: SYSTEM + KEYWORD_REFERENCE,
+            system: SYSTEM,
             messages: await convertToModelMessages(messages),
-            tools: buildAiTools(),
+            tools: buildAnalysisTools(),
+
             stopWhen: stepCountIs(50),
             ...(resolved.providerOptions ? { providerOptions: resolved.providerOptions } : {}),
             abortSignal: request.signal,
