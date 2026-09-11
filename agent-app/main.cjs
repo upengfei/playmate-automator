@@ -19,6 +19,7 @@ const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
 const keywords = require("./keywords.cjs");
 const browsers = require("./browsers.cjs");
+const ai = require("./ai.cjs");
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DOWNLOAD_DIR = path.join(app.getPath("userData"), "updates");
@@ -625,6 +626,47 @@ ipcMain.handle("agent:pull-case", (_e, caseId) => platform.pullCase(caseId));
 ipcMain.handle("agent:upload-case", (_e, testCase) => platform.uploadCase(testCase));
 ipcMain.handle("agent:run-case", (_e, testCase, options) => executeCase(testCase, undefined, options || {}));
 ipcMain.handle("agent:keywords", () => keywords.keywordMeta());
+
+/* ------------------------------- AI 助手 IPC ------------------------------ */
+
+ipcMain.handle("agent:ai-settings", () => {
+  const s = ai.settings();
+  const r = ai.route();
+  return { ...s, route: r.kind, routeReady: r.ready, platformConnected: Boolean(cfg().token) };
+});
+ipcMain.handle("agent:ai-save-settings", (_e, patch) => {
+  ai.save(patch || {});
+  const s = ai.settings();
+  const r = ai.route();
+  log("info", `AI 助手设置已保存：当前使用${r.kind === "local" ? "本机模型" : "平台模型"}`);
+  return { ...s, route: r.kind, routeReady: r.ready, platformConnected: Boolean(cfg().token) };
+});
+ipcMain.handle("agent:ai-chat", async (_e, messages) => {
+  try {
+    const r = await ai.chat(messages || []);
+    log("info", `AI 助手回复完成（${r.label}）`);
+    return { ok: true, ...r };
+  } catch (err) {
+    const message = (err && err.message) || String(err);
+    log("error", `AI 助手调用失败：${message}`);
+    return { ok: false, error: message };
+  }
+});
+ipcMain.handle("agent:ai-test", () => ai.test());
+ipcMain.handle("agent:ai-inspect", async (_e, url) => {
+  if (!url) return { ok: false, error: "请先填写要抓取的页面地址" };
+  try {
+    log("info", `开始抓取页面元素：${url}`);
+    const r = await ai.inspect(url, (t) => log("info", t));
+    log("success", `已抓取 ${r.elements.length} 个可交互元素`);
+    return { ok: true, ...r, summary: ai.describeElements(r.elements) };
+  } catch (err) {
+    const message = (err && err.message) || String(err);
+    log("error", `元素抓取失败：${message}`);
+    return { ok: false, error: message };
+  }
+});
+
 ipcMain.handle("agent:generate-script", (_e, name, steps) => keywords.generateScript(name, steps || []));
 ipcMain.handle("agent:run-options", () => ({
   headless: cfg().headless !== false,
