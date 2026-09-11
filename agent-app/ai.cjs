@@ -120,6 +120,11 @@ function parseDraft(text) {
   } catch {
     return null;
   }
+  return sanitizeDraft(parsed);
+}
+
+/** 无论草稿来自本机模型还是平台代理，都执行同一套关键字白名单与结构清洗。 */
+function sanitizeDraft(parsed) {
   const list = Array.isArray(parsed && parsed.steps) ? parsed.steps : [];
   if (!list.length) return null;
   const known = keywords
@@ -134,7 +139,14 @@ function parseDraft(text) {
       if (keyword) rejected.push(keyword);
       return;
     }
-    steps.push({ keyword, target: String((s && s.target) || ""), value: String((s && s.value) || "") });
+    const meta = keywords.keywordMeta().find((item) => item.id === keyword);
+    const target = String((s && s.target) || "").trim();
+    const value = String((s && s.value) || "").trim();
+    if ((meta && meta.needsTarget && !meta.optionalTarget && !target) || (meta && meta.needsValue && !value)) {
+      rejected.push(`${keyword}（缺少必填参数）`);
+      return;
+    }
+    steps.push({ keyword, target, value });
   });
   if (!steps.length) return null;
   return {
@@ -222,7 +234,7 @@ async function chat(messages = []) {
   }
 
   const result = target.kind === "local" ? await callLocal(clean) : await callPlatform(clean);
-  const draft = result.draft !== undefined && result.draft !== null ? result.draft : parseDraft(result.text);
+  const draft = result.draft !== undefined && result.draft !== null ? sanitizeDraft(result.draft) : parseDraft(result.text);
   return {
     reply: stripJson(result.text) || result.text || "（模型没有返回文字说明）",
     draft: draft || null,
@@ -268,14 +280,20 @@ function describeElements(elements = []) {
       const parts = [
         `#${i + 1}`,
         e.role ? `role=${e.role}` : "",
-        e.name ? `name=${e.name}` : "",
+        e.attributes && e.attributes.name ? `name=${e.attributes.name}` : "",
         e.text ? `text=${String(e.text).slice(0, 40)}` : "",
-        e.testId ? `data-testid=${e.testId}` : "",
-        Array.isArray(e.candidates) && e.candidates.length ? `候选定位=${e.candidates.slice(0, 3).join(" | ")}` : "",
+        e.attributes && e.attributes["data-testid"] ? `data-testid=${e.attributes["data-testid"]}` : "",
+        e.locator ? `推荐定位=${e.locator}` : "",
+        Array.isArray(e.candidates) && e.candidates.length
+          ? `候选定位=${e.candidates
+              .slice(0, 3)
+              .map((candidate) => `${candidate.kind}:${candidate.value}${candidate.unique ? "（唯一）" : ""}`)
+              .join(" | ")}`
+          : "",
       ].filter(Boolean);
       return parts.join("，");
     })
     .join("\n");
 }
 
-module.exports = { settings, save, route, chat, test, inspect, describeElements, parseDraft, systemPrompt };
+module.exports = { settings, save, route, chat, test, inspect, describeElements, parseDraft, sanitizeDraft, systemPrompt };

@@ -104,18 +104,25 @@ async function runCase(testCase, emit = () => {}) {
   try {
     const target = browsers.resolve(testCase.browser);
     const browserName = target.engine;
+    const executablePath = process.env.PLAYFLOW_CHROMIUM_EXECUTABLE || "";
     const { nodes } = parseNodes(testCase.steps || []);
     if (!nodes.length) throw new Error("用例没有可执行步骤");
-    if (target.download) {
+    if (target.download && !(browserName === "chromium" && executablePath)) {
       emit({ type: "log", level: "info", text: `准备 ${target.label} 浏览器内核…` });
       await browsers.ensure(browserName, (t) => emit({ type: "log", level: "info", text: t }));
+    } else if (browserName === "chromium" && executablePath) {
+      emit({ type: "log", level: "info", text: `使用指定的 Chromium：${executablePath}` });
     } else {
       emit({ type: "log", level: "info", text: `使用系统安装的 ${target.label}` });
     }
     const engine = pw()[browserName];
     fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
     const headless = testCase.headed ? false : true;
-    browser = await engine.launch({ headless, ...(target.channel ? { channel: target.channel } : {}) });
+    browser = await engine.launch({
+      headless,
+      ...(target.channel ? { channel: target.channel } : {}),
+      ...(browserName === "chromium" && executablePath ? { executablePath } : {}),
+    });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
