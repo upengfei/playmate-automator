@@ -24,6 +24,7 @@
         margin-top: 22px; width: 100%; padding: 10px; font-size: 14px; border: 0;
         border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer;
       }
+      button.ghost { margin-top: 10px; background: transparent; color: #1a73e8; border: 1px solid #c4d4f0; }
       button:disabled { opacity: .6; cursor: default; }
       .msg { margin-top: 14px; font-size: 12px; min-height: 18px; line-height: 1.6; }
       .err { color: #c5221f; }
@@ -43,6 +44,7 @@
     <input id="token" placeholder="在平台复制的节点令牌" autocomplete="off" spellcheck="false" />
 
     <button id="go">验证并进入</button>
+    <button id="offline" class="ghost">暂不连接平台，离线使用（仅录制与本地调试）</button>
     <div class="msg" id="msg"></div>
 
     <p class="hint">
@@ -80,6 +82,13 @@
           msg.className = "msg err";
           msg.textContent = "验证失败：" + ((res && res.error) || "请检查平台地址与网络");
         }
+      });
+
+      $("offline").addEventListener("click", async () => {
+        $("offline").disabled = true;
+        msg.className = "msg";
+        msg.textContent = "已进入离线模式：录制、编排与本地调试可用，联网功能停用。";
+        await window.agentSetup.offline();
       });
     </script>
   </body>
