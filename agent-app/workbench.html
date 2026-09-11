@@ -746,8 +746,7 @@
             steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
           };
           $("btn-run").disabled = $("btn-rerun").disabled = true;
-          switchView("run");
-          setDrawer(true);
+          syncRunMeta();
           $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
           $("run-bar").style.width = "10%";
           renderRunSteps(lastRun.steps);
