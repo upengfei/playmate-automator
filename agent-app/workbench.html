@@ -361,16 +361,32 @@
                   <h3>AI 与升级</h3>
                   <div class="hint section-desc">AI 助手模型只保存在本机；客户端版本更新也在这里检查。</div>
                   <div class="system-grid">
-                <div class="panel system-card span-all"><h3>AI 助手设置</h3>
-                  <div class="hint" id="ai-route-hint">本机模型优先；没填本机模型时，若已连接平台则自动转发给平台模型。</div>
-                  <div class="row" style="margin-top: 8px"><label class="inline">接入方式<select id="ai-mode" style="width: 190px; margin-left: 8px"><option value="auto">自动（本机优先）</option><option value="local">只用本机模型</option><option value="platform">只用平台模型</option></select></label></div>
-                  <div class="row" style="margin-top: 8px"><div class="grow"><input id="ai-base" placeholder="本机模型 Base URL，如 http://127.0.0.1:11434/v1" /></div></div>
-                  <div class="row" style="margin-top: 8px"><div class="grow"><input id="ai-key" type="password" placeholder="API Key（本机模型不需要可留空）" /></div><div class="grow"><input id="ai-model" placeholder="模型名称，如 qwen2.5:14b" /></div></div>
-                  <div class="row" style="margin-top: 8px"><label class="inline"><input type="checkbox" id="ai-shot" /> 抓取时保存页面截图</label><label class="inline">缓存分钟<input id="ai-cache" type="number" min="0" max="1440" style="width: 82px; margin-left: 8px" /></label><label class="inline">重试次数<input id="ai-retry" type="number" min="1" max="5" style="width: 72px; margin-left: 8px" /></label></div>
-                  <div class="system-actions" style="margin-top: 10px"><button class="primary" id="btn-ai-save">保存 AI 设置</button><button id="btn-ai-test">连接测试</button></div>
-                  <div class="hint" id="ai-test-hint" style="margin-top: 8px"></div>
-                </div>
+                    <div class="panel system-card span-all"><h3>AI 助手设置</h3>
+                      <div class="hint" id="ai-route-hint">本机模型优先；没填本机模型时，若已连接平台则自动转发给平台模型。</div>
 
+                      <div class="field-group">
+                        <div class="group-title">接入方式</div>
+                        <div class="row"><label class="inline">接入方式<select id="ai-mode" style="width: 190px; margin-left: 8px"><option value="auto">自动（本机优先）</option><option value="local">只用本机模型</option><option value="platform">只用平台模型</option></select></label></div>
+                      </div>
+
+                      <div class="field-group">
+                        <div class="group-title">本机模型</div>
+                        <div class="row"><div class="grow"><input id="ai-base" placeholder="本机模型 Base URL，如 http://127.0.0.1:11434/v1" /></div></div>
+                        <div class="row"><div class="grow"><input id="ai-key" type="password" placeholder="API Key（本机模型不需要可留空）" /></div><div class="grow"><input id="ai-model" placeholder="模型名称，如 qwen2.5:14b" /></div></div>
+                      </div>
+
+                      <div class="field-group">
+                        <div class="group-title">元素抓取参数</div>
+                        <div class="row"><label class="inline">默认抓取方式<select id="ai-headless" style="width: 148px; margin-left: 8px"><option value="headless">无头抓取</option><option value="headed">有头抓取</option></select></label><label class="inline"><input type="checkbox" id="ai-shot" /> 抓取时保存页面截图</label></div>
+                        <div class="row"><label class="inline">缓存分钟<input id="ai-cache" type="number" min="0" max="1440" style="width: 82px; margin-left: 8px" /></label><label class="inline">重试次数<input id="ai-retry" type="number" min="1" max="5" style="width: 72px; margin-left: 8px" /></label></div>
+                      </div>
+
+                      <div class="system-actions"><button class="primary" id="btn-ai-save">保存 AI 设置</button><button id="btn-ai-test">连接测试</button></div>
+                      <div class="hint" id="ai-test-hint" style="margin-top: 8px"></div>
+                    </div>
+                    <div class="panel system-card span-all"><h3>客户端升级</h3><div class="hint" id="update-stage">升级状态：空闲。</div><div class="bar"><i id="update-bar"></i></div><div class="system-actions"><button id="btn-update">检查更新</button></div></div>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
