@@ -379,21 +379,17 @@ async function pollJobs() {
 }
 
 /**
- * AI 页面元素定位：领取平台下发的抓取指令，用本机浏览器抓取元素与截图后回传。
- * 轮询间隔自适应：刚有任务时 3 秒，连续空闲 2 分钟后降到 15 秒，减少无谓刷新。
+ * 平台代理是否可用：客户端没填本机模型时，AI 助手会把对话转发给平台配置的模型。
+ * 元素抓取已改为本机直接执行，不再领取平台下发的抓取指令。
  */
-
-
-
-/** 启动时从平台加载当前生效的 AI 模型配置（每 10 分钟刷新一次） */
 let aiConfig = null;
 
 async function loadAiConfig() {
+  if (!cfg().token) return null;
   try {
     aiConfig = await platform.fetchAiConfig();
     const name = aiConfig.mode === "lovable" ? "内置模型" : aiConfig.defaultModel || "未指定模型";
-    log("info", `已从平台加载 AI 配置：${name}（可用模型 ${(aiConfig.models || []).length} 个）`);
-    if (!aiConfig.configured) log("warn", "平台当前的 AI 配置不完整，请在系统配置 → AI 设置里检查");
+    log("info", `平台 AI 代理可用：${name}（本机未填模型时使用）`);
   } catch (err) {
     log("warn", `读取平台 AI 配置失败：${err && err.message ? err.message : err}`);
   }
@@ -401,6 +397,7 @@ async function loadAiConfig() {
 }
 
 setInterval(() => loadAiConfig().catch(() => {}), 10 * 60 * 1000);
+
 
 
 
