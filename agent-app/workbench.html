@@ -736,39 +736,56 @@
         api.setRunOptions({ headless: $("opt-headless-mirror").checked });
       };
 
-      async function runDraft() {
-        if (!draft.steps.length) {
-          addLog({ level: "warn", text: "编排区还没有步骤，无法运行" });
-          return;
-        }
-        if (draft.steps.some((s) => s.keyword === "unsupported")) {
-          addLog({ level: "warn", text: "存在待转换步骤，转换或删除后才能运行" });
-          return;
-        }
-        // 每次运行都用编排区当前内容，避免改完还在跑上一版
-        renderScript();
-        const headed = $("run-mode").value === "headed";
-        lastRun = {
-          id: draft.id || undefined,
-          name: draft.name || "本机调试用例",
-          startUrl: draft.startUrl,
-          browser: draft.browser,
-          steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
-        };
-        $("btn-run").disabled = $("btn-rerun").disabled = true;
+      /** 无法运行时给出可见提示：切到执行页并展开日志，避免点击后“什么都没发生” */
+      function blockRun(text) {
+        addLog({ level: "warn", text });
         switchView("run");
-        $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
-        $("run-bar").style.width = "10%";
-        renderRunSteps(lastRun.steps);
+        setDrawer(true);
+        $("run-stage").textContent = text;
+        $("run-bar").style.width = "0%";
+      }
+
+      async function runDraft() {
         try {
-          await api.runCase(lastRun, { headed, browser: $("opt-browser").value || undefined });
+          if (!draft.steps.length) return blockRun("编排区还没有步骤，无法运行");
+          const pending = draft.steps.filter((s) => s.keyword === "unsupported").length;
+          if (pending) {
+            return blockRun(`存在 ${pending} 个待转换步骤，请在步骤编排里转换或删除后再调试`);
+          }
+          // 每次运行都用编排区当前内容，避免改完还在跑上一版
+          renderScript();
+          const headed = $("run-mode").value === "headed";
+          lastRun = {
+            id: draft.id || undefined,
+            name: draft.name || "本机调试用例",
+            startUrl: draft.startUrl,
+            browser: draft.browser,
+            steps: draft.steps.map((s) => ({ keyword: s.keyword, target: s.target, value: s.value })),
+          };
+          $("btn-run").disabled = $("btn-rerun").disabled = true;
+          switchView("run");
+          setDrawer(true);
+          $("run-stage").textContent = `本地运行中：${lastRun.name}（${headed ? "有头" : "无头"}）`;
+          $("run-bar").style.width = "10%";
+          renderRunSteps(lastRun.steps);
+          addLog({ level: "info", text: `开始本地调试：${lastRun.name}，共 ${lastRun.steps.length} 步` });
+          try {
+            await api.runCase(lastRun, { headed, browser: $("opt-browser").value || undefined });
+          } catch (e) {
+            const msg = String((e && e.message) || e);
+            addLog({ level: "error", text: "执行失败：" + msg });
+            $("run-stage").textContent = "执行失败：" + msg;
+          } finally {
+            $("btn-run").disabled = false;
+            $("btn-rerun").disabled = false;
+            refreshInfo();
+          }
         } catch (e) {
-          addLog({ level: "error", text: "执行失败：" + (e.message || e) });
-          $("run-stage").textContent = "执行失败：" + (e.message || e);
-        } finally {
+          // 渲染层异常也要看得见，不能静默吞掉点击
+          const msg = String((e && e.message) || e);
+          addLog({ level: "error", text: "本地调试无法启动：" + msg });
           $("btn-run").disabled = false;
           $("btn-rerun").disabled = false;
-          refreshInfo();
         }
       }
       $("btn-run").onclick = runDraft;
