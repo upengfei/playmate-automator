@@ -348,6 +348,20 @@
               </div>
             </section>
 
+            <section class="view" id="panel-local" data-view-panel="local">
+              <div class="view-heading"><div><h2>本地用例仓库</h2><p>录制完成会自动存到本机，离线也能继续编辑。</p></div></div>
+              <div class="panel" id="section-local">
+                <div class="panel-title">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5h16v11H4z"/><path d="M4 7.5 7 4h10l3 3.5"/></svg>
+                  本机保存的用例
+                </div>
+                <div class="case-toolbar"><div class="hint" id="local-hint">录制完成会自动存到本机，离线也能继续编辑。</div><div class="row"><button id="btn-local-load" disabled>载入编排区</button><button id="btn-local-rename" disabled>重命名</button><button id="btn-local-delete" disabled>删除</button></div></div>
+                <div class="list" id="local-list"></div>
+              </div>
+            </section>
+
+
+
 
             <section class="view" id="panel-updates" data-view-panel="system">
               <div class="view-heading"><div><h2>内核与维护</h2><p>管理节点连接、离线补传、浏览器内核和客户端版本。</p></div></div>
