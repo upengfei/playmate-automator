@@ -224,6 +224,9 @@
           <button class="nav-item active" data-view="work" title="工作台">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/><path d="M10 7h4a3 3 0 0 1 3 3v4M7 10v7h7"/></svg><span>工作台</span><b class="nav-badge" id="pending">0</b>
           </button>
+          <button class="nav-item" data-view="ai" title="AI 助手">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M9 12h.01M15 12h.01M12 3v4"/></svg><span>AI 助手</span>
+          </button>
           <button class="nav-item" data-view="system" title="内核与维护">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg><span>内核与维护</span>
           </button>
@@ -292,6 +295,25 @@
                     </div>
                     <div class="tab-pane" id="panel-script" data-editor-pane="script"><div class="script-actions"><button id="btn-copy">复制脚本</button></div><pre id="script">// 暂无步骤</pre></div>
                   </div>
+
+                  <div class="panel" id="section-ai">
+                    <div class="panel-title">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M9 12h.01M15 12h.01M12 3v4"/></svg>
+                      AI 助手
+                    </div>
+                    <div class="hint" id="ai-hint">用中文描述业务流程即可生成步骤；也可以先抓取页面元素，让 AI 推荐最稳定的定位方式。</div>
+                    <div id="ai-log" style="max-height: 240px; overflow: auto; margin: 10px 0; display: grid; gap: 8px"></div>
+                    <div class="row">
+                      <div class="grow"><input id="ai-url" placeholder="要抓取的页面地址（可选），如 https://example.com" /></div>
+                      <button id="btn-ai-inspect">抓取页面元素</button>
+                    </div>
+                    <div class="row" style="margin-top: 8px">
+                      <div class="grow"><input id="ai-input" placeholder="例如：登录后进入订单列表，断言标题包含订单，循环搜索 3 次" /></div>
+                      <button class="primary" id="btn-ai-send">发送</button>
+                      <button id="btn-ai-apply" disabled>应用到编排区</button>
+                    </div>
+                  </div>
+
                 </div>
 
                 <aside class="run-drawer" id="run-drawer">
@@ -316,6 +338,16 @@
                 <div class="panel system-card"><h3>浏览器内核</h3><div class="hint" id="browser-stage">浏览器内核状态未知。</div><div class="bar"><i id="browser-bar"></i></div><div class="system-actions"><label class="inline">浏览器<select id="opt-browser" style="width: 200px; margin-left: 8px"></select></label><button id="btn-browsers">下载浏览器内核</button></div><div class="hint" id="browser-hint" style="margin-top: 8px">切换后，新的录制与执行都会使用所选浏览器。</div></div>
                 <div class="panel system-card"><h3>客户端升级</h3><div class="hint" id="update-stage">升级状态：空闲。</div><div class="bar"><i id="update-bar"></i></div><div class="system-actions"><button id="btn-update">检查更新</button></div></div>
                 <div class="panel system-card"><h3>运行偏好</h3><div class="hint">执行模式也可在步骤编排或系统托盘中调整。</div><div class="system-actions"><label class="inline"><input type="checkbox" id="opt-keep-mirror" /> 失败后保留浏览器</label><label class="inline"><input type="checkbox" id="opt-headless-mirror" /> 平台任务默认无头</label></div></div>
+                <div class="panel system-card"><h3>AI 助手设置</h3>
+                  <div class="hint" id="ai-route-hint">本机模型优先；没填本机模型时，若已连接平台则自动转发给平台模型。</div>
+                  <div class="row" style="margin-top: 8px"><label class="inline">接入方式<select id="ai-mode" style="width: 190px; margin-left: 8px"><option value="auto">自动（本机优先）</option><option value="local">只用本机模型</option><option value="platform">只用平台模型</option></select></label></div>
+                  <div class="row" style="margin-top: 8px"><div class="grow"><input id="ai-base" placeholder="本机模型 Base URL，如 http://127.0.0.1:11434/v1" /></div></div>
+                  <div class="row" style="margin-top: 8px"><div class="grow"><input id="ai-key" type="password" placeholder="API Key（本机模型不需要可留空）" /></div><div class="grow"><input id="ai-model" placeholder="模型名称，如 qwen2.5:14b" /></div></div>
+                  <div class="row" style="margin-top: 8px"><label class="inline"><input type="checkbox" id="ai-shot" /> 抓取时保存页面截图</label><label class="inline">缓存分钟<input id="ai-cache" type="number" min="0" max="1440" style="width: 82px; margin-left: 8px" /></label><label class="inline">重试次数<input id="ai-retry" type="number" min="1" max="5" style="width: 72px; margin-left: 8px" /></label></div>
+                  <div class="system-actions" style="margin-top: 10px"><button class="primary" id="btn-ai-save">保存 AI 设置</button><button id="btn-ai-test">连接测试</button></div>
+                  <div class="hint" id="ai-test-hint" style="margin-top: 8px"></div>
+                </div>
+
               </div>
             </section>
           </div>
@@ -350,6 +382,8 @@
         run: "run-drawer",
         queue: "run-drawer",
         logs: "run-drawer",
+        ai: "section-ai",
+
       };
 
       /** 日志面板常驻工作台右侧，只需同步头部信息 */
@@ -1002,10 +1036,149 @@
         renderBlocks();
         await refreshInfo();
         addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
+        await loadAiSettings();
       }
+
+      /* ------------------------------- AI 助手 ------------------------------- */
+
+      let aiMessages = [];
+      let aiDraft = null;
+      let aiBusy = false;
+
+      function aiBubble(role, text) {
+        const el = document.createElement("div");
+        el.style.cssText =
+          "border:1px solid var(--line,#e3e6ef);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;" +
+          (role === "user" ? "background:rgba(0,0,0,.03)" : "");
+        el.textContent = (role === "user" ? "我：" : "AI：") + text;
+        $("ai-log").appendChild(el);
+        $("ai-log").scrollTop = $("ai-log").scrollHeight;
+      }
+
+      function setAiBusy(on) {
+        aiBusy = on;
+        $("btn-ai-send").disabled = on;
+        $("btn-ai-inspect").disabled = on;
+        $("btn-ai-send").textContent = on ? "生成中…" : "发送";
+      }
+
+      async function askAi(text) {
+        if (!text || aiBusy) return;
+        aiBubble("user", text);
+        aiMessages.push({ role: "user", content: text });
+        setAiBusy(true);
+        try {
+          const r = await api.aiChat(aiMessages);
+          if (!r || !r.ok) {
+            aiBubble("assistant", "调用失败：" + ((r && r.error) || "未知原因"));
+            return;
+          }
+          aiMessages.push({ role: "assistant", content: r.reply });
+          aiBubble("assistant", r.reply);
+          if (r.draft) {
+            aiDraft = r.draft;
+            $("btn-ai-apply").disabled = false;
+            const extra = r.draft.rejected && r.draft.rejected.length
+              ? `，已忽略无法识别的关键字：${r.draft.rejected.join("、")}`
+              : "";
+            $("ai-hint").textContent = `已生成 ${r.draft.steps.length} 步（${r.label}）${extra}，点“应用到编排区”写入草稿。`;
+          }
+        } finally {
+          setAiBusy(false);
+        }
+      }
+
+      $("btn-ai-send").onclick = () => {
+        const v = $("ai-input").value.trim();
+        if (!v) return;
+        $("ai-input").value = "";
+        askAi(v);
+      };
+      $("ai-input").onkeydown = (e) => {
+        if (e.key === "Enter") $("btn-ai-send").click();
+      };
+
+      $("btn-ai-inspect").onclick = async () => {
+        const url = $("ai-url").value.trim();
+        if (!url || aiBusy) return;
+        setAiBusy(true);
+        $("ai-hint").textContent = "正在用本机浏览器抓取页面元素…";
+        try {
+          const r = await api.aiInspect(url);
+          if (!r || !r.ok) {
+            $("ai-hint").textContent = "抓取失败：" + ((r && r.error) || "未知原因");
+            return;
+          }
+          $("ai-hint").textContent = `已抓取 ${r.elements.length} 个可交互元素，可以直接描述你要操作哪个元素。`;
+          aiMessages.push({
+            role: "user",
+            content: `以下是页面 ${url} 的可交互元素清单，后续生成步骤时请优先使用这里最稳定的定位方式：\n${r.summary}`,
+          });
+          aiBubble("user", `已提供 ${r.elements.length} 个页面元素给 AI（${url}）`);
+        } finally {
+          setAiBusy(false);
+        }
+      };
+
+      $("btn-ai-apply").onclick = () => {
+        if (!aiDraft) return;
+        loadDraft({
+          name: aiDraft.name || draft.name,
+          startUrl: aiDraft.startUrl || draft.startUrl,
+          browser: draft.browser,
+          steps: aiDraft.steps,
+        });
+        addLog({ level: "success", text: `AI 生成的 ${aiDraft.steps.length} 步已写入编排区，确认后可本地调试或上传` });
+        focusSection("section-editor");
+      };
+
+      /* ----------------------------- AI 助手设置 ----------------------------- */
+
+      function applyAiSettings(s) {
+        $("ai-mode").value = s.aiMode || "auto";
+        $("ai-base").value = s.aiBaseUrl || "";
+        $("ai-key").value = s.aiApiKey || "";
+        $("ai-model").value = s.aiModel || "";
+        $("ai-shot").checked = s.inspectScreenshot !== false;
+        $("ai-cache").value = s.inspectCacheMinutes;
+        $("ai-retry").value = s.inspectRetries;
+        const route = s.route === "local" ? "本机模型" : "平台模型";
+        $("ai-route-hint").textContent = s.routeReady
+          ? `当前使用${route}；本机模型优先，未填时转发平台模型。`
+          : `${route}暂不可用：请填写本机模型（Base URL + 模型名），或先连接平台节点。`;
+      }
+
+      async function loadAiSettings() {
+        try {
+          applyAiSettings(await api.aiSettings());
+        } catch {
+          /* 设置读取失败时保持默认值 */
+        }
+      }
+
+      $("btn-ai-save").onclick = async () => {
+        const next = await api.aiSaveSettings({
+          aiMode: $("ai-mode").value,
+          aiBaseUrl: $("ai-base").value.trim(),
+          aiApiKey: $("ai-key").value,
+          aiModel: $("ai-model").value.trim(),
+          inspectScreenshot: $("ai-shot").checked,
+          inspectCacheMinutes: Number($("ai-cache").value) || 0,
+          inspectRetries: Number($("ai-retry").value) || 3,
+        });
+        applyAiSettings(next);
+        $("ai-test-hint").textContent = "AI 设置已保存（只保存在本机）。";
+      };
+
+      $("btn-ai-test").onclick = async () => {
+        $("ai-test-hint").textContent = "正在测试…";
+        const r = await api.aiTest();
+        $("ai-test-hint").textContent = (r.ok ? "✔ " : "✘ ") + r.message;
+      };
 
       boot();
       setInterval(refreshInfo, 15000);
+
     </script>
   </body>
 </html>

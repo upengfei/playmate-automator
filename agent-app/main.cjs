@@ -19,6 +19,7 @@ const runner = require("./runner.cjs");
 const recorder = require("./recorder.cjs");
 const keywords = require("./keywords.cjs");
 const browsers = require("./browsers.cjs");
+const ai = require("./ai.cjs");
 
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const DOWNLOAD_DIR = path.join(app.getPath("userData"), "updates");
@@ -379,34 +380,17 @@ async function pollJobs() {
 }
 
 /**
- * AI 页面元素定位：领取平台下发的抓取指令，用本机浏览器抓取元素与截图后回传。
- * 轮询间隔自适应：刚有任务时 3 秒，连续空闲 2 分钟后降到 15 秒，减少无谓刷新。
+ * 平台代理是否可用：客户端没填本机模型时，AI 助手会把对话转发给平台配置的模型。
+ * 元素抓取已改为本机直接执行，不再领取平台下发的抓取指令。
  */
-const INSPECT_FAST_MS = 3 * 1000;
-const INSPECT_SLOW_MS = 15 * 1000;
-const INSPECT_IDLE_BEFORE_SLOW_MS = 2 * 60 * 1000;
-let inspectLastActive = Date.now();
-let inspectTimer = null;
-
-function scheduleInspectPoll() {
-  const idle = Date.now() - inspectLastActive;
-  const delay = idle > INSPECT_IDLE_BEFORE_SLOW_MS ? INSPECT_SLOW_MS : INSPECT_FAST_MS;
-  if (inspectTimer) clearTimeout(inspectTimer);
-  inspectTimer = setTimeout(async () => {
-    await pollInspects();
-    scheduleInspectPoll();
-  }, delay);
-}
-
-/** 启动时从平台加载当前生效的 AI 模型配置（每 10 分钟刷新一次） */
 let aiConfig = null;
 
 async function loadAiConfig() {
+  if (!cfg().token) return null;
   try {
     aiConfig = await platform.fetchAiConfig();
     const name = aiConfig.mode === "lovable" ? "内置模型" : aiConfig.defaultModel || "未指定模型";
-    log("info", `已从平台加载 AI 配置：${name}（可用模型 ${(aiConfig.models || []).length} 个）`);
-    if (!aiConfig.configured) log("warn", "平台当前的 AI 配置不完整，请在系统配置 → AI 设置里检查");
+    log("info", `平台 AI 代理可用：${name}（本机未填模型时使用）`);
   } catch (err) {
     log("warn", `读取平台 AI 配置失败：${err && err.message ? err.message : err}`);
   }
@@ -415,42 +399,9 @@ async function loadAiConfig() {
 
 setInterval(() => loadAiConfig().catch(() => {}), 10 * 60 * 1000);
 
-async function pollInspects() {
-  if (running) return;
-  try {
-    const jobs = await platform.claimInspects();
-    if (jobs.length) inspectLastActive = Date.now();
-    for (const job of jobs) {
-      running = true;
-      log("info", `领取 AI 元素抓取指令：${job.url}`);
-      try {
-        const { inspectPage } = require("./inspect.cjs");
-        const { elements, screenshot, viewport, attempt } = await inspectPage(job, (t) => log("info", t));
-        await platform.reportInspect({ jobId: job.id, elements, screenshot, viewport, attempt });
-        log("success", `已回传 ${elements.length} 个元素${screenshot ? "与页面截图" : ""}`);
-      } catch (err) {
-        const failKind = (err && err.failKind) || "unknown";
-        const message = String(err && err.message ? err.message : err);
-        await platform
-          .reportInspect({
-            jobId: job.id,
-            elements: [],
-            error: message,
-            failKind,
-            failDetail: String((err && err.failDetail) || message).slice(0, 2000),
-            attempt: (err && err.attempt) || 1,
-          })
-          .catch(() => {});
-        log("error", `元素抓取失败（${failKind}）：${message}`);
-      } finally {
-        running = false;
-        inspectLastActive = Date.now();
-      }
-    }
-  } catch {
-    /* 平台不可达时静默重试 */
-  }
-}
+
+
+
 
 
 /* --------------------------- 浏览器内核与离线补传 --------------------------- */
@@ -675,6 +626,47 @@ ipcMain.handle("agent:pull-case", (_e, caseId) => platform.pullCase(caseId));
 ipcMain.handle("agent:upload-case", (_e, testCase) => platform.uploadCase(testCase));
 ipcMain.handle("agent:run-case", (_e, testCase, options) => executeCase(testCase, undefined, options || {}));
 ipcMain.handle("agent:keywords", () => keywords.keywordMeta());
+
+/* ------------------------------- AI 助手 IPC ------------------------------ */
+
+ipcMain.handle("agent:ai-settings", () => {
+  const s = ai.settings();
+  const r = ai.route();
+  return { ...s, route: r.kind, routeReady: r.ready, platformConnected: Boolean(cfg().token) };
+});
+ipcMain.handle("agent:ai-save-settings", (_e, patch) => {
+  ai.save(patch || {});
+  const s = ai.settings();
+  const r = ai.route();
+  log("info", `AI 助手设置已保存：当前使用${r.kind === "local" ? "本机模型" : "平台模型"}`);
+  return { ...s, route: r.kind, routeReady: r.ready, platformConnected: Boolean(cfg().token) };
+});
+ipcMain.handle("agent:ai-chat", async (_e, messages) => {
+  try {
+    const r = await ai.chat(messages || []);
+    log("info", `AI 助手回复完成（${r.label}）`);
+    return { ok: true, ...r };
+  } catch (err) {
+    const message = (err && err.message) || String(err);
+    log("error", `AI 助手调用失败：${message}`);
+    return { ok: false, error: message };
+  }
+});
+ipcMain.handle("agent:ai-test", () => ai.test());
+ipcMain.handle("agent:ai-inspect", async (_e, url) => {
+  if (!url) return { ok: false, error: "请先填写要抓取的页面地址" };
+  try {
+    log("info", `开始抓取页面元素：${url}`);
+    const r = await ai.inspect(url, (t) => log("info", t));
+    log("success", `已抓取 ${r.elements.length} 个可交互元素`);
+    return { ok: true, ...r, summary: ai.describeElements(r.elements) };
+  } catch (err) {
+    const message = (err && err.message) || String(err);
+    log("error", `元素抓取失败：${message}`);
+    return { ok: false, error: message };
+  }
+});
+
 ipcMain.handle("agent:generate-script", (_e, name, steps) => keywords.generateScript(name, steps || []));
 ipcMain.handle("agent:run-options", () => ({
   headless: cfg().headless !== false,
@@ -751,12 +743,12 @@ if (!single) {
       createAppMenu();
       loadAiConfig().catch(() => {});
       setTimeout(() => prepareBrowsers(), 3000);
-      // 联网功能仅在有节点令牌时启用；离线模式下录制与本地调试不受影响
+      // 联网功能仅在有节点令牌时启用；离线模式下录制、本地调试与本机模型 AI 助手不受影响
       if (cfg().token) {
         registerAgent().catch(() => {});
         setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
         setInterval(() => pollJobs(), 10 * 1000);
-        scheduleInspectPoll();
+
         setInterval(() => flushPending(), 15 * 1000);
         setTimeout(() => checkForUpdates(), 8000);
         setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);

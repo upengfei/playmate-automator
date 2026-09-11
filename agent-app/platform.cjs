@@ -224,12 +224,21 @@ async function claimInspects() {
   return data.jobs || [];
 }
 
-/** 读取平台当前生效的 AI 配置（模型全部来自平台数据库） */
+/** 读取平台当前生效的 AI 配置（客户端没填本机模型时用平台代理） */
 async function fetchAiConfig() {
   return api(
     `ai-config?agentId=${encodeURIComponent(config.agentId)}&token=${encodeURIComponent(config.token)}`,
   );
 }
+
+/** 把客户端 AI 助手的对话转发给平台模型（用节点令牌鉴权） */
+async function aiChat({ messages, model }) {
+  return api("ai-chat", {
+    method: "POST",
+    body: { agentId: config.agentId, token: config.token, messages, ...(model ? { model } : {}) },
+  });
+}
+
 
 /** 回传抓取到的元素清单 */
 async function reportInspect(payload) {
@@ -249,6 +258,7 @@ module.exports = {
   claimJobs,
   claimInspects,
   fetchAiConfig,
+  aiChat,
   reportInspect,
   report,
   api,

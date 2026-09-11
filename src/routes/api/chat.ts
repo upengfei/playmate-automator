@@ -1,19 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
 
-const SYSTEM = `你是 PlayFlow 自动化测试平台的 AI 助手，全程使用简体中文回答。你可以：
-1. 根据需求生成 Playwright 用例：必须调用 generate_case_steps 工具输出结构化步骤，不要在正文里手写脚本。生成后用一句话说明思路和需要用户确认的地方，并提醒用户在右侧预览确认后保存。
-2. 分析测试数据：用 query_case_stats / query_runs / query_run_logs / list_agents 查询真实数据后再给结论，先给结论再给依据，最后给可执行的改进建议。不要编造数据。
-3. 帮助定位页面元素：先用 list_agents 找在线设备，再用 inspect_page 让该设备打开页面回传元素清单，然后推荐最稳定的定位方式并说明理由。抓取返回 failKind 时，直接用 reason 里的中文原因和建议告诉用户，不要再自行猜测原因。
+const SYSTEM = `你是 PlayFlow 自动化测试平台的「AI 报告分析」助手，全程使用简体中文回答，只做测试数据分析。
 
-生成步骤时的约束：
-- 只能使用下面的关键字 id；条件（ifVisible / ifNotVisible / ifText，可配 elseBranch）必须以 endIf 闭合，循环（repeat / whileVisible）必须以 endLoop 闭合。
-- 定位器优先使用稳定写法，例如 role/text 选择器或 data-testid，避免长 CSS 路径与随机 class。
-- 需要参数化的取值写成 \${参数名}；循环里可用 \${LOOP_INDEX}、\${当前循环}、\${循环次数}。
-- 用例结尾建议加一条断言，让结果可判定。
+工作方式：
+- 必须先用 query_case_stats / query_runs / query_run_logs / list_agents 查询真实数据，再给结论，不要编造任何数据。
+- 回答顺序：先给结论，再给数据依据，最后给可执行的改进建议。
+- 分析失败时要归类原因（定位失效、等待不足、环境或数据问题、被拦截、节点异常等），并指出涉及的用例名称、用例 id 与任务 id，便于用户点开查看。
+- 只做分析和建议：生成用例、修改用例、页面元素定位都在客户端 AI 助手里完成，用户问到时告知在客户端操作。`;
 
-可用关键字：
-`;
 
 /** 把底层报错转成可执行的中文提示 */
 function explainAiError(error: unknown, label: string) {
@@ -37,15 +32,16 @@ export const Route = createFileRoute("/api/chat")({
           const messages = body.messages ?? [];
 
           const { readAiSettings, resolveModel } = await import("@/lib/ai-settings.server");
-          const { buildAiTools, KEYWORD_REFERENCE } = await import("@/lib/ai-tools.server");
+          const { buildAnalysisTools } = await import("@/lib/ai-tools.server");
           const settings = await readAiSettings();
           const resolved = await resolveModel(settings, request, body.model);
 
           const result = streamText({
             model: resolved.model,
-            system: SYSTEM + KEYWORD_REFERENCE,
+            system: SYSTEM,
             messages: await convertToModelMessages(messages),
-            tools: buildAiTools(),
+            tools: buildAnalysisTools(),
+
             stopWhen: stepCountIs(50),
             ...(resolved.providerOptions ? { providerOptions: resolved.providerOptions } : {}),
             abortSignal: request.signal,

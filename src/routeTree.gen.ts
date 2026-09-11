@@ -31,6 +31,7 @@ import { Route as SettingsParamsRouteImport } from './routes/settings.params'
 import { Route as TasksIndexRouteImport } from './routes/tasks.index'
 import { Route as TasksTaskIdRouteImport } from './routes/tasks.$taskId'
 import { Route as ApiInspectShotIdRouteImport } from './routes/api/inspect-shot.$id'
+import { Route as ApiPublicAgentAiChatRouteImport } from './routes/api/public/agent/ai-chat'
 import { Route as ApiPublicAgentAiConfigRouteImport } from './routes/api/public/agent/ai-config'
 import { Route as ApiPublicAgentBrowsersRouteImport } from './routes/api/public/agent/browsers'
 import { Route as ApiPublicAgentCasesRouteImport } from './routes/api/public/agent/cases'
@@ -155,6 +156,11 @@ const ApiInspectShotIdRoute = ApiInspectShotIdRouteImport.update({
   path: '/api/inspect-shot/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAgentAiChatRoute = ApiPublicAgentAiChatRouteImport.update({
+  id: '/api/public/agent/ai-chat',
+  path: '/api/public/agent/ai-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicAgentAiConfigRoute = ApiPublicAgentAiConfigRouteImport.update({
   id: '/api/public/agent/ai-config',
   path: '/api/public/agent/ai-config',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-chat': typeof ApiPublicAgentAiChatRoute
   '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsIndexRoute
   '/tasks': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-chat': typeof ApiPublicAgentAiChatRoute
   '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/settings/': typeof SettingsIndexRoute
   '/tasks/': typeof TasksIndexRoute
   '/api/inspect-shot/$id': typeof ApiInspectShotIdRoute
+  '/api/public/agent/ai-chat': typeof ApiPublicAgentAiChatRoute
   '/api/public/agent/ai-config': typeof ApiPublicAgentAiConfigRoute
   '/api/public/agent/browsers': typeof ApiPublicAgentBrowsersRoute
   '/api/public/agent/cases': typeof ApiPublicAgentCasesRoute
@@ -359,6 +368,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/tasks/'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-chat'
     | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -395,6 +405,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/tasks'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-chat'
     | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/tasks/'
     | '/api/inspect-shot/$id'
+    | '/api/public/agent/ai-chat'
     | '/api/public/agent/ai-config'
     | '/api/public/agent/browsers'
     | '/api/public/agent/cases'
@@ -464,6 +476,7 @@ export interface RootRouteChildren {
   CasesIndexRoute: typeof CasesIndexRoute
   TasksIndexRoute: typeof TasksIndexRoute
   ApiInspectShotIdRoute: typeof ApiInspectShotIdRoute
+  ApiPublicAgentAiChatRoute: typeof ApiPublicAgentAiChatRoute
   ApiPublicAgentAiConfigRoute: typeof ApiPublicAgentAiConfigRoute
   ApiPublicAgentBrowsersRoute: typeof ApiPublicAgentBrowsersRoute
   ApiPublicAgentCasesRoute: typeof ApiPublicAgentCasesRoute
@@ -635,6 +648,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiInspectShotIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/ai-chat': {
+      id: '/api/public/agent/ai-chat'
+      path: '/api/public/agent/ai-chat'
+      fullPath: '/api/public/agent/ai-chat'
+      preLoaderRoute: typeof ApiPublicAgentAiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/agent/ai-config': {
       id: '/api/public/agent/ai-config'
       path: '/api/public/agent/ai-config'
@@ -768,6 +788,7 @@ const rootRouteChildren: RootRouteChildren = {
   CasesIndexRoute: CasesIndexRoute,
   TasksIndexRoute: TasksIndexRoute,
   ApiInspectShotIdRoute: ApiInspectShotIdRoute,
+  ApiPublicAgentAiChatRoute: ApiPublicAgentAiChatRoute,
   ApiPublicAgentAiConfigRoute: ApiPublicAgentAiConfigRoute,
   ApiPublicAgentBrowsersRoute: ApiPublicAgentBrowsersRoute,
   ApiPublicAgentCasesRoute: ApiPublicAgentCasesRoute,

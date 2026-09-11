@@ -7,7 +7,7 @@ import { SettingsPageShell, SettingsRow } from "@/components/settings-shell";
 import { Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+
 import {
   Select,
   SelectContent,
@@ -18,13 +18,11 @@ import {
 import {
   fetchAiModelFiles,
   fetchAiProviders,
-  fetchAiSettings,
   importAiModelFile,
   removeAiModelFile,
   reparseAiModelFile,
   removeAiProvider,
   saveAiProvider,
-  saveAiSettings,
   switchAiProvider,
   testAiConnection,
 } from "@/lib/ai.functions";
@@ -98,8 +96,8 @@ const emptyForm = {
 };
 
 function AiSettingsPage() {
-  const loadSettings = useServerFn(fetchAiSettings);
-  const saveSettings = useServerFn(saveAiSettings);
+
+
   const loadProviders = useServerFn(fetchAiProviders);
   const saveProvider = useServerFn(saveAiProvider);
   const deleteProvider = useServerFn(removeAiProvider);
@@ -114,8 +112,8 @@ function AiSettingsPage() {
   const [files, setFiles] = useState<ModelFile[]>([]);
   const [form, setForm] = useState({ ...emptyForm });
   const [newModel, setNewModel] = useState("");
-  const [cacheMinutes, setCacheMinutes] = useState(10);
-  const [keepScreenshot, setKeepScreenshot] = useState(true);
+
+
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -129,12 +127,8 @@ function AiSettingsPage() {
     void loadFiles()
       .then((list) => setFiles(list as ModelFile[]))
       .catch(() => undefined);
-    void loadSettings()
-      .then((s) => {
-        setCacheMinutes(s.inspectCacheMinutes);
-        setKeepScreenshot(s.inspectScreenshot);
-      })
-      .catch(() => toast.error("读取抓取设置失败"));
+
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -282,17 +276,8 @@ function AiSettingsPage() {
     }
   };
 
-  const doSaveInspect = async () => {
-    setBusy(true);
-    try {
-      await saveSettings({ data: { inspectCacheMinutes: cacheMinutes, inspectScreenshot: keepScreenshot } });
-      toast.success("抓取设置已保存");
-    } catch (e) {
-      toast.error(`保存失败：${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
+
+
 
   const addModel = () => {
     const v = newModel.trim();
@@ -559,29 +544,14 @@ function AiSettingsPage() {
           </div>
         </Panel>
 
-        <Panel title="元素抓取">
-          <div className="space-y-4">
-            <SettingsRow
-              label="缓存有效期（分钟）"
-              hint="同一页面在有效期内再次抓取时直接用上次结果，客户端不再重开浏览器；填 0 表示每次都重新抓取"
-            >
-              <Input
-                type="number"
-                min={0}
-                max={1440}
-                value={cacheMinutes}
-                onChange={(e) => setCacheMinutes(Number(e.target.value) || 0)}
-              />
-            </SettingsRow>
-            <SettingsRow label="保存页面截图" hint="抓取元素时同时截一张页面截图，便于对照定位">
-              <Switch checked={keepScreenshot} onCheckedChange={setKeepScreenshot} />
-            </SettingsRow>
-            <Button onClick={doSaveInspect} disabled={busy}>
-              {busy ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
-              保存抓取设置
-            </Button>
-          </div>
+        <Panel title="客户端 AI 设置">
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            这里的模型只用于平台的「AI 报告分析」。客户端的 AI 助手（对话生成用例、页面元素定位）
+            在客户端「内核与维护 → AI 助手设置」里单独配置：可以填本机模型，也可以留空转发到平台模型；
+            页面抓取的截图、缓存和重试次数也在客户端设置，因为抓取跑在本机浏览器上。
+          </p>
         </Panel>
+
       </div>
     </SettingsPageShell>
   );
