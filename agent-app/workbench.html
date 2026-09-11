@@ -103,7 +103,7 @@
       .pill.off { background: #fbe9e7; color: var(--err); }
       .content { min-height: 0; flex: 1; position: relative; display: flex; flex-direction: column; }
       .view-stack { min-height: 0; flex: 1; overflow: auto; padding: 22px 24px 26px; }
-      .view { display: none; max-width: 1180px; margin: 0 auto; animation: view-in 150ms ease; }
+      .view { display: none; max-width: 1440px; margin: 0 auto; animation: view-in 150ms ease; }
       .view.active { display: block; }
       @keyframes view-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
       .view-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
@@ -122,7 +122,8 @@
       .hint { color: var(--muted); font-size: 12px; }
       .hint.warn-hint { color: #b45309; font-weight: 600; }
       .case-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-      .list { min-height: 120px; max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 7px; }
+      .list { min-height: 84px; max-height: 210px; overflow: auto; border: 1px solid var(--border); border-radius: 7px; }
+      .list:empty::before { content: "尚未拉取平台用例，点击右上「拉取平台用例」。"; display: block; padding: 14px 12px; color: var(--muted); font-size: 12px; }
       .list div { padding: 11px 12px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; transition: background 120ms ease; }
       .list div:last-child { border-bottom: 0; }
       .list div:hover { background: var(--bg); }
@@ -153,14 +154,19 @@
       .system-actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
       .bar { height: 6px; background: #e8eeeb; border-radius: 999px; overflow: hidden; margin-top: 8px; }
       .bar > i { display: block; height: 100%; background: var(--primary); width: 0; transition: width 250ms ease; }
-      .work-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 32%); gap: 16px; align-items: start; }
-      .work-main { min-width: 0; display: grid; gap: 16px; }
-      .record-bar { display: grid; gap: 10px; }
+      .work-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 16px; align-items: start; }
+      .work-main { min-width: 0; display: grid; gap: 14px; }
+      .work-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+      #section-cases { display: flex; flex-direction: column; }
+      #section-cases .list { flex: 1; }
+      .work-top .panel { padding: 14px 16px; }
+      .record-bar { display: grid; gap: 9px; align-content: start; }
       .record-bar .row { margin-bottom: 0; }
-      .panel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font: 600 14px Sora, sans-serif; }
+      .panel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font: 600 13px Sora, sans-serif; }
+      .case-toolbar { flex-direction: column; align-items: flex-start; gap: 8px; }
       .run-drawer {
         position: sticky; top: 0; min-width: 0; display: flex; flex-direction: column;
-        max-height: calc(100vh - 138px); background: var(--console); color: var(--console-text);
+        height: calc(100vh - 160px); min-height: 420px; background: var(--console); color: var(--console-text);
         border: 1px solid #293430; border-radius: 10px; overflow: hidden;
       }
       .run-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 9px 16px; border-bottom: 1px solid #2b3733; color: #9eaca7; font-size: 11px; }
@@ -183,7 +189,10 @@
       .steps .failed { color: #ffaaa3; }
       @media (max-width: 1240px) {
         .work-grid { grid-template-columns: 1fr; }
-        .run-drawer { position: static; max-height: 460px; }
+        .run-drawer { position: static; height: 420px; min-height: 0; }
+      }
+      @media (max-width: 900px) {
+        .work-top { grid-template-columns: 1fr; }
       }
       @media (max-width: 1100px) {
         .app-shell { grid-template-columns: 68px minmax(0, 1fr); }
@@ -237,6 +246,7 @@
               <div class="view-heading"><div><h2>本机工作台</h2><p>左侧录制并编排步骤，右侧同屏查看执行进度与实时日志。</p></div></div>
               <div class="work-grid">
                 <div class="work-main">
+                  <div class="work-top">
                   <div class="panel record-bar" id="section-record">
                     <div class="panel-title">
                       <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
@@ -258,6 +268,8 @@
                     <div class="case-toolbar"><div class="hint" id="case-hint">选择一条用例载入编排区，改完可上传成新版本。</div><div class="row"><button id="btn-pull">拉取平台用例</button><button class="primary" id="btn-load" disabled>载入编排区</button></div></div>
                     <div class="list" id="case-list"></div>
                   </div>
+                  </div>
+
 
                   <div class="panel editor-shell" id="section-editor">
                     <div class="editor-meta"><div class="row">
