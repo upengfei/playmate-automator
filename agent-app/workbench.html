@@ -187,7 +187,10 @@
       .steps .failed { color: #ffaaa3; }
       @media (max-width: 1240px) {
         .work-grid { grid-template-columns: 1fr; }
-        .run-drawer { position: static; max-height: 460px; }
+        .run-drawer { position: static; height: 420px; min-height: 0; }
+      }
+      @media (max-width: 900px) {
+        .work-top { grid-template-columns: 1fr; }
       }
       @media (max-width: 1100px) {
         .app-shell { grid-template-columns: 68px minmax(0, 1fr); }
