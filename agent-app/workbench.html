@@ -1090,6 +1090,10 @@
             ? `已解析 ${steps.length} 个步骤，其中 ${pending} 个待转换步骤需处理后才能调试或上传。`
             : `已解析 ${steps.length} 个步骤并载入编排区，可直接调试或上传。`;
           addLog({ level: pending ? "warn" : "success", text: pending ? `录制包含 ${pending} 个待转换步骤` : `录制解析完成：${steps.length} 步已进入编排区` });
+          if (steps.length) {
+            const saved = await saveDraftToLocal(true);
+            if (saved) addLog({ level: "info", text: `录制结果已存入本地用例仓库：${saved.name}` });
+          }
         } catch (e) {
           addLog({ level: "error", text: "解析录制失败：" + (e.message || e) });
         } finally {
