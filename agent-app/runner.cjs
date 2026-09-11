@@ -115,7 +115,12 @@ async function runCase(testCase, emit = () => {}) {
     const engine = pw()[browserName];
     fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
     const headless = testCase.headed ? false : true;
-    browser = await engine.launch({ headless, ...(target.channel ? { channel: target.channel } : {}) });
+    const executablePath = process.env.PLAYFLOW_CHROMIUM_EXECUTABLE || "";
+    browser = await engine.launch({
+      headless,
+      ...(target.channel ? { channel: target.channel } : {}),
+      ...(browserName === "chromium" && executablePath ? { executablePath } : {}),
+    });
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     page = await context.newPage();
     page.setDefaultTimeout(testCase.timeoutMs || 15000);
