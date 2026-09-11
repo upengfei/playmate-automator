@@ -720,11 +720,10 @@
         api.setRunOptions({ headless: $("opt-headless-mirror").checked });
       };
 
-      /** 无法运行时给出可见提示：切到执行页并展开日志，避免点击后“什么都没发生” */
+      /** 无法运行时给出可见提示：日志区在右侧常驻，直接写入状态即可 */
       function blockRun(text) {
         addLog({ level: "warn", text });
-        switchView("run");
-        setDrawer(true);
+        switchView("logs");
         $("run-stage").textContent = text;
         $("run-bar").style.width = "0%";
       }
