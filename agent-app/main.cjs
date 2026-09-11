@@ -363,6 +363,8 @@ async function pollJobs() {
     for (const job of jobs) {
       const ver = job.caseVersion ? ` · 用例版本 v${job.caseVersion}${job.fromSnapshot ? "（历史版本）" : ""}` : "";
       log("info", `领取平台下发任务：${job.name}${ver}`);
+      // 平台下发一律无头执行；本机的「有头运行」只对录制、调试与 AI 抓取生效
+      const headed = job.headless === false ? true : false;
       await executeCase(
         {
           id: job.caseId,
@@ -373,6 +375,7 @@ async function pollJobs() {
           version: job.caseVersion,
         },
         job.runId,
+        { headed },
       );
     }
   } catch {
