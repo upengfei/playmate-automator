@@ -322,53 +322,48 @@
       let seq = 0;
 
       const viewCopy = {
-        record: ["录制用例", "在真实浏览器中捕获操作并生成关键字步骤"],
-        cases: ["平台用例", "拉取、选择并载入平台中的最新用例"],
-        editor: ["步骤编排", "编辑关键字步骤并实时生成 Playwright 脚本"],
-        run: ["执行与日志", "查看本地调试进度、逐步状态与实时日志"],
+        work: ["本机工作台", "录制、编排、调试与上传都在这一页完成"],
         system: ["内核与维护", "管理节点连接、离线补传、浏览器内核与客户端升级"],
       };
 
-      function setDrawer(open) {
-        const drawer = $("run-drawer");
-        if (drawer.classList.contains("inline")) return;
-        drawer.classList.toggle("expanded", open);
-        $("drawer-toggle").textContent = open ? "收起" : "展开";
-        $("drawer-toggle").setAttribute("aria-label", open ? "收起执行与日志" : "展开执行与日志");
-      }
+      /** 托盘/旧入口传来的细分视图名，统一落到工作台页并滚动到对应区块 */
+      const sectionOf = {
+        record: "section-record",
+        cases: "section-cases",
+        editor: "section-editor",
+        debug: "section-editor",
+        upload: "section-editor",
+        run: "run-drawer",
+        queue: "run-drawer",
+        logs: "run-drawer",
+      };
 
-      /** 执行与日志页把同一个日志面板整体移入主区域，保证两处数据一致 */
-      function setRunLayout(inline) {
-        const drawer = $("run-drawer");
-        const logs = $("logs");
-        const atBottom = true;
-        if (inline) {
-          drawer.classList.remove("expanded");
-          drawer.classList.add("inline");
-          $("run-host").appendChild(drawer);
-        } else {
-          drawer.classList.remove("inline");
-          $("content").appendChild(drawer);
-        }
-        if (atBottom) logs.scrollTop = logs.scrollHeight;
+      /** 日志面板常驻工作台右侧，只需同步头部信息 */
+      function syncRunMeta() {
         $("run-mode-text").textContent = $("run-mode").value === "headless" ? "无头运行" : "有头运行";
         $("run-case-name").textContent = (lastRun && lastRun.name) || draft.name || "暂无";
+        $("logs").scrollTop = $("logs").scrollHeight;
+      }
+
+      function focusSection(id) {
+        const el = $(id);
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
       }
 
       function switchView(name) {
+        const view = viewCopy[name] ? name : sectionOf[name] ? "work" : "work";
         document.querySelectorAll(".nav-item[data-view]").forEach((el) =>
-          el.classList.toggle("active", el.dataset.view === name),
+          el.classList.toggle("active", el.dataset.view === view),
         );
         document.querySelectorAll("[data-view-panel]").forEach((el) =>
-          el.classList.toggle("active", el.dataset.viewPanel === name),
+          el.classList.toggle("active", el.dataset.viewPanel === view),
         );
-        const copy = viewCopy[name] || viewCopy.editor;
+        const copy = viewCopy[view];
         $("view-title").textContent = copy[0];
         $("view-subtitle").textContent = copy[1];
-        setRunLayout(name === "run");
-        if (name !== "run") setDrawer(false);
+        syncRunMeta();
+        if (view === "work" && sectionOf[name]) focusSection(sectionOf[name]);
       }
-
 
       document.querySelectorAll(".nav-item[data-view]").forEach((el) => {
         el.onclick = () => switchView(el.dataset.view);
@@ -381,7 +376,6 @@
           );
         };
       });
-      $("drawer-toggle").onclick = () => setDrawer(!$("run-drawer").classList.contains("expanded"));
 
       const kwOf = (id) => keywordMeta.find((k) => k.id === id) || keywordMeta[0] || {};
 
