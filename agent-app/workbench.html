@@ -267,18 +267,12 @@
                       <div class="grow"><input id="record-url" placeholder="起始地址，如 https://example.com" value="https://example.com" /></div>
                       <button class="primary" id="btn-record-start">开始录制</button>
                       <button id="btn-record-stop" disabled>停止并解析</button>
+                      <button id="btn-local-save">保存到本地仓库</button>
                     </div>
                     <div class="hint" id="record-hint">录制期间可操作普通页面及多层 iframe，停止后操作会自动解析到下方编排区。</div>
                   </div>
 
-                  <div class="panel" id="section-local">
-                    <div class="panel-title">
-                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5h16v11H4z"/><path d="M4 7.5 7 4h10l3 3.5"/></svg>
-                      本机保存的用例
-                    </div>
-                    <div class="case-toolbar"><div class="hint" id="local-hint">录制完成会自动存到本机，离线也能继续编辑。</div><div class="row"><button class="primary" id="btn-local-save">保存到本地</button><button id="btn-local-load" disabled>载入编排区</button><button id="btn-local-rename" disabled>重命名</button><button id="btn-local-delete" disabled>删除</button></div></div>
-                    <div class="list" id="local-list"></div>
-                  </div>
+
 
 
 
