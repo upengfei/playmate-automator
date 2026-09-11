@@ -18,13 +18,11 @@ import {
 import {
   fetchAiModelFiles,
   fetchAiProviders,
-  fetchAiSettings,
   importAiModelFile,
   removeAiModelFile,
   reparseAiModelFile,
   removeAiProvider,
   saveAiProvider,
-  saveAiSettings,
   switchAiProvider,
   testAiConnection,
 } from "@/lib/ai.functions";
