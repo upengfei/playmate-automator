@@ -77,10 +77,14 @@ async function detectBlock(page, status) {
   return "";
 }
 
-/** 拿到一个可用的浏览器实例（forceNew 时重建） */
-async function ensureBrowser(log, forceNew = false) {
+/** 拿到一个可用的浏览器实例（forceNew 或有头/无头模式变化时重建） */
+async function ensureBrowser(log, forceNew = false, headless = true) {
   let browser = shared.browser;
   if (browser && !browser.isConnected()) browser = null;
+  if (browser && shared.headless !== headless) {
+    log(headless ? "切换为无头抓取，正在重建浏览器" : "切换为有头抓取，正在重建浏览器");
+    forceNew = true;
+  }
   if (forceNew && shared.browser) {
     await closeInspectBrowser();
     browser = null;
@@ -89,8 +93,8 @@ async function ensureBrowser(log, forceNew = false) {
     log("准备 chromium 浏览器内核…");
     await browsers.ensure("chromium", log);
     const { chromium } = require("playwright-core");
-    browser = await chromium.launch({ headless: true });
-    shared = { browser, page: null };
+    browser = await chromium.launch({ headless });
+    shared = { browser, page: null, headless };
   }
   return browser;
 }
@@ -99,7 +103,7 @@ async function ensureBrowser(log, forceNew = false) {
 async function attemptInspect(job, log, forceNewBrowser) {
   process.env.PLAYWRIGHT_BROWSERS_PATH = browsers.BROWSERS_DIR;
   const viewport = { width: 1440, height: 900 };
-  const browser = await ensureBrowser(log, forceNewBrowser);
+  const browser = await ensureBrowser(log, forceNewBrowser, job.headless !== false);
 
   let page = shared.page;
   if (page && page.isClosed()) page = null;
@@ -272,7 +276,7 @@ async function inspectPage(job, log = () => {}) {
 /** 关闭常驻抓取浏览器（客户端退出或浏览器崩溃时调用） */
 async function closeInspectBrowser() {
   const b = shared.browser;
-  shared = { browser: null, page: null };
+  shared = { browser: null, page: null, headless: true };
   if (b) await b.close().catch(() => {});
 }
 
