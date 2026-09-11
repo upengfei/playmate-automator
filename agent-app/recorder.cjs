@@ -129,9 +129,23 @@ function parse(script) {
 
 const ACTION_NAMES =
   "click|dblclick|fill|press|selectOption|hover|check|uncheck|setInputFiles|focus|scrollIntoViewIfNeeded|dragTo";
-const ACTION_RE = new RegExp(`^await (.+)\\.(${ACTION_NAMES})\\((.*)\\);?$`);
-const ASSERT_NAMES = "toContainText|toBeVisible|toBeChecked|toBeEnabled|toHaveValue";
-const EXPECT_RE = new RegExp(`^await expect\\((.+)\\)\\.(${ASSERT_NAMES})\\((.*)\\);?$`);
+const ACTION_RE = new RegExp(`^await (.+)\\.(${ACTION_NAMES})\\(([\\s\\S]*)\\);?$`);
+const ASSERT_NAMES = [
+  "toContainText",
+  "toHaveText",
+  "toBeVisible",
+  "toBeHidden",
+  "toBeChecked",
+  "toBeEnabled",
+  "toBeDisabled",
+  "toHaveValue",
+  "toHaveCount",
+  "toHaveAttribute",
+  "toMatchAriaSnapshot",
+  "toHaveURL",
+  "toHaveTitle",
+].join("|");
+const EXPECT_RE = new RegExp(`^await expect\\(([\\s\\S]+)\\)\\.(not\\.)?(${ASSERT_NAMES})\\(([\\s\\S]*)\\);?$`);
 
 /** 按顶层的点切分链式调用，忽略字符串与括号内部的点 */
 function splitChain(expr) {
