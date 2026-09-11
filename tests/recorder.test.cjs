@@ -143,7 +143,6 @@ test("recording merges a multiline ARIA snapshot assertion into one step", () =>
     [
       { keyword: "switchFrame", target: "#f", value: "" },
       { keyword: "expectAriaSnapshot", target: "role=main", value: '      - heading "标题" [level=1]\n      - link "去 x"' },
-      { keyword: "parentFrame", target: "", value: "" },
     ],
   );
 });
