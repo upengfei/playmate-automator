@@ -1,7 +1,7 @@
 {
   "name": "playflow-agent",
   "productName": "PlayFlowAgent",
-  "version": "1.8.5",
+  "version": "1.8.6",
   "private": true,
   "main": "main.cjs",
   "dependencies": {
