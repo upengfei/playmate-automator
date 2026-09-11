@@ -9,6 +9,16 @@ type StepResult = {
 
 type RunRow = Record<string, unknown>;
 
+type FailureAggregate = {
+  keyword: string;
+  target: string;
+  signature: string;
+  count: number;
+  caseIds: Set<string>;
+  caseNames: Set<string>;
+  runIds: Set<string>;
+};
+
 const safeSteps = (value: unknown): StepResult[] => (Array.isArray(value) ? (value as StepResult[]) : []);
 
 export function normalizeError(value: unknown) {
@@ -22,7 +32,7 @@ export function normalizeError(value: unknown) {
 }
 
 export function analyzeStepResults(rows: RunRow[], limit = 20) {
-  const failures = new Map<string, Record<string, unknown>>();
+  const failures = new Map<string, FailureAggregate>();
   const slow = new Map<string, { keyword: string; count: number; totalDurationMs: number; maxDurationMs: number; cases: Set<string> }>();
 
   for (const row of rows) {
@@ -57,10 +67,10 @@ export function analyzeStepResults(rows: RunRow[], limit = 20) {
         caseNames: new Set<string>(),
         runIds: new Set<string>(),
       };
-      item.count = Number(item.count) + 1;
-      (item.caseIds as Set<string>).add(caseId);
-      (item.caseNames as Set<string>).add(caseName);
-      (item.runIds as Set<string>).add(runId);
+      item.count += 1;
+      item.caseIds.add(caseId);
+      item.caseNames.add(caseName);
+      item.runIds.add(runId);
       failures.set(key, item);
     }
   }
@@ -69,9 +79,9 @@ export function analyzeStepResults(rows: RunRow[], limit = 20) {
     failures: [...failures.values()]
       .map((item) => ({
         ...item,
-        caseIds: [...(item.caseIds as Set<string>)].filter(Boolean),
-        caseNames: [...(item.caseNames as Set<string>)],
-        runIds: [...(item.runIds as Set<string>)].filter(Boolean),
+        caseIds: [...item.caseIds].filter(Boolean),
+        caseNames: [...item.caseNames],
+        runIds: [...item.runIds].filter(Boolean),
       }))
       .sort((a, b) => Number(b.count) - Number(a.count))
       .slice(0, limit),
