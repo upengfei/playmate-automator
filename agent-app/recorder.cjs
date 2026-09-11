@@ -19,7 +19,8 @@ async function start(url, onLog = () => {}, browserId = "chromium") {
   if (target.download) await browsers.ensure(target.engine, onLog);
   else onLog(`使用系统安装的 ${target.label} 录制`);
   outFile = path.join(os.tmpdir(), `playflow-record-${Date.now()}.js`);
-  const args = [browsers.CLI, "codegen", "--target=javascript", `--browser=${target.engine}`, "-o", outFile];
+  // 用测试模式输出：只有这种模式下，录制工具条上的断言（元素可见 / 文本可见等）才会写进脚本
+  const args = [browsers.CLI, "codegen", "--target=playwright-test", `--browser=${target.engine}`, "-o", outFile];
   if (target.channel) args.push(`--channel=${target.channel}`);
   if (url) args.push(url);
   child = spawn(process.execPath, args, { env: browsers.env() });
