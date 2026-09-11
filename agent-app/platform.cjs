@@ -258,6 +258,7 @@ module.exports = {
   claimJobs,
   claimInspects,
   fetchAiConfig,
+  aiChat,
   reportInspect,
   report,
   api,
