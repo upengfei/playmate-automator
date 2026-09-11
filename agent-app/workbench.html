@@ -1036,10 +1036,149 @@
         renderBlocks();
         await refreshInfo();
         addLog({ level: "info", text: "本机工作台已就绪（录制后可直接编排、调试、上传）" });
+        await loadAiSettings();
       }
+
+      /* ------------------------------- AI 助手 ------------------------------- */
+
+      let aiMessages = [];
+      let aiDraft = null;
+      let aiBusy = false;
+
+      function aiBubble(role, text) {
+        const el = document.createElement("div");
+        el.style.cssText =
+          "border:1px solid var(--line,#e3e6ef);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;" +
+          (role === "user" ? "background:rgba(0,0,0,.03)" : "");
+        el.textContent = (role === "user" ? "我：" : "AI：") + text;
+        $("ai-log").appendChild(el);
+        $("ai-log").scrollTop = $("ai-log").scrollHeight;
+      }
+
+      function setAiBusy(on) {
+        aiBusy = on;
+        $("btn-ai-send").disabled = on;
+        $("btn-ai-inspect").disabled = on;
+        $("btn-ai-send").textContent = on ? "生成中…" : "发送";
+      }
+
+      async function askAi(text) {
+        if (!text || aiBusy) return;
+        aiBubble("user", text);
+        aiMessages.push({ role: "user", content: text });
+        setAiBusy(true);
+        try {
+          const r = await api.aiChat(aiMessages);
+          if (!r || !r.ok) {
+            aiBubble("assistant", "调用失败：" + ((r && r.error) || "未知原因"));
+            return;
+          }
+          aiMessages.push({ role: "assistant", content: r.reply });
+          aiBubble("assistant", r.reply);
+          if (r.draft) {
+            aiDraft = r.draft;
+            $("btn-ai-apply").disabled = false;
+            const extra = r.draft.rejected && r.draft.rejected.length
+              ? `，已忽略无法识别的关键字：${r.draft.rejected.join("、")}`
+              : "";
+            $("ai-hint").textContent = `已生成 ${r.draft.steps.length} 步（${r.label}）${extra}，点“应用到编排区”写入草稿。`;
+          }
+        } finally {
+          setAiBusy(false);
+        }
+      }
+
+      $("btn-ai-send").onclick = () => {
+        const v = $("ai-input").value.trim();
+        if (!v) return;
+        $("ai-input").value = "";
+        askAi(v);
+      };
+      $("ai-input").onkeydown = (e) => {
+        if (e.key === "Enter") $("btn-ai-send").click();
+      };
+
+      $("btn-ai-inspect").onclick = async () => {
+        const url = $("ai-url").value.trim();
+        if (!url || aiBusy) return;
+        setAiBusy(true);
+        $("ai-hint").textContent = "正在用本机浏览器抓取页面元素…";
+        try {
+          const r = await api.aiInspect(url);
+          if (!r || !r.ok) {
+            $("ai-hint").textContent = "抓取失败：" + ((r && r.error) || "未知原因");
+            return;
+          }
+          $("ai-hint").textContent = `已抓取 ${r.elements.length} 个可交互元素，可以直接描述你要操作哪个元素。`;
+          aiMessages.push({
+            role: "user",
+            content: `以下是页面 ${url} 的可交互元素清单，后续生成步骤时请优先使用这里最稳定的定位方式：\n${r.summary}`,
+          });
+          aiBubble("user", `已提供 ${r.elements.length} 个页面元素给 AI（${url}）`);
+        } finally {
+          setAiBusy(false);
+        }
+      };
+
+      $("btn-ai-apply").onclick = () => {
+        if (!aiDraft) return;
+        loadDraft({
+          name: aiDraft.name || draft.name,
+          startUrl: aiDraft.startUrl || draft.startUrl,
+          browser: draft.browser,
+          steps: aiDraft.steps,
+        });
+        addLog({ level: "success", text: `AI 生成的 ${aiDraft.steps.length} 步已写入编排区，确认后可本地调试或上传` });
+        focusSection("section-editor");
+      };
+
+      /* ----------------------------- AI 助手设置 ----------------------------- */
+
+      function applyAiSettings(s) {
+        $("ai-mode").value = s.aiMode || "auto";
+        $("ai-base").value = s.aiBaseUrl || "";
+        $("ai-key").value = s.aiApiKey || "";
+        $("ai-model").value = s.aiModel || "";
+        $("ai-shot").checked = s.inspectScreenshot !== false;
+        $("ai-cache").value = s.inspectCacheMinutes;
+        $("ai-retry").value = s.inspectRetries;
+        const route = s.route === "local" ? "本机模型" : "平台模型";
+        $("ai-route-hint").textContent = s.routeReady
+          ? `当前使用${route}；本机模型优先，未填时转发平台模型。`
+          : `${route}暂不可用：请填写本机模型（Base URL + 模型名），或先连接平台节点。`;
+      }
+
+      async function loadAiSettings() {
+        try {
+          applyAiSettings(await api.aiSettings());
+        } catch {
+          /* 设置读取失败时保持默认值 */
+        }
+      }
+
+      $("btn-ai-save").onclick = async () => {
+        const next = await api.aiSaveSettings({
+          aiMode: $("ai-mode").value,
+          aiBaseUrl: $("ai-base").value.trim(),
+          aiApiKey: $("ai-key").value,
+          aiModel: $("ai-model").value.trim(),
+          inspectScreenshot: $("ai-shot").checked,
+          inspectCacheMinutes: Number($("ai-cache").value) || 0,
+          inspectRetries: Number($("ai-retry").value) || 3,
+        });
+        applyAiSettings(next);
+        $("ai-test-hint").textContent = "AI 设置已保存（只保存在本机）。";
+      };
+
+      $("btn-ai-test").onclick = async () => {
+        $("ai-test-hint").textContent = "正在测试…";
+        const r = await api.aiTest();
+        $("ai-test-hint").textContent = (r.ok ? "✔ " : "✘ ") + r.message;
+      };
 
       boot();
       setInterval(refreshInfo, 15000);
+
     </script>
   </body>
 </html>
