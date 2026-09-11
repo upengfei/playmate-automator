@@ -59,6 +59,15 @@ const PRESS_KEYS = [
   "Shift+Tab",
 ];
 
+/** 属性断言的取值写成「属性名=期望值」，生成两个参数的 toHaveAttribute */
+function attributeAssertion(target, value) {
+  const raw = String(value ?? "");
+  const at = raw.indexOf("=");
+  const name = at >= 0 ? raw.slice(0, at) : raw;
+  const expected = at >= 0 ? raw.slice(at + 1) : "";
+  return `await expect(activeLocator(${lit(target)})).toHaveAttribute(${lit(name.trim())}, ${lit(expected)});`;
+}
+
 const KEYWORDS = [
   {
     id: "goto",
@@ -292,6 +301,13 @@ const EXTENDED_KEYWORDS = [
   { id: "expectChecked", label: "断言已勾选", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeChecked();` },
   { id: "expectEnabled", label: "断言可用", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeEnabled();` },
   { id: "expectValue", label: "断言输入值", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "期望值", template: (t, v) => `await expect(activeLocator(${lit(t)})).toHaveValue(${lit(v)});` },
+  { id: "expectHidden", label: "断言不可见", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeHidden();` },
+  { id: "expectExactText", label: "断言文本相等", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "期望文本", template: (t, v) => `await expect(activeLocator(${lit(t)})).toHaveText(${lit(v)});` },
+  { id: "expectDisabled", label: "断言禁用", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).toBeDisabled();` },
+  { id: "expectUnchecked", label: "断言未勾选", category: "断言", needsTarget: true, needsValue: false, targetLabel: "定位器", valueLabel: "", template: (t) => `await expect(activeLocator(${lit(t)})).not.toBeChecked();` },
+  { id: "expectCount", label: "断言元素数量", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "数量", template: (t, v) => `await expect(activeLocator(${lit(t)})).toHaveCount(${Number(v) || 0});` },
+  { id: "expectAttribute", label: "断言属性", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "属性名=期望值", template: (t, v) => attributeAssertion(t, v) },
+  { id: "expectAriaSnapshot", label: "快照断言", category: "断言", needsTarget: true, needsValue: true, targetLabel: "定位器", valueLabel: "Aria 快照（多行）", template: (t, v) => `await expect(activeLocator(${lit(t)})).toMatchAriaSnapshot(${lit(v)});` },
   { id: "unsupported", label: "待转换步骤", category: "其他", needsTarget: false, needsValue: true, targetLabel: "", valueLabel: "原始 Playwright 语句", template: (_t, v) => `throw new Error(${lit(`待转换步骤不能执行：${v}`)});` },
 ];
 
