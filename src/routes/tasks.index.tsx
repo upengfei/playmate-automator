@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Rocket, Search, Send } from "lucide-react";
+import { Play, Rocket, Search } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, Panel, ProgressBar, StatusChip } from "@/components/ui-bits";
@@ -349,7 +349,7 @@ function TasksPage() {
                           setDispatchingId(t.id);
                           try {
                             const result = await dispatchTask(t.id);
-                            if (result.ok) toast.success(`任务 ${t.id} 已下发`);
+                            if (result.ok) toast.success(`任务 ${t.id} 已开始运行（无头浏览器）`);
                             else toast.error(result.message ?? "下发失败，请重试");
                           } catch (error) {
                             toast.error(error instanceof Error ? error.message : "下发失败，请重试");
@@ -358,8 +358,8 @@ function TasksPage() {
                           }
                         }}
                       >
-                        <Send className="mr-1 size-3.5" />
-                        下发执行
+                        <Play className="mr-1 size-3.5" />
+                        {dispatchingId === t.id ? "运行中…" : "运行（无头）"}
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" asChild>
