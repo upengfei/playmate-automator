@@ -91,9 +91,11 @@ async function ensureBrowser(log, forceNew = false, headless = true) {
   }
   if (!browser) {
     log("准备 chromium 浏览器内核…");
-    await browsers.ensure("chromium", log);
+    const executablePath = process.env.PLAYFLOW_CHROMIUM_EXECUTABLE || "";
+    if (executablePath) log(`使用指定的 Chromium：${executablePath}`);
+    else await browsers.ensure("chromium", log);
     const { chromium } = require("playwright-core");
-    browser = await chromium.launch({ headless });
+    browser = await chromium.launch({ headless, ...(executablePath ? { executablePath } : {}) });
     shared = { browser, page: null, headless };
   }
   return browser;
