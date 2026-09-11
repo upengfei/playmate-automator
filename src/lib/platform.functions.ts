@@ -389,8 +389,10 @@ export const addTask = createServerFn({ method: "POST" })
         concurrency: z.number().int().min(1).max(32),
         retry: z.number().int().min(0).max(10),
         trigger: z.string().max(12).default("手动"),
-        /** 串行依赖：按所选顺序，前置用例通过后才执行下一个，失败则自动跳过后续 */
+        /** 串行依赖：按所选顺序，前置用例通过后才执行下一个，失败则自动跳过 */
         serialDependency: z.boolean().default(false),
+        /** 平台发起的执行一律无头，有头调试只在桌面客户端进行 */
+        headless: z.boolean().default(true),
       })
       .parse(input),
   )
