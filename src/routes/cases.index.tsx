@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, Download, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
+import { Blocks, Copy, Download, ListChecks, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
@@ -15,7 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadCaseFile } from "@/lib/case-file";
-import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
+import {
+  createCase,
+  createTask,
+  deleteCase,
+  dispatchTask,
+  newCaseFromTemplate,
+  useAppStore,
+} from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -41,6 +48,7 @@ function CasesPage() {
   const [picked, setPicked] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [creatingCase, setCreatingCase] = useState(false);
+  const [runningKey, setRunningKey] = useState<string | null>(null);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -66,6 +74,38 @@ function CasesPage() {
 
   const toggleAll = () => {
     setPicked(allChecked ? [] : listIds);
+  };
+
+  const onlineAgent = agents.find((a) => a.status !== "离线");
+
+  /** 平台直接运行：建任务并立即下发，固定无头执行 */
+  const runCases = async (caseIds: string[], label: string, key: string) => {
+    if (caseIds.length === 0 || runningKey) return;
+    if (!onlineAgent) {
+      toast.error("没有在线的执行节点，请先启动桌面客户端");
+      return;
+    }
+    setRunningKey(key);
+    try {
+      const task = await createTask({
+        name: `快速运行 · ${label}`,
+        caseIds,
+        agentId: onlineAgent.id,
+        env: "测试环境",
+        browser: "Chromium",
+        concurrency: settings.defaultConcurrency,
+        retry: settings.defaultRetry,
+        headless: true,
+      });
+      const res = await dispatchTask(task.id);
+      if (res.ok) toast.success(`已下发到 ${onlineAgent.name}，使用无头浏览器执行`);
+      else toast.error(res.message ?? "下发失败");
+      await navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "运行失败，请重试");
+    } finally {
+      setRunningKey(null);
+    }
   };
 
   const quickCreateTask = async () => {
