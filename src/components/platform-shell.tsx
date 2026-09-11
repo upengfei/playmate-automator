@@ -38,7 +38,7 @@ const NAV: NavItem[] = [
     ],
   },
   { to: "/reports", label: "测试报告分析", icon: Activity },
-  { to: "/ai", label: "AI 助手", icon: Bot },
+  { to: "/ai", label: "AI 报告分析", icon: Bot },
 
   {
     key: "agents",
