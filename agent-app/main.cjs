@@ -751,12 +751,12 @@ if (!single) {
       createAppMenu();
       loadAiConfig().catch(() => {});
       setTimeout(() => prepareBrowsers(), 3000);
-      // 联网功能仅在有节点令牌时启用；离线模式下录制与本地调试不受影响
+      // 联网功能仅在有节点令牌时启用；离线模式下录制、本地调试与本机模型 AI 助手不受影响
       if (cfg().token) {
         registerAgent().catch(() => {});
         setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
         setInterval(() => pollJobs(), 10 * 1000);
-        scheduleInspectPoll();
+
         setInterval(() => flushPending(), 15 * 1000);
         setTimeout(() => checkForUpdates(), 8000);
         setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
