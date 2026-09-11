@@ -152,6 +152,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
             caseVersion: (r["case_version"] as number) ?? (c?.["version"] as number) ?? 1,
             fromSnapshot: Boolean(snap),
             browser: browserOf.get(r["task_id"] as string) ?? "chromium",
+            headless: headlessOf.get(r["task_id"] as string) ?? true,
             dependsOnCaseId: (r["depends_on_case_id"] as string) ?? null,
             steps,
             startUrl,
