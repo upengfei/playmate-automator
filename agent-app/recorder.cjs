@@ -42,12 +42,46 @@ async function stop() {
   return { script, steps: parse(script) };
 }
 
+/** 逐行扫描时记录字符串/模板状态，用来判断语句是否已经结束 */
+function scanQuote(line, quote) {
+  let current = quote;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (current) {
+      if (ch === "\\") i++;
+      else if (ch === current) current = "";
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") current = ch;
+  }
+  return current;
+}
+
+/** 把脚本切成完整语句：跨多行的断言（例如快照断言的模板字符串）不再被拆碎 */
+function statements(script) {
+  const out = [];
+  let buffer = null;
+  let quote = "";
+  for (const rawLine of String(script).split("\n")) {
+    const piece = buffer === null ? rawLine.trim() : rawLine;
+    buffer = buffer === null ? piece : `${buffer}\n${piece}`;
+    quote = scanQuote(piece, quote);
+    if (quote) continue;
+    const text = buffer.trim();
+    if (text.startsWith("await ") && !text.endsWith(";")) continue;
+    out.push(buffer);
+    buffer = null;
+  }
+  if (buffer !== null) out.push(buffer);
+  return out;
+}
+
 /** 把 codegen 生成的脚本解析为平台的关键字步骤 */
 function parse(script) {
   const steps = [];
   let seq = 0;
   const id = () => `rec-${++seq}`;
-  const lines = String(script).split("\n").map((l) => l.trim());
+  const lines = statements(script).map((l) => (l.includes("\n") ? l.trim() : l.trim()));
   let activeFrames = [];
 
   const add = (keyword, target = "", value = "") => steps.push({ id: id(), keyword, target, value });
