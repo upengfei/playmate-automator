@@ -967,14 +967,7 @@
         $("update-bar").style.width = (d.progress || 0) + "%";
       });
       api.onTrayAction((d) => {
-        const map = {
-          record: "record",
-          run: "editor",
-          debug: "editor",
-          upload: "editor",
-          queue: "run",
-        };
-        switchView(map[d.tab] || "run");
+        switchView(d.tab || "work");
       });
 
       async function boot() {
