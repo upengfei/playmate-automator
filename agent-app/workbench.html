@@ -226,72 +226,74 @@
 
       <main class="workspace">
         <header class="topbar">
-          <div><h1 id="view-title">录制用例</h1><p id="view-subtitle">在真实浏览器中捕获操作并生成关键字步骤</p></div>
+          <div><h1 id="view-title">本机工作台</h1><p id="view-subtitle">录制、编排、调试与上传都在这一页完成</p></div>
           <div class="topbar-status"><span class="pill" id="status">检测中…</span></div>
         </header>
         <div class="content" id="content">
           <div class="view-stack">
-            <section class="view active" id="panel-record" data-view-panel="record">
-              <div class="view-heading"><div><h2>录制新用例</h2><p>输入起始页面，在打开的浏览器中完成操作。</p></div></div>
-              <div class="record-layout">
-                <div class="panel record-card">
-                  <div class="record-visual"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></div>
-                  <strong>真实浏览器录制</strong>
-                  <div class="hint">停止录制后，操作会自动解析并进入步骤编排。</div>
-                  <label class="field-label" for="record-url">起始地址</label>
-                  <input id="record-url" placeholder="起始地址，如 https://example.com" value="https://example.com" />
-                  <div class="row" style="margin-top: 14px">
-                    <button class="primary" id="btn-record-start">开始录制</button>
-                    <button id="btn-record-stop" disabled>停止并进入编排</button>
+            <section class="view active" id="panel-work" data-view-panel="work">
+              <div class="view-heading"><div><h2>本机工作台</h2><p>左侧录制并编排步骤，右侧同屏查看执行进度与实时日志。</p></div></div>
+              <div class="work-grid">
+                <div class="work-main">
+                  <div class="panel record-bar" id="section-record">
+                    <div class="panel-title">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                      真实浏览器录制
+                    </div>
+                    <div class="row">
+                      <div class="grow"><input id="record-url" placeholder="起始地址，如 https://example.com" value="https://example.com" /></div>
+                      <button class="primary" id="btn-record-start">开始录制</button>
+                      <button id="btn-record-stop" disabled>停止并解析</button>
+                    </div>
+                    <div class="hint" id="record-hint">录制期间可操作普通页面及多层 iframe，停止后操作会自动解析到下方编排区。</div>
                   </div>
-                  <div class="hint" id="record-hint">录制期间可操作普通页面及多层 iframe，客户端会保留页面范围切换步骤。</div>
+
+                  <div class="panel" id="section-cases">
+                    <div class="panel-title">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6.5h16M4 12h16M4 17.5h10"/><circle cx="18" cy="17.5" r="2"/></svg>
+                      平台用例
+                    </div>
+                    <div class="case-toolbar"><div class="hint" id="case-hint">选择一条用例载入编排区，改完可上传成新版本。</div><div class="row"><button id="btn-pull">拉取平台用例</button><button class="primary" id="btn-load" disabled>载入编排区</button></div></div>
+                    <div class="list" id="case-list"></div>
+                  </div>
+
+                  <div class="panel editor-shell" id="section-editor">
+                    <div class="editor-meta"><div class="row">
+                      <div class="grow"><input id="case-name" placeholder="用例名称" /></div>
+                      <div class="grow"><input id="case-url" placeholder="起始地址（选填）" /></div>
+                      <select id="case-browser" style="width: 130px"><option value="chromium">Chromium</option><option value="firefox">Firefox</option><option value="webkit">WebKit</option></select>
+                    </div></div>
+                    <div class="editor-toolbar">
+                      <select id="add-keyword" style="width: 190px"></select><button id="btn-add">追加步骤</button><button id="btn-clear">清空步骤</button>
+                      <div class="toolbar-spacer"></div>
+                      <select id="run-mode" style="width: 142px"><option value="headed">有头运行</option><option value="headless">无头运行</option></select>
+                      <button class="primary" id="btn-run">本地调试</button><button id="btn-rerun" disabled>重新运行</button><button id="btn-upload" disabled>上传平台</button>
+                    </div>
+                    <div class="editor-tabs"><button class="editor-tab active" data-editor-tab="blocks">关键字编排</button><button class="editor-tab" data-editor-tab="script">Playwright 脚本</button></div>
+                    <div class="tab-pane active" data-editor-pane="blocks">
+                      <div id="blocks"></div>
+                      <div class="hint" id="editor-hint" style="margin-top: 9px">定位支持 ${变量}；条件和循环积木需成对使用。</div>
+                      <div class="row" style="margin-top: 12px"><button id="btn-import">导入用例文件</button><button id="btn-export">导出用例文件</button><label class="inline"><input type="checkbox" id="opt-keep" /> 失败后保留浏览器</label><label class="inline"><input type="checkbox" id="opt-headless" /> 平台任务默认无头</label></div>
+                      <input id="import-file" type="file" accept=".json,.playflow.json" style="display: none" />
+                    </div>
+                    <div class="tab-pane" id="panel-script" data-editor-pane="script"><div class="script-actions"><button id="btn-copy">复制脚本</button></div><pre id="script">// 暂无步骤</pre></div>
+                  </div>
                 </div>
+
+                <aside class="run-drawer" id="run-drawer">
+                  <div class="drawer-head"><span class="drawer-title">执行与日志</span><span class="drawer-stage" id="run-stage">暂无执行中的用例。</span><div class="bar drawer-progress"><i id="run-bar"></i></div></div>
+                  <div class="run-summary">
+                    <span>当前用例：<b id="run-case-name">暂无</b></span>
+                    <span>模式：<b id="run-mode-text">-</b></span>
+                    <span>待补传：<b id="run-pending">0</b></span>
+                  </div>
+                  <div class="drawer-body">
+                    <section id="panel-queue"><div class="hint">步骤进度</div><ol class="steps" id="run-steps"></ol></section>
+                    <section id="panel-logs"><div class="console-tabs">实时运行日志</div><div id="logs"></div></section>
+                  </div>
+                </aside>
               </div>
             </section>
-
-            <section class="view" id="panel-cases" data-view-panel="cases">
-              <div class="view-heading"><div><h2>平台用例</h2><p>拉取平台中的最新用例，载入后可离线编辑和调试。</p></div></div>
-              <div class="panel">
-                <div class="case-toolbar"><div class="hint" id="case-hint">选择一条用例载入编排区，改完可上传成新版本。</div><div class="row"><button id="btn-pull">拉取平台用例</button><button class="primary" id="btn-load" disabled>载入编排区</button></div></div>
-                <div class="list" id="case-list"></div>
-              </div>
-            </section>
-
-            <section class="view" id="panel-editor" data-view-panel="editor">
-              <div class="view-heading"><div><h2>步骤编排</h2><p>使用关键字积木编辑步骤，并实时生成 Playwright 脚本。</p></div></div>
-              <div class="panel editor-shell">
-                <div class="editor-meta"><div class="row">
-                  <div class="grow"><input id="case-name" placeholder="用例名称" /></div>
-                  <div class="grow"><input id="case-url" placeholder="起始地址（选填）" /></div>
-                  <select id="case-browser" style="width: 130px"><option value="chromium">Chromium</option><option value="firefox">Firefox</option><option value="webkit">WebKit</option></select>
-                </div></div>
-                <div class="editor-toolbar">
-                  <select id="add-keyword" style="width: 190px"></select><button id="btn-add">追加步骤</button><button id="btn-clear">清空步骤</button>
-                  <div class="toolbar-spacer"></div>
-                  <select id="run-mode" style="width: 142px"><option value="headed">有头运行</option><option value="headless">无头运行</option></select>
-                  <button class="primary" id="btn-run">本地调试</button><button id="btn-rerun" disabled>重新运行</button><button id="btn-upload" disabled>上传平台</button>
-                </div>
-                <div class="editor-tabs"><button class="editor-tab active" data-editor-tab="blocks">关键字编排</button><button class="editor-tab" data-editor-tab="script">Playwright 脚本</button></div>
-                <div class="tab-pane active" data-editor-pane="blocks">
-                  <div id="blocks"></div>
-                  <div class="hint" id="editor-hint" style="margin-top: 9px">定位支持 ${变量}；条件和循环积木需成对使用。</div>
-                  <div class="row" style="margin-top: 12px"><button id="btn-import">导入用例文件</button><button id="btn-export">导出用例文件</button><label class="inline"><input type="checkbox" id="opt-keep" /> 失败后保留浏览器</label><label class="inline"><input type="checkbox" id="opt-headless" /> 平台任务默认无头</label></div>
-                  <input id="import-file" type="file" accept=".json,.playflow.json" style="display: none" />
-                </div>
-                <div class="tab-pane" id="panel-script" data-editor-pane="script"><div class="script-actions"><button id="btn-copy">复制脚本</button></div><pre id="script">// 暂无步骤</pre></div>
-              </div>
-            </section>
-
-            <section class="view" id="panel-run" data-view-panel="run">
-              <div class="view-heading"><div><h2>执行与日志</h2><p>查看当前执行的用例、逐步状态与实时日志。</p></div></div>
-              <div class="run-summary">
-                <span>当前用例：<b id="run-case-name">暂无</b></span>
-                <span>执行模式：<b id="run-mode-text">-</b></span>
-                <span>待补传：<b id="run-pending">0</b></span>
-              </div>
-              <div id="run-host"></div>
-            </section>
-
 
             <section class="view" id="panel-updates" data-view-panel="system">
               <div class="view-heading"><div><h2>内核与维护</h2><p>管理节点连接、离线补传、浏览器内核和客户端版本。</p></div></div>
@@ -303,14 +305,6 @@
               </div>
             </section>
           </div>
-
-          <aside class="run-drawer" id="run-drawer">
-            <div class="drawer-head"><span class="drawer-title">执行与日志</span><span class="drawer-stage" id="run-stage">暂无执行中的用例。</span><div class="bar drawer-progress"><i id="run-bar"></i></div><button id="drawer-toggle" aria-label="展开执行与日志">展开</button></div>
-            <div class="drawer-body">
-              <section id="panel-queue"><div class="hint">步骤进度</div><ol class="steps" id="run-steps"></ol></section>
-              <section id="panel-logs"><div class="console-tabs">实时运行日志</div><div id="logs"></div></section>
-            </div>
-          </aside>
         </div>
       </main>
     </div>
