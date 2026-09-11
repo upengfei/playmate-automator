@@ -257,9 +257,21 @@ function openSetup() {
       }
     });
 
+    // 离线模式：不连接平台，直接进工作台；录制、编排、本地调试均在本机完成
+    ipcMain.handle("agent-setup:offline", () => {
+      platform.saveConfig({ offlineMode: true });
+      done = true;
+      setTimeout(() => {
+        if (setupWin && !setupWin.isDestroyed()) setupWin.destroy();
+        setupWin = null;
+        resolve(true);
+      }, 600);
+      return { ok: true };
+    });
+
     setupWin.on("closed", () => {
       setupWin = null;
-      if (!done) resolve(Boolean(cfg().token));
+      if (!done) resolve(Boolean(cfg().token) || Boolean(cfg().offlineMode));
     });
   });
 }
@@ -724,8 +736,8 @@ if (!single) {
   app.on("second-instance", () => focusWindow());
   app.whenReady().then(async () => {
     try {
-      // 首次使用：本机还没有节点令牌时，先完成配置向导；未完成则直接退出，不进入工作台
-      if (!cfg().token) {
+      // 首次使用：本机没有节点令牌且未选择离线模式时，先完成配置向导；未完成则退出
+      if (!cfg().token && !cfg().offlineMode) {
         const ok = await openSetup();
         if (!ok) {
           app.isQuiting = true;
@@ -737,17 +749,19 @@ if (!single) {
 
       createTray();
       createAppMenu();
-      registerAgent().catch(() => {});
       loadAiConfig().catch(() => {});
       setTimeout(() => prepareBrowsers(), 3000);
-      setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
-      setInterval(() => pollJobs(), 10 * 1000);
-      scheduleInspectPoll();
-
-      setInterval(() => flushPending(), 15 * 1000);
-      setTimeout(() => checkForUpdates(), 8000);
-      setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
-      setInterval(() => pollPushedUpgrade(), 30 * 1000);
+      // 联网功能仅在有节点令牌时启用；离线模式下录制与本地调试不受影响
+      if (cfg().token) {
+        registerAgent().catch(() => {});
+        setInterval(() => registerAgent().catch(() => {}), 30 * 1000);
+        setInterval(() => pollJobs(), 10 * 1000);
+        scheduleInspectPoll();
+        setInterval(() => flushPending(), 15 * 1000);
+        setTimeout(() => checkForUpdates(), 8000);
+        setInterval(() => checkForUpdates(), CHECK_INTERVAL_MS);
+        setInterval(() => pollPushedUpgrade(), 30 * 1000);
+      }
     } catch (err) {
       reportStartupError(err);
     }

@@ -4,4 +4,5 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("agentSetup", {
   defaults: () => ipcRenderer.invoke("agent-setup:defaults"),
   verify: (payload) => ipcRenderer.invoke("agent-setup:verify", payload),
+  offline: () => ipcRenderer.invoke("agent-setup:offline"),
 });
