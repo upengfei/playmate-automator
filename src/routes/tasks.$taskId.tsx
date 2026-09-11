@@ -70,7 +70,7 @@ function TaskDetail() {
     <PlatformShell>
       <PageHeader
         title={task.name}
-        desc={`${task.id} · ${task.env} · ${task.browser} · 执行节点 ${agent?.name ?? task.agentId} · ${task.trigger}触发`}
+        desc={`${task.id} · ${task.env} · ${task.browser} · 执行节点 ${agent?.name ?? task.agentId} · ${task.trigger}触发 · 平台运行仅使用无头浏览器（有头调试请在桌面客户端）`}
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild>
