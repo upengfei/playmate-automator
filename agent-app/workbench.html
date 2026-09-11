@@ -232,9 +232,7 @@
           <button class="nav-item active" data-view="work" title="工作台">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/><path d="M10 7h4a3 3 0 0 1 3 3v4M7 10v7h7"/></svg><span>工作台</span><b class="nav-badge" id="pending">0</b>
           </button>
-          <button class="nav-item" data-view="local" title="本地用例仓库">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5h16v11H4z"/><path d="M4 7.5 7 4h10l3 3.5"/></svg><span>本地用例仓库</span>
-          </button>
+          <button class="nav-item" data-view="system" title="内核与维护">
           <button class="nav-item" data-view="system" title="内核与维护">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg><span>内核与维护</span>
           </button>
@@ -270,6 +268,17 @@
                     </div>
                     <div class="hint" id="record-hint">录制期间可操作普通页面及多层 iframe，停止后操作会自动解析到下方编排区。</div>
                   </div>
+
+                  <div class="panel" id="section-local">
+                    <div class="panel-title">
+                      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7.5h16v11H4z"/><path d="M4 7.5 7 4h10l3 3.5"/></svg>
+                      本机保存的用例
+                    </div>
+                    <div class="case-toolbar"><div class="hint" id="local-hint">录制完成会自动存到本机，离线也能继续编辑。</div><div class="row"><button class="primary" id="btn-local-save">保存到本地</button><button id="btn-local-load" disabled>载入编排区</button><button id="btn-local-rename" disabled>重命名</button><button id="btn-local-delete" disabled>删除</button></div></div>
+                    <div class="list" id="local-list"></div>
+                  </div>
+
+
 
                   <div class="panel" id="section-cases">
                     <div class="panel-title">
