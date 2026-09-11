@@ -21,6 +21,7 @@ function defaults() {
     inspectScreenshot: true,
     inspectCacheMinutes: 10,
     inspectRetries: 3,
+    inspectHeadless: true, // 抓取元素默认无头；可在设置里改成有头，或单次覆盖
   };
 }
 
@@ -241,16 +242,18 @@ async function test() {
   }
 }
 
-/** 本机抓取页面元素，参数取本机 AI 设置 */
-async function inspect(url, log = () => {}) {
+/** 本机抓取页面元素，参数取本机 AI 设置；options.headless 可覆盖本次 */
+async function inspect(url, log = () => {}, options = {}) {
   const s = settings();
+  const headless = options && options.headless !== undefined ? options.headless !== false : s.inspectHeadless !== false;
   const { inspectPage } = require("./inspect.cjs");
   const result = await inspectPage(
-    { url, screenshot: s.inspectScreenshot, retry: { maxAttempts: s.inspectRetries } },
+    { url, screenshot: s.inspectScreenshot, headless, retry: { maxAttempts: s.inspectRetries } },
     log,
   );
   return {
     url,
+    headless,
     attempt: result.attempt,
     elements: (result.elements || []).slice(0, 60),
     screenshot: s.inspectScreenshot ? result.screenshot || "" : "",

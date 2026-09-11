@@ -653,11 +653,12 @@ ipcMain.handle("agent:ai-chat", async (_e, messages) => {
   }
 });
 ipcMain.handle("agent:ai-test", () => ai.test());
-ipcMain.handle("agent:ai-inspect", async (_e, url) => {
+ipcMain.handle("agent:ai-inspect", async (_e, url, options) => {
   if (!url) return { ok: false, error: "请先填写要抓取的页面地址" };
   try {
-    log("info", `开始抓取页面元素：${url}`);
-    const r = await ai.inspect(url, (t) => log("info", t));
+    const headless = options && options.headless !== undefined ? options.headless !== false : undefined;
+    log("info", `开始抓取页面元素（${headless === false ? "有头" : "无头"}）：${url}`);
+    const r = await ai.inspect(url, (t) => log("info", t), { headless });
     log("success", `已抓取 ${r.elements.length} 个可交互元素`);
     return { ok: true, ...r, summary: ai.describeElements(r.elements) };
   } catch (err) {
