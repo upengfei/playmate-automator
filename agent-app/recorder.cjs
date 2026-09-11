@@ -276,25 +276,103 @@ function sameFrames(a, b) {
   return a.length === b.length && a.every((selector, index) => selector === b[index]);
 }
 
+/** 按顶层逗号切分调用参数（字符串与括号内部的逗号不切） */
+function splitArgs(raw) {
+  const parts = [];
+  let current = "";
+  let depth = 0;
+  let quote = "";
+  const text = String(raw || "");
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quote) {
+      current += ch;
+      if (ch === "\\") current += text[++i] ?? "";
+      else if (ch === quote) quote = "";
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    if (ch === "(" || ch === "{" || ch === "[") depth++;
+    if (ch === ")" || ch === "}" || ch === "]") depth--;
+    if (ch === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+}
+
+const POSITIVE_ASSERTIONS = {
+  toContainText: "expectText",
+  toHaveText: "expectExactText",
+  toBeVisible: "expectVisible",
+  toBeHidden: "expectHidden",
+  toBeChecked: "expectChecked",
+  toBeEnabled: "expectEnabled",
+  toBeDisabled: "expectDisabled",
+  toHaveValue: "expectValue",
+  toHaveCount: "expectCount",
+  toHaveAttribute: "expectAttribute",
+  toMatchAriaSnapshot: "expectAriaSnapshot",
+};
+
+/** expect(...).not.xxx 的等价正向关键字 */
+const NEGATED_ASSERTIONS = {
+  toBeVisible: "expectHidden",
+  toBeHidden: "expectVisible",
+  toBeChecked: "expectUnchecked",
+  toBeEnabled: "expectDisabled",
+  toBeDisabled: "expectEnabled",
+};
+
 function parseExpectation(line) {
   const m = line.match(EXPECT_RE);
   if (!m) return null;
-  const [, expression, assertion, rawValue] = m;
-  const keyword = {
-    toContainText: "expectText",
-    toBeVisible: "expectVisible",
-    toBeChecked: "expectChecked",
-    toBeEnabled: "expectEnabled",
-    toHaveValue: "expectValue",
-  }[assertion];
+  const [, expression, negated, assertion, rawValue] = m;
   const scope = splitScope(expression);
-  if (!scope || !scope.target) return null;
-  return {
-    frames: scope.frames,
-    keyword,
-    target: scope.target,
-    value: literalValue(rawValue),
-  };
+  if (!scope) return null;
+
+  // expect(page).toHaveURL / toHaveTitle：页面级断言，没有元素定位
+  if (!scope.target) {
+    if (assertion === "toHaveURL" && !negated) {
+      return { frames: [], keyword: "expectUrl", target: "", value: urlPattern(rawValue) };
+    }
+    return null;
+  }
+  if (assertion === "toHaveURL" || assertion === "toHaveTitle") return null;
+
+  const keyword = negated ? NEGATED_ASSERTIONS[assertion] : POSITIVE_ASSERTIONS[assertion];
+  if (!keyword) return null;
+
+  let value = "";
+  if (assertion === "toHaveAttribute") {
+    const args = splitArgs(rawValue);
+    value = `${literalValue(args[0])}=${literalValue(args[1])}`;
+  } else if (assertion === "toHaveCount") {
+    value = String(rawValue || "").trim();
+  } else if (assertion === "toMatchAriaSnapshot") {
+    value = literalValue(rawValue).replace(/^\n+/, "").replace(/\s+$/, "");
+  } else {
+    value = literalValue(rawValue);
+  }
+
+  return { frames: scope.frames, keyword, target: scope.target, value };
+}
+
+/** 断言地址既可能是字符串也可能是正则字面量 */
+function urlPattern(raw) {
+  const text = String(raw || "").trim();
+  const literal = literalValue(text);
+  if (literal) return literal;
+  const regex = text.match(/^\/([\s\S]*)\/[a-z]*$/);
+  return regex ? regex[1].replace(/\\\//g, "/") : text;
 }
 
 
