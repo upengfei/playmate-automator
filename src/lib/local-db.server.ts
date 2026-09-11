@@ -70,10 +70,11 @@ const SCHEMA: Record<string, TableDef> = {
       "status",
       "stage",
       "trigger",
+      "headless",
       "created_at",
       "finished_at",
     ],
-    { defaults: { id: uuid, created_at: now } },
+    { bool: ["headless"], defaults: { id: uuid, created_at: now, headless: () => true } },
   ),
   case_runs: def(
     [
@@ -240,7 +241,7 @@ CREATE TABLE IF NOT EXISTS agents (
 CREATE TABLE IF NOT EXISTS tasks (
   id TEXT PRIMARY KEY, name TEXT, env TEXT, browser TEXT, agent_id TEXT,
   concurrency INTEGER DEFAULT 1, retry INTEGER DEFAULT 0, status TEXT, stage TEXT,
-  "trigger" TEXT, created_at TEXT, finished_at TEXT
+  "trigger" TEXT, headless INTEGER DEFAULT 1, created_at TEXT, finished_at TEXT
 );
 CREATE TABLE IF NOT EXISTS case_runs (
   id TEXT PRIMARY KEY, task_id TEXT, case_id TEXT, case_name TEXT, case_version INTEGER,
@@ -319,6 +320,8 @@ const MIGRATIONS = [
   `ALTER TABLE agent_inspects ADD COLUMN attempt INTEGER DEFAULT 0`,
   `ALTER TABLE agent_inspects ADD COLUMN fail_kind TEXT`,
   `ALTER TABLE agent_inspects ADD COLUMN fail_detail TEXT`,
+  // 平台发起的执行一律无头，有头调试只在客户端本地进行
+  `ALTER TABLE tasks ADD COLUMN headless INTEGER DEFAULT 1`,
 ];
 
 

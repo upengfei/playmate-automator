@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { Blocks, Copy, Download, ListChecks, Plus, Search, Trash2, X } from "lucide-react";
+import { Blocks, Copy, Download, ListChecks, Play, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { PlatformShell } from "@/components/platform-shell";
 import { PageHeader, StatusChip } from "@/components/ui-bits";
@@ -15,7 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadCaseFile } from "@/lib/case-file";
-import { createCase, createTask, deleteCase, newCaseFromTemplate, useAppStore } from "@/lib/store";
+import {
+  createCase,
+  createTask,
+  deleteCase,
+  dispatchTask,
+  newCaseFromTemplate,
+  useAppStore,
+} from "@/lib/store";
 
 export const Route = createFileRoute("/cases/")({
   head: () => ({
@@ -41,6 +48,7 @@ function CasesPage() {
   const [picked, setPicked] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [creatingCase, setCreatingCase] = useState(false);
+  const [runningKey, setRunningKey] = useState<string | null>(null);
 
   const modules = useMemo(
     () => ["全部模块", ...Array.from(new Set(cases.map((c) => c.module)))],
@@ -66,6 +74,38 @@ function CasesPage() {
 
   const toggleAll = () => {
     setPicked(allChecked ? [] : listIds);
+  };
+
+  const onlineAgent = agents.find((a) => a.status !== "离线");
+
+  /** 平台直接运行：建任务并立即下发，固定无头执行 */
+  const runCases = async (caseIds: string[], label: string, key: string) => {
+    if (caseIds.length === 0 || runningKey) return;
+    if (!onlineAgent) {
+      toast.error("没有在线的执行节点，请先启动桌面客户端");
+      return;
+    }
+    setRunningKey(key);
+    try {
+      const task = await createTask({
+        name: `快速运行 · ${label}`,
+        caseIds,
+        agentId: onlineAgent.id,
+        env: "测试环境",
+        browser: "Chromium",
+        concurrency: settings.defaultConcurrency,
+        retry: settings.defaultRetry,
+        headless: true,
+      });
+      const res = await dispatchTask(task.id);
+      if (res.ok) toast.success(`已下发到 ${onlineAgent.name}，使用无头浏览器执行`);
+      else toast.error(res.message ?? "下发失败");
+      await navigate({ to: "/tasks/$taskId", params: { taskId: task.id } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "运行失败，请重试");
+    } finally {
+      setRunningKey(null);
+    }
   };
 
   const quickCreateTask = async () => {
@@ -164,7 +204,15 @@ function CasesPage() {
       {picked.length > 0 && (
         <div className="bg-primary-soft/60 border-primary/20 mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-4 py-2.5 text-sm">
           <span className="font-medium">已选 {picked.length} 个用例</span>
-          <Button size="sm" disabled={creating} onClick={quickCreateTask}>
+          <Button
+            size="sm"
+            disabled={runningKey !== null}
+            onClick={() => runCases(picked, `${picked.length} 个用例`, "bulk")}
+          >
+            <Play className="mr-1 size-4" />
+            {runningKey === "bulk" ? "运行中…" : "运行选中"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={creating} onClick={quickCreateTask}>
             <ListChecks className="mr-1 size-4" />
             {creating ? "创建中…" : "创建任务"}
           </Button>
@@ -185,7 +233,7 @@ function CasesPage() {
             清空
           </Button>
           <span className="text-muted-foreground text-xs">
-            创建后跳到任务详情页，确认节点与参数后再下发
+            平台运行只使用无头浏览器，有头调试请在桌面客户端进行
           </span>
         </div>
       )}
@@ -273,6 +321,15 @@ function CasesPage() {
                   <td className="text-muted-foreground text-xs">{c.updatedAt}</td>
                   <td className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={runningKey !== null}
+                        onClick={() => runCases([c.id], c.name, c.id)}
+                      >
+                        <Play className="mr-1 size-3.5" />
+                        {runningKey === c.id ? "运行中…" : "运行"}
+                      </Button>
                       <Button size="sm" variant="ghost" asChild>
                         <Link to="/cases/$caseId" params={{ caseId: c.id }}>
                           <Blocks className="mr-1 size-3.5" />

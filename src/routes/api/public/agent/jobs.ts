@@ -106,10 +106,17 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
           await import("@/lib/case-params.server");
         const bindings = await readParamBindings(db);
         const { data: taskRows } = taskIds.length
-          ? await db.from("tasks").select("id, env, browser").in("id", taskIds)
+          ? await db.from("tasks").select("id, env, browser, headless").in("id", taskIds)
           : { data: [] as Record<string, any>[] };
         const envOf = new Map<string, string>(
           ((taskRows ?? []) as Record<string, any>[]).map((t) => [t["id"] as string, (t["env"] as string) ?? ""]),
+        );
+        // 平台下发一律无头执行，客户端忽略本机「有头」偏好
+        const headlessOf = new Map<string, boolean>(
+          ((taskRows ?? []) as Record<string, unknown>[]).map((t) => [
+            t["id"] as string,
+            t["headless"] === false ? false : true,
+          ]),
         );
         const browserOf = new Map<string, string>(
           ((taskRows ?? []) as Record<string, unknown>[]).map((t) => [
@@ -145,6 +152,7 @@ export const Route = createFileRoute("/api/public/agent/jobs")({
             caseVersion: (r["case_version"] as number) ?? (c?.["version"] as number) ?? 1,
             fromSnapshot: Boolean(snap),
             browser: browserOf.get(r["task_id"] as string) ?? "chromium",
+            headless: headlessOf.get(r["task_id"] as string) ?? true,
             dependsOnCaseId: (r["depends_on_case_id"] as string) ?? null,
             steps,
             startUrl,

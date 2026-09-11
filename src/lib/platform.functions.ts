@@ -389,8 +389,10 @@ export const addTask = createServerFn({ method: "POST" })
         concurrency: z.number().int().min(1).max(32),
         retry: z.number().int().min(0).max(10),
         trigger: z.string().max(12).default("手动"),
-        /** 串行依赖：按所选顺序，前置用例通过后才执行下一个，失败则自动跳过后续 */
+        /** 串行依赖：按所选顺序，前置用例通过后才执行下一个，失败则自动跳过 */
         serialDependency: z.boolean().default(false),
+        /** 平台发起的执行一律无头，有头调试只在桌面客户端进行 */
+        headless: z.boolean().default(true),
       })
       .parse(input),
   )
@@ -409,6 +411,7 @@ export const addTask = createServerFn({ method: "POST" })
         status: "排队中",
         stage: "等待下发",
         trigger: data.trigger,
+        headless: data.headless,
       })
       .select("id")
       .single();
@@ -438,6 +441,13 @@ export const addTask = createServerFn({ method: "POST" })
         ? `任务「${data.name}」已创建，包含 ${rows.length} 个用例，已启用串行依赖（前置用例通过后才执行下一个）`
         : `任务「${data.name}」已创建，包含 ${rows.length} 个用例`,
     });
+    if (data.headless) {
+      await client.from("task_logs").insert({
+        task_id: task["id"],
+        level: "info",
+        message: "平台发起，使用无头浏览器执行（有头调试请在桌面客户端进行）",
+      });
+    }
     return { id: task["id"] as string };
   });
 
