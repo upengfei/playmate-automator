@@ -257,9 +257,21 @@ function openSetup() {
       }
     });
 
+    // 离线模式：不连接平台，直接进工作台；录制、编排、本地调试均在本机完成
+    ipcMain.handle("agent-setup:offline", () => {
+      platform.saveConfig({ offlineMode: true });
+      done = true;
+      setTimeout(() => {
+        if (setupWin && !setupWin.isDestroyed()) setupWin.destroy();
+        setupWin = null;
+        resolve(true);
+      }, 600);
+      return { ok: true };
+    });
+
     setupWin.on("closed", () => {
       setupWin = null;
-      if (!done) resolve(Boolean(cfg().token));
+      if (!done) resolve(Boolean(cfg().token) || Boolean(cfg().offlineMode));
     });
   });
 }
